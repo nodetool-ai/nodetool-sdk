@@ -623,6 +623,67 @@ public class ResizeNodeImplementation  // Never transmitted!
 }
 ```
 
+#### **🔮 Future Consideration: Hybrid Two-Tier Approach** ⭐ **DOCUMENTED FOR FUTURE**
+
+**Current Implementation**: WebSocket-focused types (Phase 1)
+
+**Future Extension**: Full type system for advanced scenarios (Phase 2)
+
+```csharp
+// TIER 1: Core SDK (WebSocket client) - Current implementation
+Nodetool.SDK/                    // WebSocket types only - SHIP FIRST
+├── WebSocket/                   // WebSocket client
+├── DataObjects/                 // Transmitted data types
+├── Assets/                      // ImageRef, AudioRef, etc.
+├── Collections/                 // List, Dict, Union, Optional
+└── Enums/                       // Static enums + model patterns
+
+// TIER 2: Extended SDK (full types) - Future consideration
+Nodetool.SDK.Extended/           // Full Python type mapping - FUTURE
+├── Nodes/                       // All node classes with full types
+├── Validation/                  // Workflow validation & type checking
+├── CodeGen/                     // C# node implementations
+├── Tools/                       // Development utilities
+└── LocalExecution/              // Pure C# node execution
+```
+
+**Future Use Cases That Would Need Full Types**:
+
+- 🏠 **Local node execution** (Pure C# implementations)
+- 🛠️ **Rich IDE tools** (Full IntelliSense, compile-time validation)
+- 📱 **Offline development** (Workflow validation without server)
+- ⚡ **Performance scenarios** (Unity 60fps, edge computing)
+- 🔄 **Migration tools** (Convert between workflow formats)
+
+**Two-Tier Usage Pattern** (future):
+
+```csharp
+// 90% of users: Simple WebSocket client
+using Nodetool.SDK;
+var client = new NodetoolClient();
+var session = await client.ExecuteWorkflowAsync(id, inputs);
+
+// 10% of users: Advanced tooling with full types
+using Nodetool.SDK.Extended;
+var workflow = new WorkflowBuilder()
+    .AddNode<ResizeNode>(n => {
+        n.Width = 512;
+        n.Algorithm = ResizeAlgorithm.Lanczos;
+    })
+    .AddNode<BlurNode>(n => n.Radius = 2.5f)
+    .Validate()                    // Compile-time validation
+    .ExecuteLocally();             // Pure C# execution
+```
+
+**Implementation Strategy**:
+
+1. ✅ **Ship WebSocket SDK first** (covers 90% of use cases)
+2. ✅ **Monitor demand** for rich tooling scenarios
+3. ✅ **Add Tier 2 later** if market validates the need
+4. ✅ **Keep Tier 1 lean** and focused on WebSocket communication
+
+**Note**: This hybrid approach allows us to ship fast while keeping the door open for rich tooling scenarios.
+
 #### **0.1 WebSocket Data Type Scanner** ⭐ **FOCUSED APPROACH**
 
 **File**: `nodetool-sdk/scripts/TypeGenerator/WebSocketTypeScanner.cs`
