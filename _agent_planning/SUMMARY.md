@@ -207,6 +207,11 @@ private T? DeserializeMessage<T>(byte[] messageBytes)
 - ✅ Enterprise-ready SDK with comprehensive documentation
 - ✅ Community adoption across .NET ecosystem
 
+### **Versioning & Build Safety** ⭐ **NEW REQUIREMENTS**
+
+- **SemVer alignment**: All auto-generated C# types/enums must match the **major.minor** version of the NodeTool core API. The Nodetool.SDK NuGet package therefore shares the same `MAJOR.MINOR` to signal compatibility.
+- **CI drift gate**: The daily enum/type sync workflow now contains a drift-check step that **fails the build** whenever generated code is out-of-date. Contributors must regenerate (or accept the bot PR) before the pipeline turns green.
+
 ## 📊 **Platform Compatibility**
 
 | **Platform**     | **MessagePack**   | **WebSocket** | **Status** |

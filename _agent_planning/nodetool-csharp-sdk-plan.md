@@ -282,3 +282,10 @@ public class NodetoolNodeBase : IVLNode
 This approach gives us a **solid foundation** for VL while opening up **massive opportunities** for Unity, enterprise apps, and the broader .NET ecosystem! 🎯
 
 **Timeline: 1-2 weeks** for a production-ready SDK that transforms VL integration and unlocks Unity/enterprise potential.
+
+## **Versioning & Build Safety** ⭐ **NEW REQUIREMENTS**
+
+- **SDK ↔ Core SemVer lock**: The Nodetool.SDK NuGet package must share the same `MAJOR.MINOR` as the NodeTool core server API. A breaking API change in core increments the major version for **both** repositories.
+- **CI drift gate**: The enum/type-sync workflow now includes a drift-check step that fails the pipeline when generated code is stale, preventing merges that would break runtime compatibility.
+
+---

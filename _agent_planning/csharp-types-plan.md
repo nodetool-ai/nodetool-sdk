@@ -1712,6 +1712,32 @@ public class AssetDownloadService
 - **Extensible**: Easy to add platform-specific type mappings
 - **Testable**: Generated types can be unit tested
 
+### **🎯 Accuracy**
+
+- **Source of truth**: Generated directly from Python definitions
+- **Type safety**: Compile-time checking of node interfaces
+- **Complete coverage**: No missing or outdated type definitions
+- **Enum support**: Automatic generation of choice-based inputs
+
+### **⚡ Development Speed**
+
+- **Instant updates**: New NodeTool nodes immediately available in C#
+- **IntelliSense**: Full IDE support for all node types
+- **Documentation**: Auto-generated XML docs from Python docstrings
+- **Breaking changes**: Compilation errors catch API changes early
+
+### **🔗 Integration**
+
+- **CI/CD ready**: Automatic PR creation for type updates
+- **Multi-platform**: Same generated types work in VL, Unity, etc.
+- **Extensible**: Easy to add platform-specific type mappings
+- **Testable**: Generated types can be unit tested
+
+### **Versioning & Build Safety** ⭐ **NEW**
+
+- **Semantic version alignment**: Generated types and enums must always match the **major.minor** version of the NodeTool core API. The SDK NuGet package is versioned using the same `MAJOR.MINOR` segment (e.g. core `v1.4.x` → SDK `v1.4.*`). Any breaking API change triggers a new major version for both repos.
+- **Drift protection in CI**: The daily enum/type sync GitHub Action now runs an additional "schema-drift" job that **fails the build** when generated code is not up-to-date. This prevents accidental merges with stale SDK types and forces regeneration (or a manual update PR) before green status.
+
 ## 📊 **Success Criteria** ⭐ **UPDATED**
 
 ### **Type Generation Automation**:
