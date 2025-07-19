@@ -63,9 +63,14 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 var summary = property.Description ?? property.Name ?? "Workflow input";
                 var remarks = BuildInputRemarks(property);
-                var defaultValue = property.DefaultValue ?? GetDefaultValueForType(property.Type.Type);
+                
+                // Get consistent VL type and default value
+                var (vlType, typeDefault) = GetVLTypeAndDefault(property.Type.Type);
+                var defaultValue = property.DefaultValue != null 
+                    ? ConvertToVLType(property.DefaultValue, vlType) 
+                    : typeDefault;
 
-                inputPins.Add(new PinDescription(property.Name ?? "UnknownInput", typeof(string), defaultValue, summary, remarks));
+                inputPins.Add(new PinDescription(property.Name ?? "UnknownInput", vlType, defaultValue, summary, remarks));
             }
 
             Inputs = inputPins.AsReadOnly();
@@ -87,9 +92,11 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 var summary = $"📤 {property.Name}";
                 var remarks = BuildOutputRemarks(property);
-                var defaultValue = GetDefaultValueForType(property.Type.Type);
+                
+                // Get consistent VL type and default value
+                var (vlType, defaultValue) = GetVLTypeAndDefault(property.Type.Type);
 
-                outputPins.Add(new PinDescription(property.Name, typeof(string), defaultValue, summary, remarks));
+                outputPins.Add(new PinDescription(property.Name, vlType, defaultValue, summary, remarks));
             }
 
             Outputs = outputPins.AsReadOnly();
@@ -175,16 +182,81 @@ namespace Nodetool.SDK.VL.Nodes
             return string.Join(" | ", parts);
         }
 
-        private static object GetDefaultValueForType(string? type)
+        /// <summary>
+        /// Get VL type and default value that are consistent with each other
+        /// </summary>
+        private static (Type, object) GetVLTypeAndDefault(string? type)
         {
             return type?.ToLowerInvariant() switch
             {
-                "string" or "str" => "",
-                "int" or "integer" => 0,
-                "float" or "number" => 0.0f,
-                "bool" or "boolean" => false,
-                _ => ""
+                "string" or "str" => (typeof(string), ""),
+                "int" or "integer" => (typeof(int), 0),
+                "float" or "number" => (typeof(float), 0.0f),
+                "bool" or "boolean" => (typeof(bool), false),
+                "list" or "array" => (typeof(string[]), new string[0]),
+                _ => (typeof(string), "")
             };
+        }
+
+        /// <summary>
+        /// Convert a value to the specified VL type to prevent casting exceptions
+        /// </summary>
+        private static object ConvertToVLType(object? value, Type targetType)
+        {
+            if (value == null)
+            {
+                var (_, defaultValue) = GetVLTypeAndDefault(targetType.Name);
+                return defaultValue;
+            }
+
+            if (targetType.IsAssignableFrom(value.GetType()))
+                return value;
+
+            try
+            {
+                if (targetType == typeof(string))
+                {
+                    return value.ToString() ?? "";
+                }
+                else if (targetType == typeof(int))
+                {
+                    return Convert.ToInt32(value);
+                }
+                else if (targetType == typeof(float))
+                {
+                    return Convert.ToSingle(value);
+                }
+                else if (targetType == typeof(bool))
+                {
+                    return Convert.ToBoolean(value);
+                }
+                else if (targetType == typeof(string[]))
+                {
+                    if (value is Array array)
+                    {
+                        var stringArray = new string[array.Length];
+                        for (int i = 0; i < array.Length; i++)
+                        {
+                            stringArray[i] = array.GetValue(i)?.ToString() ?? "";
+                        }
+                        return stringArray;
+                    }
+                    else
+                    {
+                        return new string[] { value.ToString() ?? "" };
+                    }
+                }
+                else
+                {
+                    return Convert.ChangeType(value, targetType);
+                }
+            }
+            catch
+            {
+                // If conversion fails, return default value for the target type
+                var (_, defaultValue) = GetVLTypeAndDefault(targetType.Name);
+                return defaultValue;
+            }
         }
 
         /// <summary>

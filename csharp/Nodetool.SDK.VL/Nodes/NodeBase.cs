@@ -235,22 +235,29 @@ namespace Nodetool.SDK.VL.Nodes
                 if (_outputPins.TryGetValue("Error", out var errorPin))
                     errorPin.Value = _lastError;
 
-                // Set node-specific outputs
+                // Set node-specific outputs - ensure type safety
                 if (_nodeMetadata.Outputs != null)
                 {
                     foreach (var output in _nodeMetadata.Outputs)
                     {
                         if (_outputPins.TryGetValue(output.Name, out var outputPin))
                         {
+                            // Get the expected VL type from the node metadata
+                            var (expectedType, defaultValue) = MapNodeType(output.Type);
+                            object? valueToSet;
+                            
                             if (_lastOutputs.TryGetValue(output.Name, out var value))
                             {
-                                outputPin.Value = value;
+                                // Convert the value to match the expected VL type
+                                valueToSet = ConvertValueToExpectedType(value, expectedType ?? typeof(string));
                             }
                             else
                             {
                                 // Set default value if no output available
-                                outputPin.Value = GetDefaultValueForType(output.Type);
+                                valueToSet = defaultValue;
                             }
+                            
+                            outputPin.Value = valueToSet;
                         }
                     }
                 }
@@ -269,6 +276,96 @@ namespace Nodetool.SDK.VL.Nodes
             // Use the same mapping as MapNodeType to ensure consistency
             var (vlType, defaultValue) = MapNodeType(nodeType);
             return defaultValue;
+        }
+
+        /// <summary>
+        /// Get default value for a specific .NET type (for VL pins)
+        /// </summary>
+        private static object? GetDefaultValueForPinType(Type pinType)
+        {
+            if (pinType == typeof(string)) return "";
+            if (pinType == typeof(int)) return 0;
+            if (pinType == typeof(float)) return 0.0f;
+            if (pinType == typeof(bool)) return false;
+            if (pinType == typeof(string[])) return new string[0];
+            if (pinType == typeof(object)) return null;
+            
+            // For other types, try to create an instance
+            try
+            {
+                return Activator.CreateInstance(pinType);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Convert a value to the expected pin type to prevent casting exceptions
+        /// </summary>
+        private static object? ConvertValueToExpectedType(object? value, Type expectedType)
+        {
+            if (value == null)
+                return GetDefaultValueForPinType(expectedType);
+
+            var valueType = value.GetType();
+            
+            // If types already match, return as-is
+            if (expectedType.IsAssignableFrom(valueType))
+                return value;
+
+            // Handle specific type conversions
+            try
+            {
+                if (expectedType == typeof(string))
+                {
+                    return value.ToString() ?? "";
+                }
+                else if (expectedType == typeof(int))
+                {
+                    return Convert.ToInt32(value);
+                }
+                else if (expectedType == typeof(float))
+                {
+                    return Convert.ToSingle(value);
+                }
+                else if (expectedType == typeof(bool))
+                {
+                    return Convert.ToBoolean(value);
+                }
+                else if (expectedType == typeof(string[]))
+                {
+                    // Convert to string array
+                    if (value is Array array)
+                    {
+                        var stringArray = new string[array.Length];
+                        for (int i = 0; i < array.Length; i++)
+                        {
+                            stringArray[i] = array.GetValue(i)?.ToString() ?? "";
+                        }
+                        return stringArray;
+                    }
+                    else
+                    {
+                        return new string[] { value.ToString() ?? "" };
+                    }
+                }
+                else if (expectedType == typeof(object))
+                {
+                    return value; // object can hold anything
+                }
+                else
+                {
+                    // Last resort: try direct conversion
+                    return Convert.ChangeType(value, expectedType);
+                }
+            }
+            catch (Exception)
+            {
+                // If conversion fails, return default value for the expected type
+                return GetDefaultValueForPinType(expectedType);
+            }
         }
 
         /// <summary>

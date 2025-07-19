@@ -35,8 +35,12 @@ namespace Nodetool.SDK.VL.Nodes
             // Add workflow input pins
             foreach (var property in _workflow.GetInputProperties())
             {
-                var defaultValue = property.DefaultValue ?? GetDefaultValueForType(property.Type.Type);
-                _inputPins[property.Name] = new InternalPin(property.Name, typeof(string), defaultValue);
+                // Get consistent VL type and default value
+                var (vlType, typeDefault) = GetVLTypeAndDefault(property.Type.Type);
+                var defaultValue = property.DefaultValue != null 
+                    ? ConvertToExpectedType(property.DefaultValue, vlType) 
+                    : typeDefault;
+                _inputPins[property.Name] = new InternalPin(property.Name, vlType, defaultValue);
             }
             
             // Create output pins
@@ -49,8 +53,9 @@ namespace Nodetool.SDK.VL.Nodes
             // Add workflow output pins
             foreach (var property in _workflow.GetOutputProperties())
             {
-                var defaultValue = GetDefaultValueForType(property.Type.Type);
-                _outputPins[property.Name] = new InternalPin(property.Name, typeof(string), defaultValue);
+                // Get consistent VL type and default value
+                var (vlType, defaultValue) = GetVLTypeAndDefault(property.Type.Type);
+                _outputPins[property.Name] = new InternalPin(property.Name, vlType, defaultValue);
             }
 
             Console.WriteLine($"WorkflowNodeBase: Created workflow node '{_workflow.Name}' with {_inputPins.Count} inputs and {_outputPins.Count} outputs");
@@ -140,16 +145,87 @@ namespace Nodetool.SDK.VL.Nodes
             }
         }
 
-        private static object GetDefaultValueForType(string? type)
+        /// <summary>
+        /// Get VL type and default value that are consistent with each other
+        /// </summary>
+        private static (Type, object) GetVLTypeAndDefault(string? type)
         {
             return type?.ToLowerInvariant() switch
             {
-                "string" or "str" => "",
-                "int" or "integer" => 0,
-                "float" or "number" => 0.0f,
-                "bool" or "boolean" => false,
-                _ => ""
+                "string" or "str" => (typeof(string), ""),
+                "int" or "integer" => (typeof(int), 0),
+                "float" or "number" => (typeof(float), 0.0f),
+                "bool" or "boolean" => (typeof(bool), false),
+                "list" or "array" => (typeof(string[]), new string[0]),
+                _ => (typeof(string), "")
             };
+        }
+
+        /// <summary>
+        /// Get default value for a specific .NET type to ensure type safety
+        /// </summary>
+        private static object GetDefaultValueForVLType(Type vlType)
+        {
+            if (vlType == typeof(string)) return "";
+            if (vlType == typeof(int)) return 0;
+            if (vlType == typeof(float)) return 0.0f;
+            if (vlType == typeof(bool)) return false;
+            if (vlType == typeof(string[])) return new string[0];
+            
+            try
+            {
+                return Activator.CreateInstance(vlType) ?? "";
+            }
+            catch
+            {
+                return "";
+            }
+        }
+
+        /// <summary>
+        /// Convert value to expected type to prevent casting exceptions
+        /// </summary>
+        private static object ConvertToExpectedType(object? value, Type expectedType)
+        {
+            if (value == null)
+                return GetDefaultValueForVLType(expectedType);
+
+            if (expectedType.IsAssignableFrom(value.GetType()))
+                return value;
+
+            try
+            {
+                if (expectedType == typeof(string))
+                    return value.ToString() ?? "";
+                else if (expectedType == typeof(int))
+                    return Convert.ToInt32(value);
+                else if (expectedType == typeof(float))
+                    return Convert.ToSingle(value);
+                else if (expectedType == typeof(bool))
+                    return Convert.ToBoolean(value);
+                else if (expectedType == typeof(string[]))
+                {
+                    if (value is Array array)
+                    {
+                        var stringArray = new string[array.Length];
+                        for (int i = 0; i < array.Length; i++)
+                        {
+                            stringArray[i] = array.GetValue(i)?.ToString() ?? "";
+                        }
+                        return stringArray;
+                    }
+                    else
+                    {
+                        return new string[] { value.ToString() ?? "" };
+                    }
+                }
+                else
+                    return Convert.ChangeType(value, expectedType);
+            }
+            catch
+            {
+                return GetDefaultValueForVLType(expectedType);
+            }
         }
 
         public void Dispose()
