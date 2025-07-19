@@ -90,21 +90,21 @@ public void Update()
 
 ## 🚀 **Implementation Roadmap**
 
-### **Phase 0: MessagePack Type Generation in nodetool-core** _(External Dependency)_ ⭐ **SIMPLIFIED FOUNDATION**
+### **Phase 0: OpenAPI + MessagePack Setup in nodetool-core** _(External Dependency)_ ⭐ **INDUSTRY STANDARD**
 
-**Key Insight**: **nodetool-core** generates ALL node types using MessagePack, **SDK consumes pre-generated types**!
+**Key Insight**: **nodetool-core** exposes MessagePack-enabled OpenAPI, **NSwag auto-generates** complete client + types!
 
-1. **Complete Type Generation** - All 1000+ Python node classes → C# classes (in nodetool-core)
-2. **Full Enum Coverage** - All Python enums → C# enums with MessagePack compatibility
-3. **MessagePack Serialization** - Efficient binary serialization across platforms
-4. **Versioned Distribution** - Types distributed with nodetool-core releases
+1. **MessagePack.WebApi.Client Integration** - Add MessagePack formatters and schema processors
+2. **OpenAPI Schema Enhancement** - Inject MessagePack attributes via schema processor
+3. **NSwag Configuration** - Configure MessagePack client generation templates
+4. **CI/CD Integration** - Auto-regenerate client on API changes
 
-### **Phase 1: Simplified SDK Implementation** _(1-2 weeks)_ ⭐ **MUCH FASTER**
+### **Phase 1: NSwag Client Integration** _(1 week)_ ⭐ **AUTOMATED**
 
-1. **Type Registry System** - Load and register all pre-generated types
-2. **MessagePack WebSocket Client** - Binary message handling
-3. **Clean SDK Interface** - `IExecutionSession` abstraction over WebSocket complexity
-4. **Type Integration** - Seamless integration of generated types with SDK
+1. **NSwag.MSBuild Setup** - Auto-generate MessagePack client on build
+2. **SDK Service Wrapper** - Clean abstraction over generated client
+3. **WebSocket Integration** - MessagePack-compatible WebSocket client
+4. **Dynamic Model Enums** - Runtime model selection for VL
 
 ### **Phase 2: Ultra-Simple VL Integration** _(1 week)_ ⭐ **MINIMAL COMPLEXITY**
 
