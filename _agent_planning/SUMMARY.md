@@ -37,20 +37,27 @@ All planning files have been reviewed, updated, and aligned around the **WebSock
 - **VL as consumer**: Thin wrapper around robust SDK core
 - **Platform agnostic**: MessagePack works across all C# platforms
 
-### **4. Clean Separation of Concerns** ⭐ **NEW**
+### **4. Clean SDK-First Architecture** ⭐ **NEW**
 
-**SDK Responsibility** _(Universal C# Interface)_:
+**Nodetool.SDK Responsibility** _(Universal C# Foundation)_:
 
-- Handle all WebSocket connections and message parsing
-- Manage execution state, progress, and output accumulation
-- Provide clean, synchronous-feeling API via `IExecutionSession`
-- Cache outputs internally with automatic type conversion
+- ✅ **Generate ALL C# types** from Python (static enums + model patterns)
+- ✅ **Handle ALL WebSocket** connections and message parsing
+- ✅ **Manage ALL model API calls** (ComfyUI, HuggingFace, Ollama, etc.)
+- ✅ **Cache model lists** and handle rate limiting/errors
+- ✅ **Provide clean interfaces**: `IExecutionSession.GetOutput<T>()`
+- ✅ **Handle complex objects** (InferenceProviderModel, ComfyModel, etc.)
+- ✅ **Work across ALL .NET platforms** (VL, Unity, WPF, Console, etc.)
 
-**VL Responsibility** _(Thin Transformation Layer)_:
+**Nodetool.SDK.VL Responsibility** _(Thin VL-Specific Layer)_:
 
-- Transform SDK outputs to VL types (SKImage, byte[], etc.)
-- Update VL pins from simple session interface
-- Handle VL-specific UI concerns only
+- ✅ **Transform SDK data → VL types ONLY**: `NodeToolDataObject` → `SKImage`
+- ✅ **Create VL pins** with appropriate types from SDK metadata
+- ✅ **Handle VL-specific UI** (dynamic dropdowns, custom selectors)
+- ❌ **NO WebSocket handling** - SDK does this
+- ❌ **NO API calls** - SDK does this
+- ❌ **NO type generation** - SDK does this
+- ❌ **NO business logic** - SDK does this
 
 ```csharp
 // SDK provides clean execution interface
@@ -83,11 +90,13 @@ public void Update()
 
 ## 🚀 **Implementation Roadmap**
 
-### **Phase 0: Automatic Python-to-C# Type Generation** _(1 week)_ ⭐ **NEW CRITICAL FOUNDATION**
+### **Phase 0: WebSocket-Focused Type Generation** _(1 week)_ ⭐ **CRITICAL FOUNDATION**
 
-1. **Python Type Scanner** - Parse NodeTool Python files for node definitions
-2. **Type Mapper** - Convert Python types (Union, Optional, List) to C# equivalents
-3. **C# Code Generator** - Generate strongly-typed C# classes with XML documentation
+**Key Insight**: Generate types for **WebSocket-transmitted data**, not all Python classes!
+
+1. **WebSocket Type Scanner** - Focus on data objects, asset refs, metadata types
+2. **Type Mapper** - Convert transmitted Python types (Union, Optional, List) to C# equivalents
+3. **C# Code Generator** - Generate strongly-typed C# classes for transmitted data
 4. **CI/CD Integration** - Daily automated updates from NodeTool changes
 
 ### **Phase 1: WebSocket Infrastructure + Clean SDK Interface** _(3-4 weeks)_
@@ -136,28 +145,35 @@ public class ResizeNode
 ### **Clean SDK Interface**
 
 ```csharp
-// SDK provides ultra-simple execution interface
+// SDK provides ultra-simple execution interface WITH full type handling
 var session = await client.ExecuteWorkflowAsync(workflowId, inputs);
 
-// Consumers just read current state (no WebSocket complexity)
-var isRunning = session.IsRunning;
-var image = session.GetOutput<NodeToolDataObject>("image_output");
-var error = session.ErrorMessage;
+// Consumers get strongly-typed data (all complexity hidden)
+var isRunning = session.IsRunning;                                    // SDK handles WebSocket
+var image = session.GetOutput<NodeToolDataObject>("image_output");    // SDK handles parsing
+var comfyModel = session.GetOutput<ComfyModelReference>("model");     // SDK handles model APIs
+var error = session.ErrorMessage;                                     // SDK handles errors
 ```
 
 ### **Simplified VL Integration**
 
 ```csharp
-// VL nodes are now trivially simple
+// VL nodes become ULTRA-simple with SDK-first approach
 public void Update()
 {
-    // Status pins
-    _isRunningPin.Value = _session.IsRunning;
-    _progressPin.Value = _session.ProgressPercent;
+    // Status pins - direct from SDK (no complexity)
+    _isRunningPin.Value = _session.IsRunning;                    // SDK handles WebSocket events
+    _progressPin.Value = _session.ProgressPercent;               // SDK handles progress parsing
+    _errorPin.Value = _session.ErrorMessage ?? "";              // SDK handles error management
 
-    // Data pins - VL's only job: type conversion
-    var imageData = _session.GetOutputData("image_output");
-    _imagePin.Value = _converter.ConvertToVLType(imageData, typeof(SKImage));
+    // Data pins - VL's ONLY job: SDK data → VL types
+    var imageData = _session.GetOutput<NodeToolDataObject>("image");     // SDK gives typed data
+    var modelData = _session.GetOutput<ComfyModelReference>("model");    // SDK handles model APIs
+
+    _imagePin.Value = _vlConverter.ToSKImage(imageData);         // VL: just type conversion
+    _modelPin.Value = modelData?.Name ?? "";                     // VL: just UI display
+
+    // No WebSocket, no API calls, no parsing, no state management!
 }
 ```
 
@@ -217,5 +233,10 @@ private T? DeserializeMessage<T>(byte[] messageBytes)
 - **Real data object handling** supports both embedded content and asset references
 - **SDK-first approach** enables universal .NET platform support
 - **VL as thin wrapper** around robust SDK core maximizes reusability
+- **Smart type system** handles both static enums AND complex model patterns ⭐ **NEW**
+- **WebSocket-focused generation** - types for transmitted data, not all Python classes ⭐ **KEY INSIGHT**
+- **~50 transmitted types** vs. 1000+ Python classes - much more focused approach
+- **Model pattern analysis** reveals ~50 static enums + ~20 model type patterns requiring API integration
+- **Appropriate UI per type** instead of one-size-fits-all enum approach
 
 This comprehensive plan provides a **production-ready NodeTool C# SDK** that works across the entire .NET ecosystem while maintaining excellent integration with VL/vvvv! 🎉
