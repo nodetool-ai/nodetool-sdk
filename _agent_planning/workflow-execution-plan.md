@@ -97,6 +97,23 @@
 
 **🎯 Goal**: Build robust WebSocket client that handles NodeTool's exact protocol
 
+#### **1.0 Dependencies**
+
+**File**: `nodetool-sdk/csharp/Nodetool.SDK/Nodetool.SDK.csproj`
+
+```xml
+<PackageReference Include="MessagePack" Version="2.5.124" />
+<PackageReference Include="MessagePackAnalyzer" Version="2.5.124" />
+<PackageReference Include="System.Text.Json" Version="8.0.0" />
+```
+
+**Why MessagePack?**
+
+- ✅ **Binary format**: More efficient than JSON for real-time data
+- ✅ **VL Compatible**: VL has MessagePack support built-in
+- ✅ **Unity Support**: Works with Unity and other C# platforms
+- ✅ **Fallback**: Can still handle JSON for compatibility
+
 #### **1.1 NodeTool WebSocket Client**
 
 **File**: `nodetool-sdk/csharp/Nodetool.SDK/Services/NodeToolWebSocketClient.cs`
@@ -168,26 +185,42 @@ public class NodeToolWebSocketClient : IDisposable
 
     private async Task SendMessageAsync(object message)
     {
-        var json = JsonSerializer.Serialize(message, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
+        // Try MessagePack first (binary), fallback to JSON (text)
+        byte[] messageBytes;
+        WebSocketMessageType messageType;
 
-        var bytes = Encoding.UTF8.GetBytes(json);
+        try
+        {
+            // Serialize with MessagePack (binary format)
+            messageBytes = MessagePackSerializer.Serialize(message);
+            messageType = WebSocketMessageType.Binary;
+            _logger.LogDebug($"Sending MessagePack message: {message.GetType().Name}");
+        }
+        catch (Exception ex)
+        {
+            // Fallback to JSON if MessagePack fails
+            _logger.LogDebug($"MessagePack failed, falling back to JSON: {ex.Message}");
+            var json = JsonSerializer.Serialize(message, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
+            messageBytes = Encoding.UTF8.GetBytes(json);
+            messageType = WebSocketMessageType.Text;
+        }
 
         await _webSocket.SendAsync(
-            new ArraySegment<byte>(bytes),
-            WebSocketMessageType.Text,
+            new ArraySegment<byte>(messageBytes),
+            messageType,
             true,
             _cancellationTokenSource.Token);
 
-        _logger.LogDebug($"Sent: {json}");
+        _logger.LogDebug($"Sent {messageType} message ({messageBytes.Length} bytes)");
     }
 
     private async Task MessageListenerLoop()
     {
-        var buffer = new byte[8192]; // Larger buffer for data objects
-        var messageBuilder = new StringBuilder();
+        var buffer = new byte[16384]; // Larger buffer for binary data
+        var messageBuffer = new List<byte>();
 
         while (_webSocket.State == WebSocketState.Open &&
                !_cancellationTokenSource.Token.IsCancellationRequested)
@@ -195,26 +228,30 @@ public class NodeToolWebSocketClient : IDisposable
             try
             {
                 WebSocketReceiveResult result;
-                messageBuilder.Clear();
+                messageBuffer.Clear();
 
-                // Handle potentially large messages
+                // Handle potentially large messages (both text and binary)
                 do
                 {
                     result = await _webSocket.ReceiveAsync(
                         new ArraySegment<byte>(buffer),
                         _cancellationTokenSource.Token);
 
-                    if (result.MessageType == WebSocketMessageType.Text)
+                    if (result.MessageType == WebSocketMessageType.Text ||
+                        result.MessageType == WebSocketMessageType.Binary)
                     {
-                        var chunk = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                        messageBuilder.Append(chunk);
+                        messageBuffer.AddRange(buffer.Take(result.Count));
                     }
                 } while (!result.EndOfMessage);
 
-                if (result.MessageType == WebSocketMessageType.Text)
+                if (result.MessageType == WebSocketMessageType.Binary)
                 {
-                    var message = messageBuilder.ToString();
-                    await ProcessMessage(message);
+                    await ProcessBinaryMessage(messageBuffer.ToArray());
+                }
+                else if (result.MessageType == WebSocketMessageType.Text)
+                {
+                    var textMessage = Encoding.UTF8.GetString(messageBuffer.ToArray());
+                    await ProcessTextMessage(textMessage);
                 }
             }
             catch (OperationCanceledException)
@@ -230,11 +267,50 @@ public class NodeToolWebSocketClient : IDisposable
         }
     }
 
-    private async Task ProcessMessage(string message)
+    private async Task ProcessBinaryMessage(byte[] messageBytes)
     {
         try
         {
-            _logger.LogDebug($"Received: {message}");
+            _logger.LogDebug($"Received binary message ({messageBytes.Length} bytes)");
+
+            // Try MessagePack deserialization first
+            var messageObj = MessagePackSerializer.Deserialize<Dictionary<string, object>>(messageBytes);
+
+            if (messageObj.TryGetValue("type", out var typeObj) && typeObj is string messageType)
+            {
+                await ProcessTypedMessage(messageType, messageBytes);
+            }
+            else
+            {
+                _logger.LogWarning("Binary message missing 'type' property");
+            }
+        }
+        catch (MessagePackSerializationException ex)
+        {
+            _logger.LogError(ex, "Failed to deserialize MessagePack data");
+
+            // Try interpreting as UTF-8 text as fallback
+            try
+            {
+                var textMessage = Encoding.UTF8.GetString(messageBytes);
+                await ProcessTextMessage(textMessage);
+            }
+            catch (Exception fallbackEx)
+            {
+                _logger.LogError(fallbackEx, "Failed to process binary message as text fallback");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing binary message");
+        }
+    }
+
+    private async Task ProcessTextMessage(string message)
+    {
+        try
+        {
+            _logger.LogDebug($"Received text message: {message}");
             RawMessageReceived?.Invoke(this, message);
 
             using var doc = JsonDocument.Parse(message);
@@ -242,28 +318,45 @@ public class NodeToolWebSocketClient : IDisposable
 
             if (!root.TryGetProperty("type", out var typeProperty))
             {
-                _logger.LogWarning($"Message missing 'type' property: {message}");
+                _logger.LogWarning($"Text message missing 'type' property: {message}");
                 return;
             }
 
             var messageType = typeProperty.GetString();
+            await ProcessTypedMessage(messageType, Encoding.UTF8.GetBytes(message));
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, $"Failed to parse JSON message: {message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error processing text message: {message}");
+        }
+    }
 
+    private async Task ProcessTypedMessage(string? messageType, byte[] messageBytes)
+    {
+        if (string.IsNullOrEmpty(messageType)) return;
+
+        try
+        {
             switch (messageType)
             {
                 case "job_update":
-                    var jobUpdate = JsonSerializer.Deserialize<JobUpdateMessage>(message);
+                    var jobUpdate = DeserializeMessage<JobUpdateMessage>(messageBytes);
                     if (jobUpdate != null)
                         JobUpdated?.Invoke(this, jobUpdate);
                     break;
 
                 case "node_update":
-                    var nodeUpdate = JsonSerializer.Deserialize<NodeUpdateMessage>(message);
+                    var nodeUpdate = DeserializeMessage<NodeUpdateMessage>(messageBytes);
                     if (nodeUpdate != null)
                         NodeUpdated?.Invoke(this, nodeUpdate);
                     break;
 
                 case "output_update":
-                    var outputUpdate = JsonSerializer.Deserialize<OutputUpdateMessage>(message);
+                    var outputUpdate = DeserializeMessage<OutputUpdateMessage>(messageBytes);
                     if (outputUpdate != null)
                         OutputUpdated?.Invoke(this, outputUpdate);
                     break;
@@ -273,14 +366,36 @@ public class NodeToolWebSocketClient : IDisposable
                     break;
             }
         }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, $"Failed to parse JSON message: {message}");
-        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Error processing message: {message}");
+            _logger.LogError(ex, $"Failed to process {messageType} message");
         }
+    }
+
+    private T? DeserializeMessage<T>(byte[] messageBytes) where T : class
+    {
+        // Try MessagePack first (more efficient)
+        try
+        {
+            return MessagePackSerializer.Deserialize<T>(messageBytes);
+        }
+        catch (MessagePackSerializationException)
+        {
+            _logger.LogDebug($"MessagePack failed for {typeof(T).Name}, trying JSON");
+        }
+
+        // Fallback to JSON
+        try
+        {
+            var json = Encoding.UTF8.GetString(messageBytes);
+            return JsonSerializer.Deserialize<T>(json);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, $"Failed to deserialize {typeof(T).Name} from JSON");
+        }
+
+        return null;
     }
 
     public bool IsConnected => _webSocket.State == WebSocketState.Open;
@@ -307,38 +422,61 @@ public class NodeToolWebSocketClient : IDisposable
 **File**: `nodetool-sdk/csharp/Nodetool.SDK/Models/WebSocketMessages.cs`
 
 ```csharp
+[MessagePackObject]
 public class JobUpdateMessage
 {
+    [Key("type")]
     [JsonPropertyName("type")]
     public string Type { get; set; } = "";
 
+    [Key("status")]
     [JsonPropertyName("status")]
     public string Status { get; set; } = "";
 
+    [Key("job_id")]
     [JsonPropertyName("job_id")]
     public string JobId { get; set; } = "";
 
+    [Key("message")]
     [JsonPropertyName("message")]
     public string? Message { get; set; }
 
+    [Key("result")]
     [JsonPropertyName("result")]
-    public Dictionary<string, JsonElement>? Result { get; set; }
+    public Dictionary<string, object>? Result { get; set; }
 
+    [Key("error")]
     [JsonPropertyName("error")]
     public string? Error { get; set; }
 
+    [IgnoreMember]
+    [JsonIgnore]
     public bool IsCompleted => Status == "completed";
+
+    [IgnoreMember]
+    [JsonIgnore]
     public bool IsFailed => Status == "error";
+
+    [IgnoreMember]
+    [JsonIgnore]
     public bool IsRunning => Status == "running";
 
     // Extract typed output data
+    [IgnoreMember]
+    [JsonIgnore]
     public T? GetOutputData<T>(string outputName)
     {
         if (Result?.TryGetValue(outputName, out var element) == true)
         {
             try
             {
-                return JsonSerializer.Deserialize<T>(element.GetRawText());
+                // Handle both MessagePack and JSON scenarios
+                if (element is T directValue)
+                    return directValue;
+
+                // Try deserializing if it's a complex object
+                var json = JsonSerializer.Serialize(element);
+                return JsonSerializer.Deserialize<T>(json);
             }
             catch (Exception ex)
             {
@@ -349,6 +487,8 @@ public class JobUpdateMessage
     }
 
     // Get all outputs as NodeTool data objects
+    [IgnoreMember]
+    [JsonIgnore]
     public Dictionary<string, NodeToolDataObject> GetAllOutputs()
     {
         var outputs = new Dictionary<string, NodeToolDataObject>();
@@ -359,7 +499,20 @@ public class JobUpdateMessage
             {
                 try
                 {
-                    var dataObj = JsonSerializer.Deserialize<NodeToolDataObject>(kvp.Value.GetRawText());
+                    NodeToolDataObject? dataObj = null;
+
+                    // Try direct cast first (MessagePack scenario)
+                    if (kvp.Value is NodeToolDataObject direct)
+                    {
+                        dataObj = direct;
+                    }
+                    else
+                    {
+                        // Try JSON conversion (fallback scenario)
+                        var json = JsonSerializer.Serialize(kvp.Value);
+                        dataObj = JsonSerializer.Deserialize<NodeToolDataObject>(json);
+                    }
+
                     if (dataObj != null)
                         outputs[kvp.Key] = dataObj;
                 }
@@ -374,143 +527,216 @@ public class JobUpdateMessage
     }
 }
 
+[MessagePackObject]
 public class OutputUpdateMessage
 {
+    [Key("type")]
     [JsonPropertyName("type")]
     public string Type { get; set; } = "";
 
+    [Key("node_id")]
     [JsonPropertyName("node_id")]
     public string NodeId { get; set; } = "";
 
+    [Key("node_name")]
     [JsonPropertyName("node_name")]
     public string NodeName { get; set; } = "";
 
+    [Key("output_name")]
     [JsonPropertyName("output_name")]
     public string OutputName { get; set; } = "";
 
+    [Key("value")]
     [JsonPropertyName("value")]
-    public JsonElement? Value { get; set; }
+    public object? Value { get; set; }
 
     // Extract the data object from value
+    [IgnoreMember]
+    [JsonIgnore]
     public NodeToolDataObject? GetDataObject()
     {
-        if (Value.HasValue)
+        if (Value == null) return null;
+
+        try
         {
-            try
-            {
-                return JsonSerializer.Deserialize<NodeToolDataObject>(Value.Value.GetRawText());
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to parse output data: {ex.Message}");
-            }
+            // Try direct cast first (MessagePack scenario)
+            if (Value is NodeToolDataObject direct)
+                return direct;
+
+            // Try JSON conversion (fallback scenario)
+            var json = JsonSerializer.Serialize(Value);
+            return JsonSerializer.Deserialize<NodeToolDataObject>(json);
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to parse output data: {ex.Message}");
+        }
+
         return null;
     }
 
     // Extract specific data type
+    [IgnoreMember]
+    [JsonIgnore]
     public T? GetTypedData<T>()
     {
-        if (Value.HasValue)
+        if (Value == null) return default;
+
+        try
         {
-            try
-            {
-                return JsonSerializer.Deserialize<T>(Value.Value.GetRawText());
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to parse typed data: {ex.Message}");
-            }
+            // Try direct cast first
+            if (Value is T direct)
+                return direct;
+
+            // Try JSON conversion
+            var json = JsonSerializer.Serialize(Value);
+            return JsonSerializer.Deserialize<T>(json);
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to parse typed data: {ex.Message}");
+        }
+
         return default;
     }
 }
 
+[MessagePackObject]
 public class NodeUpdateMessage
 {
+    [Key("type")]
     [JsonPropertyName("type")]
     public string Type { get; set; } = "";
 
+    [Key("node_id")]
     [JsonPropertyName("node_id")]
     public string NodeId { get; set; } = "";
 
+    [Key("node_name")]
     [JsonPropertyName("node_name")]
     public string NodeName { get; set; } = "";
 
+    [Key("status")]
     [JsonPropertyName("status")]
     public string Status { get; set; } = "";
 
+    [Key("error")]
     [JsonPropertyName("error")]
     public string? Error { get; set; }
 
+    [Key("logs")]
     [JsonPropertyName("logs")]
     public List<string>? Logs { get; set; }
 
+    [Key("result")]
     [JsonPropertyName("result")]
-    public JsonElement? Result { get; set; }
+    public object? Result { get; set; }
 
+    [Key("properties")]
     [JsonPropertyName("properties")]
-    public JsonElement? Properties { get; set; }
+    public object? Properties { get; set; }
 
+    [IgnoreMember]
+    [JsonIgnore]
     public bool IsCompleted => Status == "completed";
+
+    [IgnoreMember]
+    [JsonIgnore]
     public bool IsFailed => Status == "error";
+
+    [IgnoreMember]
+    [JsonIgnore]
     public bool IsRunning => Status == "running";
 }
 
 // Universal NodeTool data object format
+[MessagePackObject]
 public class NodeToolDataObject
 {
+    [Key("type")]
     [JsonPropertyName("type")]
     public string Type { get; set; } = "";
 
+    [Key("uri")]
     [JsonPropertyName("uri")]
     public string? Uri { get; set; }
 
+    [Key("asset_id")]
     [JsonPropertyName("asset_id")]
     public string? AssetId { get; set; }
 
+    [Key("data")]
     [JsonPropertyName("data")]
-    public JsonElement? Data { get; set; }
+    public object? Data { get; set; }
 
     // Additional common properties
+    [Key("width")]
     [JsonPropertyName("width")]
     public int? Width { get; set; }
 
+    [Key("height")]
     [JsonPropertyName("height")]
     public int? Height { get; set; }
 
+    [Key("duration")]
     [JsonPropertyName("duration")]
     public double? Duration { get; set; }
 
+    [Key("format")]
     [JsonPropertyName("format")]
     public string? Format { get; set; }
 
+    [Key("size")]
     [JsonPropertyName("size")]
     public long? Size { get; set; }
 
+    [IgnoreMember]
+    [JsonIgnore]
     public bool IsImage => Type == "image";
+
+    [IgnoreMember]
+    [JsonIgnore]
     public bool IsAudio => Type == "audio";
+
+    [IgnoreMember]
+    [JsonIgnore]
     public bool IsVideo => Type == "video";
+
+    [IgnoreMember]
+    [JsonIgnore]
     public bool IsText => Type == "text";
 
     // Check if actual data is embedded vs referenced
-    public bool HasEmbeddedData => Data.HasValue && Data.Value.ValueKind != JsonValueKind.Null;
+    [IgnoreMember]
+    [JsonIgnore]
+    public bool HasEmbeddedData => Data != null;
+
+    [IgnoreMember]
+    [JsonIgnore]
     public bool HasAssetReference => !string.IsNullOrEmpty(Uri) || !string.IsNullOrEmpty(AssetId);
 
     // Extract embedded data as specific type
+    [IgnoreMember]
+    [JsonIgnore]
     public T? GetEmbeddedData<T>()
     {
-        if (HasEmbeddedData)
+        if (!HasEmbeddedData) return default;
+
+        try
         {
-            try
-            {
-                return JsonSerializer.Deserialize<T>(Data.Value.GetRawText());
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to extract embedded data: {ex.Message}");
-            }
+            // Try direct cast first (MessagePack scenario)
+            if (Data is T direct)
+                return direct;
+
+            // Try JSON conversion (fallback scenario)
+            var json = JsonSerializer.Serialize(Data);
+            return JsonSerializer.Deserialize<T>(json);
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to extract embedded data: {ex.Message}");
+        }
+
         return default;
     }
 }
@@ -959,8 +1185,49 @@ public class AudioData
 
 ## ⏱️ **Implementation Timeline**
 
-- **Week 1**: WebSocket client + message handling + data object processing
+- **Week 1**: WebSocket client + MessagePack/JSON message handling + data object processing
 - **Week 2**: Streaming execution service + real-time progress tracking
-- **Week 3**: VL integration + testing
+- **Week 3**: VL integration + testing across different serialization formats
 
-This focused WebSocket approach handles the real NodeTool protocol with proper data object processing for both embedded content and asset references!
+**Total Duration**: ~3 weeks for production-ready WebSocket execution with binary format support
+
+## 🔧 **MessagePack Platform Support**
+
+### **VL/vvvv** ✅
+
+- **Native Support**: VL has MessagePack libraries available
+- **Binary Performance**: Ideal for real-time visual programming
+- **Memory Efficient**: Reduced GC pressure vs JSON
+
+### **Unity** ✅
+
+- **Package Available**: MessagePack-CSharp works with Unity 2020.3+
+- **IL2CPP Compatible**: Works with AOT compilation
+- **Mobile Ready**: Efficient for iOS/Android builds
+
+### **General .NET** ✅
+
+- **.NET Standard 2.0+**: Works with .NET Framework, .NET Core, .NET 5+
+- **NuGet Package**: Easy installation via package manager
+- **Performance**: 5-10x faster than JSON for binary data
+
+### **Fallback Strategy** 🔄
+
+```csharp
+// Dual serialization support ensures compatibility
+private T? DeserializeMessage<T>(byte[] messageBytes) where T : class
+{
+    // Try MessagePack first (binary, efficient)
+    try { return MessagePackSerializer.Deserialize<T>(messageBytes); }
+    catch (MessagePackSerializationException) { /* fallback to JSON */ }
+
+    // JSON fallback (text, universal compatibility)
+    try {
+        var json = Encoding.UTF8.GetString(messageBytes);
+        return JsonSerializer.Deserialize<T>(json);
+    }
+    catch (JsonException) { return null; }
+}
+```
+
+This focused WebSocket approach handles the real NodeTool protocol with proper **binary MessagePack** support while maintaining **JSON fallback** compatibility!

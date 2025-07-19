@@ -1,5 +1,7 @@
 # 🎯 **Nodetool C# SDK - Universal .NET Integration**
 
+> **⚠️ UPDATE**: This plan remains valid, but execution will use **WebSocket streaming** instead of HTTP as originally assumed. See `workflow-execution-plan.md` for WebSocket implementation details.
+
 ## **🌟 Vision: From VL-Specific to Universal C# SDK**
 
 Instead of building VL-specific type mappings, create a **comprehensive C# SDK** that can be used by:

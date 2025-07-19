@@ -6,677 +6,424 @@
 ✅ **Basic Asset Types** - `ImageRef`, `AudioRef`, `VideoRef`, etc.  
 ✅ **Type Mapping Utilities** - `TypeMapper` for metadata to C# types  
 ✅ **VL Type Integration** - Basic mapping in factories  
-❌ **Advanced VL Types** - SKImage, byte[] for multimedia  
-❌ **Asset Conversion Pipeline** - Upload/download with caching  
-❌ **Union Types** - Proper handling of `Union[str, int]` etc.
+❌ **WebSocket Data Object Handling** - Need real implementation  
+❌ **Asset Conversion Pipeline** - Upload/download with caching
 
-## 📋 **Enhancement Plan: Production-Ready Type System**
+## 🔍 **Real Data Object Format** _(From WebSocket Execution)_
 
-NOTE: a first step is to get the request and response of running a workflow and then
-adapt the plan according to the findings.
+**Key Discovery**: NodeTool WebSocket messages contain `NodeToolDataObject` format:
 
-### **Phase 1: Enhanced VL Type Mapping** _(2-3 days)_
+```json
+{
+  "type": "image",
+  "uri": "http://...",
+  "asset_id": "...",
+  "data": {
+    /* actual embedded data */
+  },
+  "width": 1024,
+  "height": 768,
+  "format": "png"
+}
+```
 
-**🎯 Goal**: Map NodeTool types to optimal VL native types
+### **Data Object Characteristics**:
 
-#### **1.1 Enhanced Type Mapping Strategy**
+- **Embedded Data**: `data` field contains actual content (base64, structured data)
+- **Asset References**: `uri` and `asset_id` for downloadable assets
+- **Type Metadata**: `width`, `height`, `duration`, `format`, etc.
+- **Dual Nature**: Objects can have BOTH embedded data AND asset references
 
-| **NodeTool Type** | **Current VL Type** | **Enhanced VL Type**           | **Benefits**              |
-| ----------------- | ------------------- | ------------------------------ | ------------------------- |
-| `image`           | `string`            | `SKImage`                      | Native image manipulation |
-| `audio`           | `string`            | `byte[]`                       | Direct audio processing   |
-| `video`           | `string`            | `byte[]`                       | Video data handling       |
-| `tensor`          | `string`            | `float[]`                      | Numeric computations      |
-| `dataframe`       | `string`            | `Dictionary<string, object[]>` | Structured data           |
-| `union`           | `string`            | `object`                       | Type flexibility          |
+## 📋 **Implementation Plan: Real Data Object Handling**
 
-#### **1.2 Update VL Type Mapper**
+### **Phase 1: Data Object Models** _(1-2 days)_
 
-**File**: `nodetool-sdk/csharp/Nodetool.SDK.VL/TypeSystem/VLTypeMapper.cs`
+**🎯 Goal**: Implement the real `NodeToolDataObject` format from WebSocket messages
+
+#### **1.1 Core Data Object Model**
+
+**File**: `nodetool-sdk/csharp/Nodetool.SDK/Models/NodeToolDataObject.cs`
 
 ```csharp
-public static class VLTypeMapper
+public class NodeToolDataObject
 {
-    private static readonly Dictionary<string, Type> EnhancedTypeMap = new()
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = "";
+
+    [JsonPropertyName("uri")]
+    public string? Uri { get; set; }
+
+    [JsonPropertyName("asset_id")]
+    public string? AssetId { get; set; }
+
+    [JsonPropertyName("data")]
+    public JsonElement? Data { get; set; }
+
+    // Type-specific metadata
+    [JsonPropertyName("width")]
+    public int? Width { get; set; }
+
+    [JsonPropertyName("height")]
+    public int? Height { get; set; }
+
+    [JsonPropertyName("duration")]
+    public double? Duration { get; set; }
+
+    [JsonPropertyName("format")]
+    public string? Format { get; set; }
+
+    [JsonPropertyName("size")]
+    public long? Size { get; set; }
+
+    // Type checks
+    public bool IsImage => Type == "image";
+    public bool IsAudio => Type == "audio";
+    public bool IsVideo => Type == "video";
+    public bool IsText => Type == "text";
+
+    // Data availability checks
+    public bool HasEmbeddedData => Data.HasValue && Data.Value.ValueKind != JsonValueKind.Null;
+    public bool HasAssetReference => !string.IsNullOrEmpty(Uri) || !string.IsNullOrEmpty(AssetId);
+
+    // Extract embedded data
+    public T? GetEmbeddedData<T>()
     {
-        // Multimedia types
-        ["image"] = typeof(SKImage),
-        ["audio"] = typeof(byte[]),
-        ["video"] = typeof(byte[]),
-
-        // Data types
-        ["tensor"] = typeof(float[]),
-        ["dataframe"] = typeof(Dictionary<string, object[]>),
-        ["nparray"] = typeof(float[]),
-
-        // Collections
-        ["list"] = typeof(object[]),
-        ["dict"] = typeof(Dictionary<string, object>),
-
-        // Primitives
-        ["str"] = typeof(string),
-        ["int"] = typeof(int),
-        ["float"] = typeof(double),
-        ["bool"] = typeof(bool),
-
-        // Special
-        ["union"] = typeof(object),
-        ["any"] = typeof(object),
-    };
-
-    public static (Type VLType, object? DefaultValue) MapToVLType(TypeMetadata typeMetadata)
-    {
-        var baseType = MapBaseType(typeMetadata);
-        var defaultValue = GetDefaultValueForVLType(baseType);
-
-        // Handle optional types
-        if (typeMetadata.Optional && baseType.IsValueType)
+        if (HasEmbeddedData)
         {
-            baseType = typeof(Nullable<>).MakeGenericType(baseType);
-            defaultValue = null;
+            try
+            {
+                return JsonSerializer.Deserialize<T>(Data.Value.GetRawText());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to extract embedded data: {ex.Message}");
+            }
         }
-
-        return (baseType, defaultValue);
-    }
-
-    private static Type MapBaseType(TypeMetadata typeMetadata)
-    {
-        // Handle generic types (List<T>, Dict<K,V>)
-        if (typeMetadata.TypeArgs?.Any() == true)
-        {
-            return MapGenericType(typeMetadata);
-        }
-
-        // Handle union types
-        if (typeMetadata.Type == "union")
-        {
-            return MapUnionType(typeMetadata);
-        }
-
-        // Handle enum types
-        if (typeMetadata.Values?.Any() == true)
-        {
-            return typeof(string); // Enums as strings for VL compatibility
-        }
-
-        // Handle basic types
-        return EnhancedTypeMap.GetValueOrDefault(typeMetadata.Type, typeof(string));
+        return default;
     }
 }
 ```
 
-#### **1.3 Generic Type Handling**
+### **Phase 2: VL Type Conversion** _(2-3 days)_
+
+**🎯 Goal**: Convert `NodeToolDataObject` to appropriate VL types (SKImage, byte[], etc.)
+
+#### **2.1 VL Data Object Converter**
+
+**File**: `nodetool-sdk/csharp/Nodetool.SDK.VL/Services/VLDataObjectConverter.cs`
 
 ```csharp
-private static Type MapGenericType(TypeMetadata typeMetadata)
+public class VLDataObjectConverter
 {
-    return typeMetadata.Type switch
-    {
-        "list" => MapListType(typeMetadata),
-        "dict" => MapDictionaryType(typeMetadata),
-        "tuple" => MapTupleType(typeMetadata),
-        _ => typeof(object)
-    };
-}
+    private readonly AssetDownloadService _assetService;
+    private readonly ILogger _logger;
 
-private static Type MapListType(TypeMetadata typeMetadata)
-{
-    if (typeMetadata.TypeArgs?.FirstOrDefault() is var elementType && elementType != null)
+    public VLDataObjectConverter(AssetDownloadService assetService, ILogger? logger = null)
     {
-        var vlElementType = MapBaseType(elementType);
-        return vlElementType.MakeArrayType(); // T[] instead of List<T> for VL
+        _assetService = assetService;
+        _logger = logger ?? new NullLogger();
     }
 
-    return typeof(object[]);
-}
+    public async Task<object?> ConvertToVLTypeAsync(NodeToolDataObject dataObject, Type targetVLType)
+    {
+        if (dataObject == null) return null;
 
-private static Type MapDictionaryType(TypeMetadata typeMetadata)
-{
-    // VL prefers Dictionary<string, object> for flexibility
-    return typeof(Dictionary<string, object>);
+        try
+        {
+            // Handle VL-specific type conversions
+            if (targetVLType == typeof(SKImage) && dataObject.IsImage)
+            {
+                return await ConvertToSKImage(dataObject);
+            }
+
+            if (targetVLType == typeof(byte[]) && (dataObject.IsAudio || dataObject.IsVideo))
+            {
+                return await ConvertToByteArray(dataObject);
+            }
+
+            if (targetVLType == typeof(string))
+            {
+                return ConvertToString(dataObject);
+            }
+
+            // Fallback: JSON representation
+            return JsonSerializer.Serialize(dataObject);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to convert {dataObject.Type} to {targetVLType.Name}");
+            return GetDefaultValue(targetVLType);
+        }
+    }
+
+    private async Task<SKImage?> ConvertToSKImage(NodeToolDataObject dataObject)
+    {
+        // Priority 1: Embedded data
+        if (dataObject.HasEmbeddedData)
+        {
+            var embeddedData = dataObject.GetEmbeddedData<object>();
+
+            if (embeddedData is string base64)
+            {
+                try
+                {
+                    var bytes = Convert.FromBase64String(base64);
+                    return SKImage.FromEncodedData(bytes);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to decode embedded base64 image");
+                }
+            }
+        }
+
+        // Priority 2: Asset reference
+        if (dataObject.HasAssetReference)
+        {
+            try
+            {
+                var imageBytes = await _assetService.DownloadBytesAsync(dataObject.Uri ?? "");
+                if (imageBytes != null)
+                {
+                    return SKImage.FromEncodedData(imageBytes);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to download image asset: {dataObject.Uri}");
+            }
+        }
+
+        return null;
+    }
+
+    private async Task<byte[]?> ConvertToByteArray(NodeToolDataObject dataObject)
+    {
+        // Priority 1: Embedded data
+        if (dataObject.HasEmbeddedData)
+        {
+            var embeddedData = dataObject.GetEmbeddedData<object>();
+
+            if (embeddedData is string base64)
+            {
+                try
+                {
+                    return Convert.FromBase64String(base64);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to decode embedded base64 data");
+                }
+            }
+        }
+
+        // Priority 2: Asset reference
+        if (dataObject.HasAssetReference)
+        {
+            try
+            {
+                return await _assetService.DownloadBytesAsync(dataObject.Uri ?? "");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to download asset: {dataObject.Uri}");
+            }
+        }
+
+        return null;
+    }
+
+    private string ConvertToString(NodeToolDataObject dataObject)
+    {
+        // For text data, extract embedded content first
+        if (dataObject.IsText && dataObject.HasEmbeddedData)
+        {
+            var text = dataObject.GetEmbeddedData<string>();
+            if (!string.IsNullOrEmpty(text))
+                return text;
+        }
+
+        // Fallback: JSON representation
+        return JsonSerializer.Serialize(dataObject, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    private static object? GetDefaultValue(Type type)
+    {
+        if (type == typeof(SKImage)) return null;
+        if (type == typeof(byte[])) return Array.Empty<byte>();
+        if (type == typeof(string)) return "";
+        return type.IsValueType ? Activator.CreateInstance(type) : null;
+    }
 }
 ```
 
-### **Phase 2: Asset Conversion Pipeline** _(3-4 days)_
+### **Phase 3: Asset Download Service** _(2-3 days)_
 
-**🎯 Goal**: Seamless conversion between NodeTool assets and VL types
+**🎯 Goal**: Handle asset downloads with caching for performance
 
-#### **2.1 Asset Converter Service**
+#### **3.1 Asset Download Service**
 
-**File**: `nodetool-sdk/csharp/Nodetool.SDK/Services/AssetConverter.cs`
+**File**: `nodetool-sdk/csharp/Nodetool.SDK/Services/AssetDownloadService.cs`
 
 ```csharp
-public class AssetConverter : IDisposable
+public class AssetDownloadService
 {
-    private readonly INodetoolClient _client;
+    private readonly INodetoolClient _httpClient;
     private readonly MemoryCache _cache;
     private readonly ILogger _logger;
 
-    private const int MaxCacheSize = 100;
-    private const long MaxCacheMemoryMB = 500;
-
-    public AssetConverter(INodetoolClient client, ILogger? logger = null)
+    public AssetDownloadService(INodetoolClient httpClient, ILogger? logger = null)
     {
-        _client = client;
+        _httpClient = httpClient;
         _logger = logger ?? new NullLogger();
         _cache = new MemoryCache(new MemoryCacheOptions
         {
-            SizeLimit = MaxCacheSize
+            SizeLimit = 100 // Max 100 cached assets
         });
     }
 
-    #region SKImage Conversions
-
-    public async Task<SKImage?> DownloadImageAsync(string uri)
-    {
-        var cacheKey = $"image:{uri}";
-
-        if (_cache.TryGetValue(cacheKey, out SKImage? cached))
-        {
-            _logger.LogDebug($"Image cache hit: {uri}");
-            return cached;
-        }
-
-        try
-        {
-            _logger.LogDebug($"Downloading image: {uri}");
-
-            byte[] imageData = await DownloadBytesFromUri(uri);
-            var skImage = SKImage.FromEncodedData(imageData);
-
-            if (skImage != null)
-            {
-                _cache.Set(cacheKey, skImage, TimeSpan.FromMinutes(30));
-                _logger.LogDebug($"Image cached: {uri} ({imageData.Length} bytes)");
-            }
-
-            return skImage;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Failed to download image {uri}: {ex.Message}");
-            return null;
-        }
-    }
-
-    public async Task<string> UploadImageAsync(SKImage image)
-    {
-        try
-        {
-            using var encoded = image.Encode(SKEncodedImageFormat.Png, 90);
-            using var stream = new MemoryStream(encoded.ToArray());
-
-            var asset = await _client.UploadAssetAsync($"image_{Guid.NewGuid()}.png", stream);
-            _logger.LogDebug($"Image uploaded: {asset.Id} ({encoded.Size} bytes)");
-
-            return asset.Uri;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Failed to upload image: {ex.Message}");
-            throw;
-        }
-    }
-
-    #endregion
-
-    #region Audio/Video Conversions
-
     public async Task<byte[]?> DownloadBytesAsync(string uri)
     {
-        var cacheKey = $"bytes:{uri}";
+        if (string.IsNullOrEmpty(uri)) return null;
 
+        // Check cache first
+        var cacheKey = $"bytes:{uri}";
         if (_cache.TryGetValue(cacheKey, out byte[]? cached))
         {
-            _logger.LogDebug($"Bytes cache hit: {uri}");
+            _logger.LogDebug($"Asset cache hit: {uri}");
             return cached;
         }
 
         try
         {
-            _logger.LogDebug($"Downloading bytes: {uri}");
+            _logger.LogDebug($"Downloading asset: {uri}");
 
-            byte[] data = await DownloadBytesFromUri(uri);
-            _cache.Set(cacheKey, data, TimeSpan.FromMinutes(15));
+            // Extract asset ID from URI and download
+            var assetId = ExtractAssetId(uri);
+            using var stream = await _httpClient.DownloadAssetAsync(assetId);
+            using var memoryStream = new MemoryStream();
 
-            return data;
+            await stream.CopyToAsync(memoryStream);
+            var bytes = memoryStream.ToArray();
+
+            // Cache the result
+            _cache.Set(cacheKey, bytes, TimeSpan.FromMinutes(30));
+            _logger.LogDebug($"Downloaded and cached asset: {uri} ({bytes.Length} bytes)");
+
+            return bytes;
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Failed to download bytes {uri}: {ex.Message}");
+            _logger.LogError(ex, $"Failed to download asset: {uri}");
             return null;
         }
     }
 
-    public async Task<string> UploadBytesAsync(byte[] data, string contentType = "application/octet-stream")
+    private static string ExtractAssetId(string uri)
     {
-        try
-        {
-            var extension = GetExtensionForContentType(contentType);
-            using var stream = new MemoryStream(data);
-
-            var asset = await _client.UploadAssetAsync($"asset_{Guid.NewGuid()}{extension}", stream);
-            _logger.LogDebug($"Bytes uploaded: {asset.Id} ({data.Length} bytes)");
-
-            return asset.Uri;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Failed to upload bytes: {ex.Message}");
-            throw;
-        }
+        // Extract asset ID from NodeTool URI format
+        // Example: "http://localhost:8000/api/storage/abc123.png" → "abc123"
+        var segments = uri.Split('/');
+        var filename = segments.LastOrDefault() ?? "";
+        return Path.GetFileNameWithoutExtension(filename);
     }
 
-    #endregion
+    public void ClearCache()
+    {
+        _cache.Dispose();
+    }
 }
 ```
 
-#### **2.2 Data URI Support**
+### **Phase 4: Integration with Execution** _(1-2 days)_
+
+**🎯 Goal**: Integrate data object conversion with WebSocket execution results
+
+#### **4.1 Update Workflow Execution Session**
+
+**File**: Update `nodetool-sdk/csharp/Nodetool.SDK/Services/WebSocketWorkflowExecutionService.cs`
 
 ```csharp
-public static class DataUriConverter
+public void HandleOutputUpdate(OutputUpdateMessage message)
 {
-    public static SKImage? FromDataUri(string dataUri)
-    {
-        if (!dataUri.StartsWith("data:image/"))
-            return null;
+    _logger.LogDebug($"Output update: {message.OutputName} from {message.NodeName}");
 
-        try
-        {
-            var base64 = dataUri.Substring(dataUri.IndexOf(",") + 1);
-            var bytes = Convert.FromBase64String(base64);
-            return SKImage.FromEncodedData(bytes);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Failed to parse data URI: {ex.Message}");
-            return null;
-        }
+    var dataObject = message.GetDataObject();
+    if (dataObject != null)
+    {
+        // Store the raw data object for later conversion
+        _realtimeOutputs[message.OutputName] = dataObject;
+
+        var logEntry = $"Output '{message.OutputName}' updated: {dataObject.Type}";
+        if (dataObject.HasAssetReference)
+            logEntry += $" (Asset: {dataObject.AssetId})";
+        if (dataObject.HasEmbeddedData)
+            logEntry += " (Embedded data)";
+
+        _executionLogs.Add(logEntry);
     }
 
-    public static string ToDataUri(SKImage image, SKEncodedImageFormat format = SKEncodedImageFormat.Png)
-    {
-        using var encoded = image.Encode(format, 90);
-        var base64 = Convert.ToBase64String(encoded.ToArray());
-        var mimeType = GetMimeType(format);
-        return $"data:{mimeType};base64,{base64}";
-    }
-
-    private static string GetMimeType(SKEncodedImageFormat format)
-    {
-        return format switch
-        {
-            SKEncodedImageFormat.Png => "image/png",
-            SKEncodedImageFormat.Jpeg => "image/jpeg",
-            SKEncodedImageFormat.Webp => "image/webp",
-            _ => "image/png"
-        };
-    }
+    ReportProgress("running", $"Generated output: {message.OutputName}");
 }
 ```
 
-### **Phase 3: Union Type Support** _(2-3 days)_
+#### **4.2 Update VL Workflow Node**
 
-**🎯 Goal**: Handle NodeTool's union types properly in VL
-
-#### **3.1 Union Type Implementation**
-
-**File**: `nodetool-sdk/csharp/Nodetool.SDK/Types/UnionType.cs`
+**File**: Update `nodetool-sdk/csharp/Nodetool.SDK.VL/Nodes/WorkflowNodeBase.cs`
 
 ```csharp
-public class UnionType<T1, T2>
+private async Task SetOutputsFromResult(WebSocketWorkflowResult result)
 {
-    private readonly object _value;
-    private readonly Type _actualType;
+    var converter = VLServiceLocator.GetService<VLDataObjectConverter>();
 
-    public UnionType(T1 value)
+    foreach (var kvp in _outputPins.Where(p => p.Key != "IsRunning" && p.Key != "Error"))
     {
-        _value = value ?? throw new ArgumentNullException(nameof(value));
-        _actualType = typeof(T1);
-    }
-
-    public UnionType(T2 value)
-    {
-        _value = value ?? throw new ArgumentNullException(nameof(value));
-        _actualType = typeof(T2);
-    }
-
-    public bool Is<T>() => _actualType == typeof(T);
-
-    public T As<T>()
-    {
-        if (!Is<T>())
-            throw new InvalidCastException($"Union contains {_actualType.Name}, not {typeof(T).Name}");
-        return (T)_value;
-    }
-
-    public T? TryAs<T>() where T : class
-    {
-        return Is<T>() ? (T)_value : null;
-    }
-
-    public override string ToString() => _value?.ToString() ?? "";
-
-    public static implicit operator UnionType<T1, T2>(T1 value) => new(value);
-    public static implicit operator UnionType<T1, T2>(T2 value) => new(value);
-}
-
-// For VL compatibility, also provide object-based union
-public class FlexibleUnion
-{
-    public object? Value { get; }
-    public Type ActualType { get; }
-
-    public FlexibleUnion(object? value)
-    {
-        Value = value;
-        ActualType = value?.GetType() ?? typeof(object);
-    }
-
-    public T? As<T>() => Value is T t ? t : default;
-    public override string ToString() => Value?.ToString() ?? "";
-}
-```
-
-#### **3.2 Union Type Conversion in VL**
-
-```csharp
-public static class UnionTypeConverter
-{
-    public static object ConvertUnionForVL(TypeMetadata unionType, object? value)
-    {
-        if (unionType.Type != "union" || unionType.TypeArgs == null)
-            return value ?? "";
-
-        // Check if value matches any of the union type arguments
-        foreach (var typeArg in unionType.TypeArgs)
+        if (result.Outputs.TryGetValue(kvp.Key, out var dataObject))
         {
-            if (IsValueOfType(value, typeArg))
-            {
-                return ConvertToVLType(value, typeArg);
-            }
-        }
-
-        // Fallback: convert to string
-        return value?.ToString() ?? "";
-    }
-
-    private static bool IsValueOfType(object? value, TypeMetadata typeMetadata)
-    {
-        if (value == null) return typeMetadata.Optional;
-
-        return typeMetadata.Type switch
-        {
-            "str" => value is string,
-            "int" => value is int or long,
-            "float" => value is float or double,
-            "bool" => value is bool,
-            "image" => value is SKImage or string,
-            _ => true // Allow anything for complex types
-        };
-    }
-}
-```
-
-### **Phase 4: Enhanced JSON Serialization** _(1-2 days)_
-
-**🎯 Goal**: Proper JSON handling for complex NodeTool types
-
-#### **4.1 Custom JSON Converters**
-
-**File**: `nodetool-sdk/csharp/Nodetool.SDK/Serialization/NodetoolJsonConverter.cs`
-
-```csharp
-public class NodetoolJsonConverter : JsonConverter<BaseType>
-{
-    public override BaseType? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        using var doc = JsonDocument.ParseValue(ref reader);
-        var root = doc.RootElement;
-
-        if (!root.TryGetProperty("type", out var typeProperty))
-            throw new JsonException("Missing 'type' property in BaseType JSON");
-
-        var typeName = typeProperty.GetString();
-        var targetType = BaseType.GetType(typeName);
-
-        if (targetType == null)
-            throw new JsonException($"Unknown type: {typeName}");
-
-        return (BaseType?)JsonSerializer.Deserialize(root.GetRawText(), targetType, options);
-    }
-
-    public override void Write(Utf8JsonWriter writer, BaseType value, JsonSerializerOptions options)
-    {
-        var dict = value.ToDict();
-        JsonSerializer.Serialize(writer, dict, options);
-    }
-}
-
-public class TypeMetadataJsonConverter : JsonConverter<TypeMetadata>
-{
-    public override TypeMetadata? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        using var doc = JsonDocument.ParseValue(ref reader);
-        var root = doc.RootElement;
-
-        return new TypeMetadata
-        {
-            Type = root.GetProperty("type").GetString() ?? "",
-            Optional = root.TryGetProperty("optional", out var opt) && opt.GetBoolean(),
-            Values = ParseValues(root),
-            TypeArgs = ParseTypeArgs(root, options),
-            TypeName = root.TryGetProperty("type_name", out var tn) ? tn.GetString() : null
-        };
-    }
-
-    // ... implementation details
-}
-```
-
-### **Phase 5: Performance & Memory Management** _(2-3 days)_
-
-**🎯 Goal**: Efficient memory usage and asset lifecycle management
-
-#### **5.1 Asset Cache Management**
-
-```csharp
-public class AssetCacheManager : IDisposable
-{
-    private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
-    private readonly Timer _cleanupTimer;
-    private readonly SemaphoreSlim _cleanupSemaphore = new(1, 1);
-
-    public AssetCacheManager()
-    {
-        _cleanupTimer = new Timer(CleanupExpiredEntries, null,
-            TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
-    }
-
-    public async Task<T?> GetOrCreateAsync<T>(string key, Func<Task<T?>> factory, TimeSpan? expiry = null)
-        where T : class, IDisposable
-    {
-        if (_cache.TryGetValue(key, out var existing) &&
-            existing.Value is T existingValue &&
-            !existing.IsExpired)
-        {
-            existing.UpdateLastAccess();
-            return existingValue;
-        }
-
-        var newValue = await factory();
-        if (newValue != null)
-        {
-            var entry = new CacheEntry(newValue, expiry ?? TimeSpan.FromMinutes(30));
-            _cache.AddOrUpdate(key, entry, (k, old) => {
-                old.Dispose();
-                return entry;
-            });
-        }
-
-        return newValue;
-    }
-
-    private void CleanupExpiredEntries(object? state)
-    {
-        if (!_cleanupSemaphore.Wait(100)) return;
-
-        try
-        {
-            var expiredKeys = _cache
-                .Where(kvp => kvp.Value.IsExpired)
-                .Select(kvp => kvp.Key)
-                .ToList();
-
-            foreach (var key in expiredKeys)
-            {
-                if (_cache.TryRemove(key, out var entry))
-                {
-                    entry.Dispose();
-                }
-            }
-
-            // Also clean up LRU if cache is too large
-            if (_cache.Count > 100)
-            {
-                var lruKeys = _cache
-                    .OrderBy(kvp => kvp.Value.LastAccess)
-                    .Take(_cache.Count - 80)
-                    .Select(kvp => kvp.Key)
-                    .ToList();
-
-                foreach (var key in lruKeys)
-                {
-                    if (_cache.TryRemove(key, out var entry))
-                    {
-                        entry.Dispose();
-                    }
-                }
-            }
-        }
-        finally
-        {
-            _cleanupSemaphore.Release();
+            // Convert NodeToolDataObject to appropriate VL type
+            var vlValue = await converter.ConvertToVLTypeAsync(dataObject, kvp.Value.Type);
+            kvp.Value.Value = vlValue;
         }
     }
 }
 ```
 
-### **Phase 6: Testing & Validation** _(2-3 days)_
+## ⏱️ **Implementation Timeline**
 
-#### **6.1 Type Mapping Tests**
+- **Week 1**: Data object models + VL conversion logic
+- **Week 2**: Asset download service + caching
+- **Week 3**: Integration with execution + testing
 
-```csharp
-[TestFixture]
-public class VLTypeMappingTests
-{
-    [Test]
-    public void TestImageTypeMapping()
-    {
-        var imageType = new TypeMetadata { Type = "image" };
-        var (vlType, defaultValue) = VLTypeMapper.MapToVLType(imageType);
-
-        Assert.AreEqual(typeof(SKImage), vlType);
-        Assert.IsNull(defaultValue);
-    }
-
-    [Test]
-    public void TestUnionTypeMapping()
-    {
-        var unionType = new TypeMetadata
-        {
-            Type = "union",
-            TypeArgs = new List<TypeMetadata>
-            {
-                new() { Type = "str" },
-                new() { Type = "int" }
-            }
-        };
-
-        var (vlType, defaultValue) = VLTypeMapper.MapToVLType(unionType);
-        Assert.AreEqual(typeof(object), vlType);
-    }
-}
-```
-
-#### **6.2 Asset Conversion Tests**
-
-```csharp
-[TestFixture]
-public class AssetConversionTests
-{
-    private AssetConverter _converter;
-    private Mock<INodetoolClient> _mockClient;
-
-    [SetUp]
-    public void Setup()
-    {
-        _mockClient = new Mock<INodetoolClient>();
-        _converter = new AssetConverter(_mockClient.Object);
-    }
-
-    [Test]
-    public async Task TestImageUploadDownload()
-    {
-        // Create test image
-        var testImage = CreateTestSKImage();
-
-        // Mock upload response
-        _mockClient.Setup(c => c.UploadAssetAsync(It.IsAny<string>(), It.IsAny<Stream>()))
-            .ReturnsAsync(new AssetResponse { Id = "test-id", Uri = "http://test.com/image.png" });
-
-        // Test upload
-        var uri = await _converter.UploadImageAsync(testImage);
-        Assert.IsNotEmpty(uri);
-
-        // Mock download response
-        var imageBytes = GetTestImageBytes();
-        _mockClient.Setup(c => c.DownloadAssetAsync("test-id"))
-            .ReturnsAsync(new MemoryStream(imageBytes));
-
-        // Test download
-        var downloadedImage = await _converter.DownloadImageAsync(uri);
-        Assert.IsNotNull(downloadedImage);
-    }
-}
-```
+**Total Duration**: ~3 weeks for production-ready data object handling
 
 ## 📊 **Success Metrics**
 
-### **Type System**:
+### **Data Handling**:
 
-- ✅ All NodeTool types map to appropriate VL types
-- ✅ Union types handle gracefully without crashes
-- ✅ Generic types (List<T>, Dict<K,V>) work correctly
-- ✅ Asset types integrate seamlessly with VL multimedia
+- ✅ All NodeTool data objects convert correctly to VL types
+- ✅ Embedded data takes priority over asset references
+- ✅ SKImage conversion works for all image formats
+- ✅ Asset download caching reduces redundant requests by 80%+
 
 ### **Performance**:
 
-- ✅ Asset caching reduces redundant operations by 80%+
-- ✅ Memory usage stays under 500MB during normal use
-- ✅ Type conversions complete in < 100ms
-- ✅ Cache cleanup prevents memory leaks
+- ✅ Data conversion completes in < 100ms for typical objects
+- ✅ Memory usage stays reasonable with asset caching
+- ✅ No memory leaks from cached assets
+- ✅ Large assets (>10MB) download successfully
 
 ### **Reliability**:
 
-- ✅ Robust error handling for type conversion failures
-- ✅ Graceful degradation for unsupported types
-- ✅ No memory leaks from cached assets
-- ✅ Thread-safe operations throughout
-
-## ⏱️ **Timeline**
-
-- **Week 1**: Enhanced VL type mapping + union type support
-- **Week 2**: Asset conversion pipeline + JSON serialization
-- **Week 3**: Performance optimization + testing
-
-**Total Duration**: ~3 weeks for production-ready type system
+- ✅ Graceful degradation when assets fail to download
+- ✅ Fallback to JSON representation for unknown types
+- ✅ Thread-safe asset caching
+- ✅ Clear error messages for conversion failures
 
 ## 🔗 **Integration Points**
 
-- **Supports**: Both node execution and workflow execution plans
-- **Provides**: Asset conversion services for multimedia nodes
-- **Enables**: Proper VL integration with native multimedia types
-- **Requires**: SkiaSharp dependency for image handling
+- **Supports**: WebSocket workflow and node execution
+- **Provides**: VL-ready data conversion from NodeTool objects
+- **Requires**: SkiaSharp for SKImage handling
+- **Caches**: Assets to improve performance
 
-This enhanced type system will provide the foundation for seamless NodeTool integration with VL's native types and multimedia capabilities.
+This plan focuses on the **real data object format** discovered from WebSocket execution instead of speculative type mappings.
