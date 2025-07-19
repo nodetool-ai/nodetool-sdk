@@ -742,11 +742,179 @@ public class NodeToolDataObject
 }
 ```
 
-### **Phase 2: Streaming Workflow Execution Service** _(2-3 days)_
+### **Phase 2: Clean SDK Interface** _(2-3 days)_ ⭐ **NEW**
+
+**🎯 Goal**: Provide simple, universal execution interface that hides WebSocket complexity
+
+#### **2.1 Execution Client Interface**
+
+**File**: `nodetool-sdk/csharp/Nodetool.SDK/Services/INodeToolExecutionClient.cs`
+
+```csharp
+public interface INodeToolExecutionClient
+{
+    Task<IExecutionSession> ExecuteWorkflowAsync(
+        string workflowId,
+        Dictionary<string, object> inputs,
+        CancellationToken cancellationToken = default);
+
+    Task<IExecutionSession> ExecuteNodeAsync(
+        string nodeType,
+        Dictionary<string, object> inputs,
+        CancellationToken cancellationToken = default);
+}
+
+public interface IExecutionSession
+{
+    string JobId { get; }
+    bool IsRunning { get; }
+    bool IsCompleted { get; }
+    string? ErrorMessage { get; }
+
+    // Simple output access - SDK handles all accumulation/caching
+    T? GetOutput<T>(string outputName);
+    Dictionary<string, object> GetAllOutputs();
+
+    // Progress info
+    string CurrentStatus { get; }
+    double ProgressPercent { get; }
+    List<string> RecentLogs { get; }
+
+    // Cleanup
+    void Dispose();
+}
+```
+
+#### **2.2 Simple Execution Session Implementation**
+
+**File**: `nodetool-sdk/csharp/Nodetool.SDK/Services/ExecutionSession.cs`
+
+```csharp
+public class ExecutionSession : IExecutionSession, IDisposable
+{
+    private readonly ConcurrentDictionary<string, NodeToolDataObject> _outputs = new();
+    private readonly List<string> _logs = new();
+    private readonly NodeToolWebSocketClient _client;
+
+    private volatile bool _isRunning = true;
+    private volatile bool _isCompleted = false;
+    private string? _errorMessage;
+    private string _currentStatus = "starting";
+
+    public string JobId { get; }
+    public bool IsRunning => _isRunning && !_isCompleted;
+    public bool IsCompleted => _isCompleted;
+    public string? ErrorMessage => _errorMessage;
+    public string CurrentStatus => _currentStatus;
+    public double ProgressPercent { get; private set; }
+    public List<string> RecentLogs => _logs.TakeLast(10).ToList();
+
+    internal ExecutionSession(string jobId, NodeToolWebSocketClient client)
+    {
+        JobId = jobId;
+        _client = client;
+
+        // Subscribe to relevant WebSocket events
+        _client.JobUpdated += OnJobUpdated;
+        _client.OutputUpdated += OnOutputUpdated;
+        _client.NodeUpdated += OnNodeUpdated;
+    }
+
+    // Simple output access - consumers don't need to know about WebSocket complexity
+    public T? GetOutput<T>(string outputName)
+    {
+        if (_outputs.TryGetValue(outputName, out var dataObject))
+        {
+            return ConvertDataObject<T>(dataObject);
+        }
+        return default;
+    }
+
+    public Dictionary<string, object> GetAllOutputs()
+    {
+        return _outputs.ToDictionary(
+            kvp => kvp.Key,
+            kvp => (object)kvp.Value);
+    }
+
+    // WebSocket event handlers (internal complexity)
+    private void OnJobUpdated(object? sender, JobUpdateMessage message)
+    {
+        if (message.JobId != JobId) return;
+
+        _currentStatus = message.Status;
+
+        if (message.IsCompleted)
+        {
+            _isCompleted = true;
+            _isRunning = false;
+
+            // Merge final outputs
+            foreach (var output in message.GetAllOutputs())
+            {
+                _outputs[output.Key] = output.Value;
+            }
+        }
+        else if (message.IsFailed)
+        {
+            _isCompleted = true;
+            _isRunning = false;
+            _errorMessage = message.Error;
+        }
+    }
+
+    private void OnOutputUpdated(object? sender, OutputUpdateMessage message)
+    {
+        var dataObject = message.GetDataObject();
+        if (dataObject != null)
+        {
+            _outputs[message.OutputName] = dataObject;
+        }
+    }
+
+    private void OnNodeUpdated(object? sender, NodeUpdateMessage message)
+    {
+        // Update progress and logs
+        if (message.Logs?.Any() == true)
+        {
+            _logs.AddRange(message.Logs.Select(log => $"[{message.NodeName}] {log}"));
+        }
+    }
+
+    private T? ConvertDataObject<T>(NodeToolDataObject dataObject)
+    {
+        // Handle common conversions that work across all C# platforms
+        if (typeof(T) == typeof(NodeToolDataObject))
+            return (T)(object)dataObject;
+
+        if (typeof(T) == typeof(string))
+            return (T)(object)dataObject.GetEmbeddedData<string>();
+
+        if (typeof(T) == typeof(byte[]))
+        {
+            var base64 = dataObject.GetEmbeddedData<string>();
+            if (base64 != null)
+                return (T)(object)Convert.FromBase64String(base64);
+        }
+
+        // For complex conversions, return raw data object
+        return (T)(object)dataObject;
+    }
+
+    public void Dispose()
+    {
+        _client.JobUpdated -= OnJobUpdated;
+        _client.OutputUpdated -= OnOutputUpdated;
+        _client.NodeUpdated -= OnNodeUpdated;
+    }
+}
+```
+
+### **Phase 3: Streaming Workflow Execution Service** _(2-3 days)_
 
 **🎯 Goal**: High-level service that orchestrates WebSocket execution with real-time data collection
 
-#### **2.1 WebSocket Workflow Execution Service**
+#### **3.1 WebSocket Workflow Execution Service**
 
 **File**: `nodetool-sdk/csharp/Nodetool.SDK/Services/WebSocketWorkflowExecutionService.cs`
 
@@ -1182,6 +1350,193 @@ public class AudioData
     public string Format { get; set; } = "";
 }
 ```
+
+### **Phase 4: Simplified VL Integration** _(1-2 days)_ ⭐ **NEW**
+
+**🎯 Goal**: Ultra-simple VL nodes that just consume SDK session interface
+
+#### **4.1 Simplified VL Workflow Node**
+
+**File**: `nodetool-sdk/csharp/Nodetool.SDK.VL/Nodes/WorkflowNodeBase.cs`
+
+```csharp
+public class WorkflowNodeBase : IVLNode, IDisposable
+{
+    private readonly WorkflowDetail _workflow;
+    private readonly INodeToolExecutionClient _executionClient;
+    private readonly VLTypeConverter _typeConverter;
+
+    private IExecutionSession? _currentSession;
+    private bool _lastTriggerState = false;
+
+    // Input pins
+    private readonly Dictionary<string, IVLPin> _inputPins;
+
+    // Output pins
+    private readonly Dictionary<string, IVLPin> _outputPins;
+
+    public WorkflowNodeBase(WorkflowDetail workflow)
+    {
+        _workflow = workflow;
+        _executionClient = VLServiceLocator.GetService<INodeToolExecutionClient>();
+        _typeConverter = VLServiceLocator.GetService<VLTypeConverter>();
+
+        _inputPins = CreateInputPins();
+        _outputPins = CreateOutputPins();
+    }
+
+    // VL Update method - called every frame
+    public void Update()
+    {
+        try
+        {
+            HandleTrigger();
+            UpdateOutputPins();
+        }
+        catch (Exception ex)
+        {
+            SetError($"Update error: {ex.Message}");
+        }
+    }
+
+    private void HandleTrigger()
+    {
+        if (!_inputPins.TryGetValue("Trigger", out var triggerPin)) return;
+
+        var currentTrigger = triggerPin.Value is bool b && b;
+
+        // Start execution on trigger edge
+        if (currentTrigger && !_lastTriggerState && _currentSession == null)
+        {
+            _ = StartExecutionAsync();
+        }
+
+        _lastTriggerState = currentTrigger;
+    }
+
+    private async Task StartExecutionAsync()
+    {
+        try
+        {
+            var inputs = CollectInputs();
+
+            // SDK handles all WebSocket complexity
+            _currentSession = await _executionClient.ExecuteWorkflowAsync(_workflow.Id, inputs);
+        }
+        catch (Exception ex)
+        {
+            SetError($"Execution failed: {ex.Message}");
+        }
+    }
+
+    private void UpdateOutputPins()
+    {
+        if (_currentSession == null) return;
+
+        // Simple status pins
+        _outputPins["IsRunning"].Value = _currentSession.IsRunning;
+        _outputPins["Error"].Value = _currentSession.ErrorMessage ?? "";
+        _outputPins["Progress"].Value = _currentSession.ProgressPercent;
+        _outputPins["Status"].Value = _currentSession.CurrentStatus;
+
+        // Output data pins - SDK provides data, VL just converts types
+        foreach (var outputPin in _outputPins.Where(p => IsDataPin(p.Key)))
+        {
+            var rawOutput = _currentSession.GetOutput<NodeToolDataObject>(outputPin.Key);
+            if (rawOutput != null)
+            {
+                // VL's only job: convert SDK data to VL types
+                outputPin.Value = _typeConverter.ConvertToVLType(rawOutput, outputPin.Type);
+            }
+        }
+
+        // Clean up completed sessions
+        if (_currentSession.IsCompleted || !string.IsNullOrEmpty(_currentSession.ErrorMessage))
+        {
+            _currentSession.Dispose();
+            _currentSession = null;
+        }
+    }
+
+    private Dictionary<string, object> CollectInputs()
+    {
+        var inputs = new Dictionary<string, object>();
+
+        foreach (var inputPin in _inputPins.Where(p => p.Key != "Trigger"))
+        {
+            if (inputPin.Value.Value != null)
+            {
+                inputs[inputPin.Key] = inputPin.Value.Value;
+            }
+        }
+
+        return inputs;
+    }
+
+    private bool IsDataPin(string pinName) =>
+        pinName != "IsRunning" && pinName != "Error" && pinName != "Progress" && pinName != "Status";
+
+    private void SetError(string message)
+    {
+        _outputPins["Error"].Value = message;
+        _outputPins["IsRunning"].Value = false;
+    }
+
+    public void Dispose()
+    {
+        _currentSession?.Dispose();
+    }
+}
+```
+
+#### **4.2 VL Type Converter** _(Platform-Specific)_
+
+**File**: `nodetool-sdk/csharp/Nodetool.SDK.VL/Services/VLTypeConverter.cs`
+
+```csharp
+public class VLTypeConverter
+{
+    // VL-specific conversions using SkiaSharp, etc.
+    public object? ConvertToVLType(NodeToolDataObject dataObject, Type targetType)
+    {
+        return targetType switch
+        {
+            var t when t == typeof(SKImage) && dataObject.IsImage => ConvertToSKImage(dataObject),
+            var t when t == typeof(byte[]) => ConvertToByteArray(dataObject),
+            var t when t == typeof(string) => ConvertToString(dataObject),
+            _ => dataObject // Fallback to raw data object
+        };
+    }
+
+    private SKImage? ConvertToSKImage(NodeToolDataObject dataObject)
+    {
+        // Priority 1: Embedded data
+        if (dataObject.HasEmbeddedData)
+        {
+            var base64 = dataObject.GetEmbeddedData<string>();
+            if (base64 != null)
+            {
+                var bytes = Convert.FromBase64String(base64);
+                return SKImage.FromEncodedData(bytes);
+            }
+        }
+
+        // Priority 2: Asset reference (could trigger download)
+        // Implementation depends on asset download strategy
+
+        return null;
+    }
+
+    // ... other conversion methods
+}
+```
+
+This VL integration is **dramatically simpler**:
+
+- **No WebSocket event handling** in VL layer
+- **No state management** - SDK handles everything
+- **Simple type conversion** - VL's only responsibility
+- **Clean separation** - VL focuses on VL-specific concerns only
 
 ## ⏱️ **Implementation Timeline**
 
