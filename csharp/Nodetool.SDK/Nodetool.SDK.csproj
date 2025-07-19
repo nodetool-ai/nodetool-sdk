@@ -14,10 +14,21 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Text.Json" Version="8.0.0" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.0" />
+    <PackageReference Include="MessagePack" Version="3.0.300" />
+    <PackageReference Include="System.Reflection.Metadata" Version="8.0.0" />
   </ItemGroup>
+
+  <!-- TODO: Reference to pre-generated types from nodetool-core (temporarily disabled due to compilation issues) -->
+  <!--
+  <ItemGroup>
+    <Compile Include="../../../nodetool-core/csharp_types/*.cs" Link="Generated/%(Filename)%(Extension)" 
+             Exclude="../../../nodetool-core/csharp_types/OpenAIModel.cs" />
+  </ItemGroup>
+  -->
 
 </Project> 
