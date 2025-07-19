@@ -1,8 +1,7 @@
-obj/
-.vs/
-
-# .v4p backup files
-*~.xml
+.vs
+src/obj/
+**/obj/
+*.cache
 
 # Dynamic plugins .dll
 bin/

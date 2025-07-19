@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document xmlns:p="property" xmlns:r="reflection" Id="TuSi5zON4xrNyXtlzx9vSD" LanguageVersion="2025.7.0-0351-gb3f6445d75" Version="0.128">
+  <NugetDependency Id="MjoVqGWnFwuNEDOc3aDMkc" Location="VL.CoreLib" Version="2025.7.0-0351-gb3f6445d75" />
+  <Patch Id="HEzifyLpPRALsQB9StZmmf">
+    <Canvas Id="NnoXYsjPdIkNRVI7ty2sHv" DefaultCategory="Main" BordersChecked="false" CanvasType="FullCategory" />
+    <!--
+
+    ************************ Application ************************
+
+-->
+    <Node Name="Application" Bounds="100,100" Id="ICgEshhFGaeNtfSPmOeQMb">
+      <p:NodeReference>
+        <Choice Kind="ContainerDefinition" Name="Process" />
+        <CategoryReference Kind="Category" Name="Primitive" />
+      </p:NodeReference>
+      <Patch Id="S25W0y8ZZl1PFLA69sijLe">
+        <Canvas Id="F7QrLYZMO4VM3sxwQ1SfPo" CanvasType="Group">
+          <Node Bounds="498,201,101,19" Id="IjSX9aJSzcwMoSAHFwJza5">
+            <p:NodeReference LastCategoryFullName="Nodetool Workflows" LastDependency="Nodetool.SDK.VL.Workflows">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessNode" Name="WorkflowAPIStatus" />
+            </p:NodeReference>
+            <Pin Id="L6RQk2PP3oIN3Gyg1PQkri" Name="Status" Kind="OutputPin" />
+            <Pin Id="IV0DllS2ZFiLXnMZhyqF7p" Name="ProcessingSummary" Kind="OutputPin" />
+            <Pin Id="LQVDtw2TWJ3PWGbFM7LNLa" Name="WorkflowCount" Kind="OutputPin" />
+          </Node>
+          <Pad Id="M0S0VSEgx2rN4sNnfFuKnt" Comment="Status" Bounds="500,380,279,115" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="RXjhkkdwxybPSbQE0lWi41" Comment="ProcessingSummary" Bounds="548,330,223,36" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="GTA19fSxRbFP6NIcOp0WF5" Comment="WorkflowCount" Bounds="596,290,35,15" ShowValueBox="true" isIOBox="true" />
+          <Node Bounds="1009,230,138,19" Id="Ee3ghGgmEH5OYHVX7XMsgR">
+            <p:NodeReference LastCategoryFullName="Nodetool Workflows" LastDependency="Nodetool.SDK.VL.Workflows">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Nodetool Workflows" />
+              <Choice Kind="ProcessNode" Name="Audio_To_Spectrogram_05" />
+            </p:NodeReference>
+            <Pin Id="LZrssgI7aqIOZyItL7j6ct" Name="Trigger" Kind="InputPin" />
+            <Pin Id="AdxiaweGqOLMmTnXx8a72u" Name="IsRunning" Kind="OutputPin" />
+            <Pin Id="MIMZmiLZfNBN2YCSZCTBre" Name="Error" Kind="OutputPin" />
+            <Pin Id="LAxZqU5OxknO1LAkhYCfG0" Name="output" Kind="OutputPin" />
+          </Node>
+          <Overlay Id="TIriptYLxDAPM2ncUDwEOc" Name="status" Bounds="424,120,528,407" />
+        </Canvas>
+        <Patch Id="Hl8FcPlcb01N2wiCpj92Rh" Name="Create" />
+        <Patch Id="Q2uXGvu0CDhMMhEJFT36lc" Name="Update" />
+        <ProcessDefinition Id="Ipnjbc35VGWPUXgb1AygQw">
+          <Fragment Id="CoXHXzwJnAPQVOzrTLBjUR" Patch="Hl8FcPlcb01N2wiCpj92Rh" Enabled="true" />
+          <Fragment Id="AWDpwirxHX5M2oymhX47Fs" Patch="Q2uXGvu0CDhMMhEJFT36lc" Enabled="true" />
+        </ProcessDefinition>
+        <Link Id="S07BjeJsOvFMcD0ELmPY4V" Ids="L6RQk2PP3oIN3Gyg1PQkri,M0S0VSEgx2rN4sNnfFuKnt" />
+        <Link Id="HBTxtR42qExL6kymd2eJFg" Ids="IV0DllS2ZFiLXnMZhyqF7p,RXjhkkdwxybPSbQE0lWi41" />
+        <Link Id="M2YRI4cp73TPkcKrfF2MpI" Ids="LQVDtw2TWJ3PWGbFM7LNLa,GTA19fSxRbFP6NIcOp0WF5" />
+      </Patch>
+    </Node>
+  </Patch>
+  <NodeFactoryDependency Id="QHar8hgWMJyPwp1SQYbGa9" Location="Nodetool.SDK.VL.Workflows" />
+  <ProjectDependency Id="TmWImVIwIuqLfHJI7pOPU2" Location="../csharp/Nodetool.SDK.VL/Nodetool.SDK.VL.csproj" />
+</Document>

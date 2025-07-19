@@ -1,0 +1,65 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document xmlns:p="property" xmlns:r="reflection" Id="NC1KNaP1Go2POBWdzIXFEc" LanguageVersion="2025.7.0-0351-gb3f6445d75" Version="0.128">
+  <NugetDependency Id="MjoVqGWnFwuNEDOc3aDMkc" Location="VL.CoreLib" Version="2025.7.0-0351-gb3f6445d75" />
+  <Patch Id="HEzifyLpPRALsQB9StZmmf">
+    <Canvas Id="NnoXYsjPdIkNRVI7ty2sHv" DefaultCategory="Main" BordersChecked="false" CanvasType="FullCategory" />
+    <!--
+
+    ************************ Application ************************
+
+-->
+    <Node Name="Application" Bounds="100,100" Id="ICgEshhFGaeNtfSPmOeQMb">
+      <p:NodeReference>
+        <Choice Kind="ContainerDefinition" Name="Process" />
+        <CategoryReference Kind="Category" Name="Primitive" />
+      </p:NodeReference>
+      <Patch Id="S25W0y8ZZl1PFLA69sijLe">
+        <Canvas Id="F7QrLYZMO4VM3sxwQ1SfPo" CanvasType="Group">
+          <Node Bounds="196,191,56,19" Id="G9d9w5pFCrNOmrYBpDvXgd">
+            <p:NodeReference LastCategoryFullName="Nodetool Nodes.Date" LastDependency="Nodetool.SDK.VL.Nodes">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Nodetool Nodes" />
+              <CategoryReference Kind="Category" Name="Date" />
+              <Choice Kind="ProcessNode" Name="DaysAgo" />
+            </p:NodeReference>
+            <Pin Id="FuR1ZAaIdsPQH1qoutwBpC" Name="Execute" Kind="InputPin" />
+            <Pin Id="UVymj7SFFggOsGtqgt8gdl" Name="days" Kind="InputPin" />
+            <Pin Id="FFWm6eIDuWRNkYRKezUexL" Name="output" Kind="OutputPin" />
+            <Pin Id="CCdDBdrSPoXQKjHUibyAYv" Name="IsRunning" Kind="OutputPin" />
+            <Pin Id="R3rG5qlyKmmNfgj8DZ8lQ1" Name="Error" Kind="OutputPin" />
+          </Node>
+          <Overlay Id="GAUTtSlZ6JpPeJJZXEbGiD" Name="nodes" Bounds="102,71,450,394" />
+          <Node Bounds="201,321,94,19" Id="DnjfPCMQinIQOE5x9p4L08">
+            <p:NodeReference LastCategoryFullName="Nodetool Nodes.Image_generation" LastDependency="Nodetool.SDK.VL.Nodes">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Nodetool Nodes" />
+              <CategoryReference Kind="Category" Name="Image_generation" />
+              <Choice Kind="ProcessNode" Name="ImageGeneration" />
+            </p:NodeReference>
+            <Pin Id="IFIMymcgmNMLeXj45rtn1G" Name="Execute" Kind="InputPin" />
+            <Pin Id="MMpOWVUOmc8PQeVcBpsuPI" Name="prompt" Kind="InputPin" />
+            <Pin Id="N04nZ8ewM70Mcx364OlYse" Name="output" Kind="OutputPin" />
+            <Pin Id="DFKf3m1FNWbMasyk4R4Za6" Name="IsRunning" Kind="OutputPin" />
+            <Pin Id="AfkeFXoGYJOMzBcmMB2L52" Name="Error" Kind="OutputPin" />
+          </Node>
+          <Pad Id="SKKLdzQejeLOoPnLtnT5kF" Comment="days" Bounds="249,161,35,15" ShowValueBox="true" isIOBox="true" Value="20">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Integer32" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="T6w3PWSLGMCNftldDvwwTB" Comment="IsRunning" Bounds="224,231,35,35" ShowValueBox="true" isIOBox="true" />
+        </Canvas>
+        <Patch Id="Hl8FcPlcb01N2wiCpj92Rh" Name="Create" />
+        <Patch Id="Q2uXGvu0CDhMMhEJFT36lc" Name="Update" />
+        <ProcessDefinition Id="Ipnjbc35VGWPUXgb1AygQw">
+          <Fragment Id="CoXHXzwJnAPQVOzrTLBjUR" Patch="Hl8FcPlcb01N2wiCpj92Rh" Enabled="true" />
+          <Fragment Id="AWDpwirxHX5M2oymhX47Fs" Patch="Q2uXGvu0CDhMMhEJFT36lc" Enabled="true" />
+        </ProcessDefinition>
+        <Link Id="NBLIbjGFDjwLdXV5wskMZQ" Ids="SKKLdzQejeLOoPnLtnT5kF,UVymj7SFFggOsGtqgt8gdl" />
+        <Link Id="Rld7h5pHCeIPtki3vdbO6E" Ids="CCdDBdrSPoXQKjHUibyAYv,T6w3PWSLGMCNftldDvwwTB" />
+      </Patch>
+    </Node>
+  </Patch>
+  <ProjectDependency Id="NQKI4lP5AwlLRYl6ww7I20" Location="../csharp/Nodetool.SDK.VL/Nodetool.SDK.VL.csproj" />
+  <NodeFactoryDependency Id="JgBYxyinRt7LHcMP93ftIc" Location="Nodetool.SDK.VL.Nodes" />
+</Document>
