@@ -230,22 +230,109 @@ namespace Nodetool.SDK.VL.Factories
             catch (AggregateException aggEx)
             {
                 var innerEx = aggEx.InnerException ?? aggEx;
-                _apiStatusMessage = $"Error fetching metadata: {innerEx.Message}";
-                Console.WriteLine($"=== WorkflowNodeFactory: API FETCH ERROR (AggregateException) ===");
-                Console.WriteLine($"WorkflowNodeFactory: Error message: {_apiStatusMessage}");
-                Console.WriteLine($"WorkflowNodeFactory: Error type: {innerEx.GetType().Name}");
-                Console.WriteLine($"WorkflowNodeFactory: Stack trace: {innerEx.StackTrace}");
-                _fetchedWorkflows = ImmutableList<WorkflowDetail>.Empty;
+                HandleWorkflowApiError(innerEx);
             }
             catch (Exception ex)
             {
-                _apiStatusMessage = $"General error during metadata fetch: {ex.Message}";
-                Console.WriteLine($"=== WorkflowNodeFactory: API FETCH ERROR (General) ===");
-                Console.WriteLine($"WorkflowNodeFactory: Error message: {_apiStatusMessage}");
-                Console.WriteLine($"WorkflowNodeFactory: Error type: {ex.GetType().Name}");
-                Console.WriteLine($"WorkflowNodeFactory: Stack trace: {ex.StackTrace}");
-                _fetchedWorkflows = ImmutableList<WorkflowDetail>.Empty;
+                HandleWorkflowApiError(ex);
             }
+        }
+
+        /// <summary>
+        /// Handle workflow API errors with detailed logging and user guidance
+        /// </summary>
+        private static void HandleWorkflowApiError(Exception ex)
+        {
+            string errorCategory = "Unknown";
+            string userGuidance = "";
+            
+            // Categorize the error and provide specific guidance
+            switch (ex)
+            {
+                case HttpRequestException httpEx:
+                    errorCategory = "HTTP Request Failed";
+                    _apiStatusMessage = $"🔌 Workflow API Connection Error: Cannot reach Nodetool API";
+                    userGuidance = GetWorkflowNetworkErrorGuidance();
+                    break;
+                    
+                case TaskCanceledException when ex.Message.Contains("timeout"):
+                    errorCategory = "Request Timeout";
+                    _apiStatusMessage = $"⏱️ Workflow API Timeout: Nodetool API did not respond in time";
+                    userGuidance = GetWorkflowTimeoutErrorGuidance();
+                    break;
+                    
+                case System.Net.Sockets.SocketException:
+                    errorCategory = "Network Connection Failed";
+                    _apiStatusMessage = $"🔌 Workflow Network Error: Cannot establish connection to Nodetool API";
+                    userGuidance = GetWorkflowNetworkErrorGuidance();
+                    break;
+                    
+                case System.Net.WebException webEx:
+                    errorCategory = "Web Request Failed";
+                    _apiStatusMessage = $"🌐 Workflow Web Error: {webEx.Message}";
+                    userGuidance = GetWorkflowNetworkErrorGuidance();
+                    break;
+                    
+                default:
+                    errorCategory = "Workflow API Error";
+                    _apiStatusMessage = $"❌ Workflow Fetch Error: {ex.Message}";
+                    userGuidance = "Check the console output for detailed error information.";
+                    break;
+            }
+
+            // Log comprehensive error information
+            Console.WriteLine($"");
+            Console.WriteLine($"================= NODETOOL WORKFLOW API ERROR =================");
+            Console.WriteLine($"🚨 WORKFLOW NODES CANNOT BE CREATED - API UNREACHABLE");
+            Console.WriteLine($"");
+            Console.WriteLine($"Error Category: {errorCategory}");
+            Console.WriteLine($"Status: {_apiStatusMessage}");
+            Console.WriteLine($"");
+            Console.WriteLine($"📋 USER ACTION REQUIRED:");
+            Console.WriteLine($"{userGuidance}");
+            Console.WriteLine($"");
+            Console.WriteLine($"🔧 Technical Details:");
+            Console.WriteLine($"   Error Type: {ex.GetType().Name}");
+            Console.WriteLine($"   Message: {ex.Message}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"   Inner Error: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+            }
+            Console.WriteLine($"");
+            Console.WriteLine($"🔍 Troubleshooting Steps:");
+            Console.WriteLine($"   1. Verify Nodetool server is running");
+            Console.WriteLine($"   2. Check workflow API endpoint accessibility");
+            Console.WriteLine($"   3. Verify workflow metadata service configuration");
+            Console.WriteLine($"   4. Check firewall/network settings");
+            Console.WriteLine($"   5. Verify Nodetool server health");
+            Console.WriteLine($"=================================================================");
+            Console.WriteLine($"");
+            
+            _fetchedWorkflows = ImmutableList<WorkflowDetail>.Empty;
+        }
+
+        /// <summary>
+        /// Get user guidance for workflow network-related errors
+        /// </summary>
+        private static string GetWorkflowNetworkErrorGuidance()
+        {
+            return @"1. Ensure Nodetool server is running and accessible
+   2. Verify the workflow API endpoints are working
+   3. Check your network connection and firewall settings
+   4. Try accessing workflow API endpoints directly
+   5. Confirm Nodetool server workflow service is healthy";
+        }
+
+        /// <summary>
+        /// Get user guidance for workflow timeout errors
+        /// </summary>
+        private static string GetWorkflowTimeoutErrorGuidance()
+        {
+            return @"1. Check if Nodetool server workflow service is responding slowly
+   2. Verify server resources (CPU, memory) are sufficient
+   3. Check network latency to the server
+   4. Verify workflow database/storage is accessible
+   5. Restart Nodetool server if workflow service appears hung";
         }
 
         /// <summary>

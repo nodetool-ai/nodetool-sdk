@@ -183,25 +183,43 @@ namespace Nodetool.SDK.VL.Nodes
         }
 
         /// <summary>
-        /// Get simulated output for testing purposes
+        /// Get simulated output for testing purposes - must match VL pin type
         /// </summary>
         private object? GetSimulatedOutput(NodeOutput output)
         {
-            if (output.Type == null || string.IsNullOrEmpty(output.Type.Type))
-                return "Simulated output";
-
-            return output.Type.Type.ToLowerInvariant() switch
+            // Get the VL type that was mapped for this output
+            var (vlType, defaultValue) = MapNodeType(output.Type);
+            
+            // Return a value that matches the VL type exactly
+            if (vlType == typeof(string))
             {
-                "str" or "string" => $"Output from {_nodeMetadata.NodeType}",
-                "int" or "integer" => 42,
-                "float" or "number" => 3.14f,
-                "bool" or "boolean" => true,
-                "list" or "array" => new string[] { "result1", "result2" },
-                "image" => "data:image/png;base64,simulated_image_data",
-                "audio" => "simulated_audio_data",
-                "video" => "simulated_video_data",
-                _ => "Simulated output"
-            };
+                return $"Output from {_nodeMetadata.NodeType}";
+            }
+            else if (vlType == typeof(int))
+            {
+                return 42;
+            }
+            else if (vlType == typeof(float))
+            {
+                return 3.14f;
+            }
+            else if (vlType == typeof(bool))
+            {
+                return true;
+            }
+            else if (vlType == typeof(string[]))
+            {
+                return new string[] { "result1", "result2" };
+            }
+            else if (vlType == typeof(object))
+            {
+                return new { simulated = true, data = "test" };
+            }
+            else
+            {
+                // Fallback to default value or string
+                return defaultValue ?? "Simulated output";
+            }
         }
 
         /// <summary>
@@ -244,23 +262,13 @@ namespace Nodetool.SDK.VL.Nodes
         }
 
         /// <summary>
-        /// Get default value for a given type
+        /// Get default value for a given type - must match MapNodeType exactly
         /// </summary>
         private static object? GetDefaultValueForType(NodeTypeDefinition? nodeType)
         {
-            if (nodeType == null || string.IsNullOrEmpty(nodeType.Type))
-                return "";
-
-            return nodeType.Type.ToLowerInvariant() switch
-            {
-                "str" or "string" => "",
-                "int" or "integer" => 0,
-                "float" or "number" => 0.0f,
-                "bool" or "boolean" => false,
-                "list" or "array" => new string[0],
-                "dict" or "object" => null,
-                _ => ""
-            };
+            // Use the same mapping as MapNodeType to ensure consistency
+            var (vlType, defaultValue) = MapNodeType(nodeType);
+            return defaultValue;
         }
 
         /// <summary>
@@ -273,7 +281,7 @@ namespace Nodetool.SDK.VL.Nodes
         }
 
         /// <summary>
-        /// Map Nodetool type to VL type - simplified version
+        /// Map Nodetool type to VL type - must match NodesFactory.MapNodeType exactly
         /// </summary>
         private static (Type?, object?) MapNodeType(NodeTypeDefinition? nodeType)
         {

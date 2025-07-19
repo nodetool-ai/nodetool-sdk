@@ -295,22 +295,111 @@ namespace Nodetool.SDK.VL.Factories
             catch (AggregateException aggEx)
             {
                 var innerEx = aggEx.InnerException ?? aggEx;
-                _apiStatusMessage = $"Error fetching metadata: {innerEx.Message}";
-                Console.WriteLine($"=== NodesFactory: API FETCH ERROR (AggregateException) ===");
-                Console.WriteLine($"NodesFactory: Error message: {_apiStatusMessage}");
-                Console.WriteLine($"NodesFactory: Error type: {innerEx.GetType().Name}");
-                Console.WriteLine($"NodesFactory: Stack trace: {innerEx.StackTrace}");
-                _fetchedNodes = ImmutableList<NodeMetadataResponse>.Empty;
+                HandleApiError(innerEx);
             }
             catch (Exception ex)
             {
-                _apiStatusMessage = $"General error during metadata fetch: {ex.Message}";
-                Console.WriteLine($"=== NodesFactory: API FETCH ERROR (General) ===");
-                Console.WriteLine($"NodesFactory: Error message: {_apiStatusMessage}");
-                Console.WriteLine($"NodesFactory: Error type: {ex.GetType().Name}");
-                Console.WriteLine($"NodesFactory: Stack trace: {ex.StackTrace}");
-                _fetchedNodes = ImmutableList<NodeMetadataResponse>.Empty;
+                HandleApiError(ex);
             }
+        }
+
+        /// <summary>
+        /// Handle API errors with detailed logging and user guidance
+        /// </summary>
+        private static void HandleApiError(Exception ex)
+        {
+            string errorCategory = "Unknown";
+            string userGuidance = "";
+            
+            // Categorize the error and provide specific guidance
+            switch (ex)
+            {
+                case HttpRequestException httpEx:
+                    errorCategory = "HTTP Request Failed";
+                    _apiStatusMessage = $"🔌 API Connection Error: Cannot reach Nodetool API at {NodetoolConstants.Defaults.BaseUrl}";
+                    userGuidance = GetNetworkErrorGuidance();
+                    break;
+                    
+                case TaskCanceledException when ex.Message.Contains("timeout"):
+                    errorCategory = "Request Timeout";
+                    _apiStatusMessage = $"⏱️ API Timeout: Nodetool API did not respond within {NodetoolConstants.Defaults.TimeoutSeconds} seconds";
+                    userGuidance = GetTimeoutErrorGuidance();
+                    break;
+                    
+                case System.Net.Sockets.SocketException:
+                    errorCategory = "Network Connection Failed";
+                    _apiStatusMessage = $"🔌 Network Error: Cannot establish connection to Nodetool API";
+                    userGuidance = GetNetworkErrorGuidance();
+                    break;
+                    
+                case System.Net.WebException webEx:
+                    errorCategory = "Web Request Failed";
+                    _apiStatusMessage = $"🌐 Web Error: {webEx.Message}";
+                    userGuidance = GetNetworkErrorGuidance();
+                    break;
+                    
+                default:
+                    errorCategory = "API Error";
+                    _apiStatusMessage = $"❌ Unexpected Error: {ex.Message}";
+                    userGuidance = "Check the console output for detailed error information.";
+                    break;
+            }
+
+            // Log comprehensive error information
+            Console.WriteLine($"");
+            Console.WriteLine($"=================== NODETOOL API ERROR ===================");
+            Console.WriteLine($"🚨 NODES CANNOT BE CREATED - API UNREACHABLE");
+            Console.WriteLine($"");
+            Console.WriteLine($"Error Category: {errorCategory}");
+            Console.WriteLine($"API Endpoint: {NodetoolConstants.Defaults.BaseUrl}{NodetoolConstants.Endpoints.NodesMetadata}");
+            Console.WriteLine($"Status: {_apiStatusMessage}");
+            Console.WriteLine($"");
+            Console.WriteLine($"📋 USER ACTION REQUIRED:");
+            Console.WriteLine($"{userGuidance}");
+            Console.WriteLine($"");
+            Console.WriteLine($"🔧 Technical Details:");
+            Console.WriteLine($"   Error Type: {ex.GetType().Name}");
+            Console.WriteLine($"   Message: {ex.Message}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"   Inner Error: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+            }
+            Console.WriteLine($"   Timeout Setting: {NodetoolConstants.Defaults.TimeoutSeconds} seconds");
+            Console.WriteLine($"");
+            Console.WriteLine($"🔍 Troubleshooting Steps:");
+            Console.WriteLine($"   1. Verify Nodetool server is running");
+            Console.WriteLine($"   2. Check API URL: {NodetoolConstants.Defaults.BaseUrl}");
+            Console.WriteLine($"   3. Test API manually: GET {NodetoolConstants.Defaults.BaseUrl}{NodetoolConstants.Endpoints.NodesMetadata}");
+            Console.WriteLine($"   4. Check firewall/network settings");
+            Console.WriteLine($"   5. Verify Nodetool server health");
+            Console.WriteLine($"===========================================================");
+            Console.WriteLine($"");
+            
+            _fetchedNodes = ImmutableList<NodeMetadataResponse>.Empty;
+        }
+
+        /// <summary>
+        /// Get user guidance for network-related errors
+        /// </summary>
+        private static string GetNetworkErrorGuidance()
+        {
+            return @"1. Ensure Nodetool server is running and accessible
+   2. Verify the API URL configuration is correct
+   3. Check your network connection and firewall settings
+   4. Try accessing the API URL directly in a browser
+   5. Confirm Nodetool server is listening on the expected port";
+        }
+
+        /// <summary>
+        /// Get user guidance for timeout errors
+        /// </summary>
+        private static string GetTimeoutErrorGuidance()
+        {
+            return @"1. Check if Nodetool server is responding slowly
+   2. Verify server resources (CPU, memory) are sufficient
+   3. Consider increasing timeout in NodetoolConstants.Defaults.TimeoutSeconds
+   4. Check network latency to the server
+   5. Restart Nodetool server if it appears hung";
         }
 
         /// <summary>
