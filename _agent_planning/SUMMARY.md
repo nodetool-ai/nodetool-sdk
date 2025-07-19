@@ -90,26 +90,26 @@ public void Update()
 
 ## 🚀 **Implementation Roadmap**
 
-### **Phase 0: WebSocket-Focused Type Generation** _(1 week)_ ⭐ **CRITICAL FOUNDATION**
+### **Phase 0: MessagePack Type Generation in nodetool-core** _(External Dependency)_ ⭐ **SIMPLIFIED FOUNDATION**
 
-**Key Insight**: Generate types for **WebSocket-transmitted data**, not all Python classes!
+**Key Insight**: **nodetool-core** generates ALL node types using MessagePack, **SDK consumes pre-generated types**!
 
-1. **WebSocket Type Scanner** - Focus on data objects, asset refs, metadata types
-2. **Type Mapper** - Convert transmitted Python types (Union, Optional, List) to C# equivalents
-3. **C# Code Generator** - Generate strongly-typed C# classes for transmitted data
-4. **CI/CD Integration** - Daily automated updates from NodeTool changes
+1. **Complete Type Generation** - All 1000+ Python node classes → C# classes (in nodetool-core)
+2. **Full Enum Coverage** - All Python enums → C# enums with MessagePack compatibility
+3. **MessagePack Serialization** - Efficient binary serialization across platforms
+4. **Versioned Distribution** - Types distributed with nodetool-core releases
 
-### **Phase 1: WebSocket Infrastructure + Clean SDK Interface** _(3-4 weeks)_
+### **Phase 1: Simplified SDK Implementation** _(1-2 weeks)_ ⭐ **MUCH FASTER**
 
-1. **MessagePack WebSocket Client** - Binary message handling
-2. **Clean SDK Interface** - `IExecutionSession` abstraction over WebSocket complexity
-3. **Execution Session Management** - Handle all WebSocket events internally
-4. **Basic Data Conversion** - Common type conversions in SDK core
+1. **Type Registry System** - Load and register all pre-generated types
+2. **MessagePack WebSocket Client** - Binary message handling
+3. **Clean SDK Interface** - `IExecutionSession` abstraction over WebSocket complexity
+4. **Type Integration** - Seamless integration of generated types with SDK
 
-### **Phase 2: Simplified VL Integration** _(1-2 weeks)_
+### **Phase 2: Ultra-Simple VL Integration** _(1 week)_ ⭐ **MINIMAL COMPLEXITY**
 
-1. **VL Type Converter** - Simple transformation from SDK data to VL types
-2. **Ultra-Simple VL Nodes** - Just read from session + convert types
+1. **VL Type Converter** - Simple transformation from generated types to VL types
+2. **Direct Type Usage** - VL nodes use pre-generated types directly
 3. **Asset Download Service** - Handle asset references when needed
 
 ### **Phase 3: Backend Implementation** _(TBD)_
@@ -125,21 +125,28 @@ public void Update()
 
 ## ⚡ **Technical Highlights**
 
-### **Automatic Type Generation** ⭐ **NEW FOUNDATION**
+### **MessagePack Type Generation** ⭐ **COMPLETE COVERAGE**
 
 ```csharp
-// Python definition automatically becomes C# class
+// nodetool-core generates ALL types using MessagePack
 // Python: class ResizeNode(Node):
 //   image: Image = InputProperty()
 //   width: int = InputProperty(default=512)
 
-// Generated C#:
+// Generated C# (by nodetool-core):
+[MessagePackObject]
 public class ResizeNode
 {
+    [Key(0)]
     public ImageRef Image { get; set; } = new();
+    [Key(1)]
     public int Width { get; set; } = 512;
+    [Key(2)]
     public ImageRef Output { get; set; } = new();
 }
+
+// SDK simply consumes these pre-generated types
+var nodeType = NodeTypeRegistry.GetType<ResizeNode>();
 ```
 
 ### **Clean SDK Interface**

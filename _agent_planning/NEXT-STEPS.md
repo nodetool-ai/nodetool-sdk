@@ -2,28 +2,27 @@
 
 ## **📋 Implementation Priority Order**
 
-### **🥇 Phase 1: Foundation (Week 1)**
+### **🥇 Phase 1: Foundation (Week 1)** ⭐ **SIMPLIFIED**
 
-**Goal**: Basic WebSocket communication with proper C# types
+**Goal**: SDK type consumption system with WebSocket communication
 
-#### **1.1 Type Generation System** ⭐ **START HERE**
+#### **1.1 Type Registry System** ⭐ **START HERE**
 
-- **Why First**: Everything else depends on having proper C# types
-- **Scope**: WebSocket-transmitted data types only (~50 types vs 1000+ Python classes)
+- **Why First**: SDK needs to consume pre-generated types from nodetool-core
+- **Scope**: Type loading and registration (not generation - that's in nodetool-core)
 - **Output**:
-  - `Nodetool.SDK/DataObjects/` - Asset types (ImageRef, AudioRef, etc.)
-  - `Nodetool.SDK/Enums/` - Static enums (BlendMode, SortOrder, etc.)
-  - `Nodetool.SDK/Collections/` - List, Dict, Union, Optional wrappers
-  - `Nodetool.SDK/Metadata/` - Node property schema types
+  - `Nodetool.SDK/Types/` - Type registry and lookup system
+  - `Nodetool.SDK/Generated/` - Reference to pre-generated types from nodetool-core
+  - `Nodetool.SDK/WebSocket/` - MessagePack-compatible WebSocket client
 
 **Implementation Steps**:
 
 ```
-1. Build WebSocketTypeScanner.cs (scan transmitted JSON/MessagePack data)
-2. Enhance Python enum scanner (extract static enums)
-3. Generate C# data classes for asset types
-4. Generate C# enums for static selections
-5. Create collection type wrappers
+1. Create NodeTypeRegistry.cs (load all pre-generated types)
+2. Build EnumRegistry.cs (catalog all generated enums)
+3. Implement TypeLookupService.cs (runtime type resolution)
+4. Integrate with WebSocket client for MessagePack serialization
+5. Add basic validation and error handling
 ```
 
 #### **1.2 WebSocket Client Foundation**
