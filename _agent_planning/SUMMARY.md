@@ -83,6 +83,13 @@ public void Update()
 
 ## 🚀 **Implementation Roadmap**
 
+### **Phase 0: Automatic Python-to-C# Type Generation** _(1 week)_ ⭐ **NEW CRITICAL FOUNDATION**
+
+1. **Python Type Scanner** - Parse NodeTool Python files for node definitions
+2. **Type Mapper** - Convert Python types (Union, Optional, List) to C# equivalents
+3. **C# Code Generator** - Generate strongly-typed C# classes with XML documentation
+4. **CI/CD Integration** - Daily automated updates from NodeTool changes
+
 ### **Phase 1: WebSocket Infrastructure + Clean SDK Interface** _(3-4 weeks)_
 
 1. **MessagePack WebSocket Client** - Binary message handling
@@ -109,7 +116,24 @@ public void Update()
 
 ## ⚡ **Technical Highlights**
 
-### **Clean SDK Interface** ⭐ **NEW**
+### **Automatic Type Generation** ⭐ **NEW FOUNDATION**
+
+```csharp
+// Python definition automatically becomes C# class
+// Python: class ResizeNode(Node):
+//   image: Image = InputProperty()
+//   width: int = InputProperty(default=512)
+
+// Generated C#:
+public class ResizeNode
+{
+    public ImageRef Image { get; set; } = new();
+    public int Width { get; set; } = 512;
+    public ImageRef Output { get; set; } = new();
+}
+```
+
+### **Clean SDK Interface**
 
 ```csharp
 // SDK provides ultra-simple execution interface

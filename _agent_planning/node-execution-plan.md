@@ -152,48 +152,48 @@ public async Task<string> StartSingleNodeAsync(
 ```csharp
 private async Task ExecuteNodeAsync()
 {
-    _isRunning = true;
-    _lastError = "";
+ _isRunning = true;
+ _lastError = "";
 
-    try
-    {
-        // Collect input values
-        var inputData = GetInputValues();
+ try
+ {
+     // Collect input values
+     var inputData = GetInputValues();
 
-        // Execute single node via WebSocket
-        var executionService = VLServiceLocator.GetService<SingleNodeExecutionService>();
+     // Execute single node via WebSocket
+     var executionService = VLServiceLocator.GetService<SingleNodeExecutionService>();
 
-        var progress = new Progress<NodeExecutionProgress>(OnExecutionProgress);
-        var result = await executionService.ExecuteNodeAsync(
-            _nodeMetadata.NodeType,
-            inputData,
-            progress);
+     var progress = new Progress<NodeExecutionProgress>(OnExecutionProgress);
+     var result = await executionService.ExecuteNodeAsync(
+         _nodeMetadata.NodeType,
+         inputData,
+         progress);
 
-        // Process results
-        if (result.Success)
-        {
-            await SetOutputsFromResult(result);
+     // Process results
+     if (result.Success)
+     {
+         await SetOutputsFromResult(result);
+            }
+            else
+            {
+         _lastError = result.ErrorMessage ?? "Execution failed";
+     }
         }
-        else
+        catch (Exception ex)
         {
-            _lastError = result.ErrorMessage ?? "Execution failed";
-        }
-    }
-    catch (Exception ex)
-    {
-        _lastError = FormatUserFriendlyError(ex);
-    }
-    finally
-    {
-        _isRunning = false;
-    }
+     _lastError = FormatUserFriendlyError(ex);
+ }
+ finally
+ {
+     _isRunning = false;
+ }
 }
 
 private void OnExecutionProgress(NodeExecutionProgress progress)
 {
-    // Update VL node progress indicators
-    _executionStatus = progress.Status;
-    _executionMessage = progress.Message ?? "";
+ // Update VL node progress indicators
+ _executionStatus = progress.Status;
+ _executionMessage = progress.Message ?? "";
 }
 ```
 
@@ -204,16 +204,16 @@ private void OnExecutionProgress(NodeExecutionProgress progress)
 ```csharp
 public static async Task InitializeAsync()
 {
-    // Initialize WebSocket client (shared with workflows)
-    var wsClient = new NodeToolWebSocketClient("http://localhost:8000");
-    await wsClient.ConnectAsync();
+ // Initialize WebSocket client (shared with workflows)
+ var wsClient = new NodeToolWebSocketClient("http://localhost:8000");
+ await wsClient.ConnectAsync();
 
-    // Register single node execution service
-    var singleNodeService = new SingleNodeExecutionService(wsClient);
-    RegisterService(singleNodeService);
+ // Register single node execution service
+ var singleNodeService = new SingleNodeExecutionService(wsClient);
+ RegisterService(singleNodeService);
 
-    // Register other services...
-    RegisterService(new WebSocketWorkflowExecutionService(wsClient));
+ // Register other services...
+ RegisterService(new WebSocketWorkflowExecutionService(wsClient));
 }
 ```
 
