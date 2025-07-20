@@ -1,7 +1,7 @@
 using MessagePack;
 using System.Collections.Generic;
 
-namespace Nodetool.Types;
+namespace Nodetool.Types.Core;
 
 [MessagePackObject]
 public class HFFeatureExtraction
