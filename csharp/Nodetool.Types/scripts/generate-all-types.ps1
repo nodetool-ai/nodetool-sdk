@@ -2,7 +2,7 @@
 # Generates C# types from nodetool-core AND all installed packages in one place
 
 param(
-    [string]$OutputDir = ".",
+    [string]$OutputDir = ".\generated",
     [string]$Namespace = "Nodetool.Types",
     [switch]$Clean
 )

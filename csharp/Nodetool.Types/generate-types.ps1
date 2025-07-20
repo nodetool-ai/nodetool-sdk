@@ -27,7 +27,7 @@
 
 param(
     [Parameter(Position=0)]
-    [string]$OutputDir = ".",
+    [string]$OutputDir = ".\generated",
     [Parameter(Position=1)]
     [string]$Namespace = "Nodetool.Types",
     [switch]$Clean
@@ -62,4 +62,11 @@ if ($Clean) {
     & $GenerateScript -Clean
 } else {
     & $GenerateScript
-} 
+}
+
+# Show the final directory structure
+Write-Host ""
+Write-Host "Final Directory Structure:" -ForegroundColor Cyan
+Write-Host "  Scripts: scripts/" -ForegroundColor Green
+Write-Host "  Generated: generated/" -ForegroundColor Green
+Write-Host "  Project: *.csproj, README.md" -ForegroundColor Green 

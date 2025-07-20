@@ -25,7 +25,9 @@ nodetool-sdk/csharp/              # C# SDK
     │   ├── scripts/              # 🆕 Generation scripts
     │   │   ├── generate-all-types.py
     │   │   └── generate-all-types.ps1
-    │   └── *.cs                  # All types from all sources
+    │   ├── generated/            # 🆕 Generated C# types
+    │   │   └── *.cs              # All types from all sources
+    │   └── *.csproj              # Project files
     └── Nodetool.SDK/             # Main SDK project
         └── Types/                # Type registry and lookup services
 ```

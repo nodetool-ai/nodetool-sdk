@@ -145,74 +145,161 @@ def discover_all_base_types() -> Dict[str, List[type[BaseType]]]:
     core_types = []
     import nodetool
     
+    print(f"  📁 nodetool.__path__: {nodetool.__path__}")
+    print(f"  📦 nodetool.__name__: {nodetool.__name__}")
+    
     # Use pkgutil to walk through nodetool modules
+    module_count = 0
     for _, module_name, _ in pkgutil.walk_packages(nodetool.__path__, nodetool.__name__ + "."):
+        module_count += 1
         try:
             module = importlib.import_module(module_name)
+            class_count = 0
+            for _, obj in inspect.getmembers(module, inspect.isclass):
+                try:
+                    if (inspect.isclass(obj) and
+                        issubclass(obj, BaseType) and obj is not BaseType and
+                        obj.__module__.startswith("nodetool")):
+                        core_types.append(obj)
+                        class_count += 1
+                except Exception as e:
+                    continue
+            if class_count > 0:
+                print(f"    ✅ {module_name}: {class_count} BaseType subclasses")
         except Exception as e:
-            print(f"⚠️  Warning: Could not import {module_name}: {e}")
+            print(f"    ⚠️  Could not import {module_name}: {e}")
             continue
-            
-        for _, obj in inspect.getmembers(module, inspect.isclass):
-            try:
-                if (inspect.isclass(obj) and
-                    issubclass(obj, BaseType) and obj is not BaseType and
-                    obj.__module__.startswith("nodetool")):
-                    core_types.append(obj)
-            except Exception:
-                continue
+    
+    print(f"  📊 Scanned {module_count} modules")
     
     # Remove duplicates and sort
     unique_core = {c.__name__: c for c in core_types}
     all_types["core"] = [unique_core[n] for n in sorted(unique_core.keys())]
-    print(f"✅ Found {len(all_types['core'])} types from nodetool-core")
+    print(f"✅ Found {len(all_types['core'])} unique types from nodetool-core")
+    
+    # List all found types
+    for i, cls in enumerate(all_types["core"][:10]):  # Show first 10
+        print(f"    {i+1:3d}. {cls.__name__} (from {cls.__module__})")
+    if len(all_types["core"]) > 10:
+        print(f"    ... and {len(all_types['core']) - 10} more")
     
     # 2. Discover types from installed packages
     print("🔍 Discovering types from installed packages...")
     try:
         packages = discover_node_packages()
+        print(f"  📦 Found {len(packages)} packages:")
+        for p in packages:
+            print(f"    - {p.name}: {p.source_folder}")
+        
         for package in packages:
+            package_types = []
+            package_name = package.name.replace("-", "_")
+            
+            print(f"\n  📦 Processing package: {package.name}")
+            print(f"    📁 Source folder: {package.source_folder}")
+            print(f"    📦 Has source folder: {bool(package.source_folder and os.path.exists(package.source_folder))}")
+            
             if package.source_folder and os.path.exists(package.source_folder):
-                package_types = []
-                package_name = package.name.replace("-", "_")
-                
-                # Add package source to Python path
+                # Package has source folder (development install)
                 package_src = os.path.join(package.source_folder, "src")
+                print(f"    📂 Package src: {package_src}")
+                print(f"    📂 Package src exists: {os.path.exists(package_src)}")
+                
                 if os.path.exists(package_src):
                     sys.path.insert(0, package_src)
+                    print(f"    🔧 Added {package_src} to Python path")
                     
                     # Walk through package modules
                     try:
                         package_module = importlib.import_module("nodetool")
+                        print(f"    ✅ Successfully imported nodetool from {package_src}")
+                        print(f"    📁 Package module path: {package_module.__path__}")
+                        
+                        module_count = 0
                         for _, module_name, _ in pkgutil.walk_packages(package_module.__path__, package_module.__name__ + "."):
+                            module_count += 1
                             try:
                                 module = importlib.import_module(module_name)
-                            except Exception:
+                                class_count = 0
+                                for _, obj in inspect.getmembers(module, inspect.isclass):
+                                    try:
+                                        if (inspect.isclass(obj) and
+                                            issubclass(obj, BaseType) and obj is not BaseType and
+                                            obj.__module__.startswith("nodetool")):
+                                            package_types.append(obj)
+                                            class_count += 1
+                                    except Exception:
+                                        continue
+                                if class_count > 0:
+                                    print(f"      ✅ {module_name}: {class_count} BaseType subclasses")
+                            except Exception as e:
+                                print(f"      ⚠️  Could not import {module_name}: {e}")
                                 continue
-                                
+                        
+                        print(f"    📊 Scanned {module_count} modules in {package.name}")
+                        
+                    except Exception as e:
+                        print(f"    ❌ Error processing package {package.name}: {e}")
+                    
+                    # Remove package from Python path
+                    if package_src in sys.path:
+                        sys.path.remove(package_src)
+                        print(f"    🔧 Removed {package_src} from Python path")
+            else:
+                # Package is installed in environment (no source folder)
+                print(f"    📦 Installed package (no source folder)")
+                try:
+                    # Try to import the package's nodetool module
+                    package_module_name = f"nodetool.{package.name.replace('-', '_')}"
+                    print(f"    🔍 Trying to import: {package_module_name}")
+                    package_module = importlib.import_module(package_module_name)
+                    print(f"    ✅ Successfully imported {package_module_name}")
+                    print(f"    📁 Package module path: {package_module.__path__}")
+                    
+                    # Walk through the package's modules
+                    module_count = 0
+                    for _, module_name, _ in pkgutil.walk_packages(package_module.__path__, package_module.__name__ + "."):
+                        module_count += 1
+                        try:
+                            module = importlib.import_module(module_name)
+                            class_count = 0
                             for _, obj in inspect.getmembers(module, inspect.isclass):
                                 try:
                                     if (inspect.isclass(obj) and
                                         issubclass(obj, BaseType) and obj is not BaseType and
                                         obj.__module__.startswith("nodetool")):
                                         package_types.append(obj)
+                                        class_count += 1
                                 except Exception:
                                     continue
-                    except Exception as e:
-                        print(f"⚠️  Warning: Could not process package {package.name}: {e}")
+                            if class_count > 0:
+                                print(f"      ✅ {module_name}: {class_count} BaseType subclasses")
+                        except Exception as e:
+                            print(f"      ⚠️  Could not import {module_name}: {e}")
+                            continue
                     
-                    # Remove duplicates and sort
-                    unique_package = {c.__name__: c for c in package_types}
-                    if unique_package:
-                        all_types[package_name] = [unique_package[n] for n in sorted(unique_package.keys())]
-                        print(f"✅ Found {len(all_types[package_name])} types from {package.name}")
+                    print(f"    📊 Scanned {module_count} modules in {package.name}")
                     
-                    # Remove package from Python path
-                    if package_src in sys.path:
-                        sys.path.remove(package_src)
+                except Exception as e:
+                    print(f"    ❌ Error importing package {package.name}: {e}")
+            
+            # Remove duplicates and sort
+            unique_package = {c.__name__: c for c in package_types}
+            if unique_package:
+                all_types[package_name] = [unique_package[n] for n in sorted(unique_package.keys())]
+                print(f"    ✅ Found {len(all_types[package_name])} unique types from {package.name}")
+                # List found types
+                for i, cls in enumerate(all_types[package_name][:5]):  # Show first 5
+                    print(f"      {i+1:3d}. {cls.__name__} (from {cls.__module__})")
+                if len(all_types[package_name]) > 5:
+                    print(f"      ... and {len(all_types[package_name]) - 5} more")
+            else:
+                print(f"    ⚠️  No BaseType subclasses found in {package.name}")
                         
     except Exception as e:
-        print(f"⚠️  Warning: Could not discover packages: {e}")
+        print(f"❌ Error discovering packages: {e}")
+        import traceback
+        traceback.print_exc()
     
     return all_types
 
