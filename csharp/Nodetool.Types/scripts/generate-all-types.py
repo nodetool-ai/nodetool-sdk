@@ -308,16 +308,21 @@ def generate_types_for_source(source_name: str, classes: List[type[BaseType]], o
     generated = 0
     errors = 0
     
-    # Create source-specific namespace
+    # Create source-specific namespace and directory
     if source_name == "core":
         namespace = base_namespace
+        source_dir = os.path.join(output_dir, "Types")
     else:
         namespace = f"{base_namespace}.{source_name}"
+        source_dir = os.path.join(output_dir, "Types", source_name.capitalize())
+    
+    # Create directory if it doesn't exist
+    os.makedirs(source_dir, exist_ok=True)
     
     for cls in classes:
         try:
             src = generate_class_source(cls, namespace)
-            output_file = os.path.join(output_dir, f"{cls.__name__}.cs")
+            output_file = os.path.join(source_dir, f"{cls.__name__}.cs")
             
             with open(output_file, "w", encoding="utf-8") as f:
                 f.write(src)
@@ -610,6 +615,82 @@ def generate_nodes_for_source(source_name: str, nodes: List[type[BaseNode]], out
     
     return generated, errors
 
+def generate_summary_file(output_dir: str, namespace: str) -> None:
+    """Generate a summary file that includes all generated types and nodes."""
+    print("\n>>> Generating summary file...")
+    
+    # Collect all .cs files recursively
+    all_files = []
+    for root, _, files in os.walk(output_dir):
+        for file in files:
+            if file.endswith(".cs"):
+                # Get relative path from output_dir
+                rel_path = os.path.relpath(os.path.join(root, file), output_dir)
+                # Convert path to namespace
+                namespace_parts = os.path.dirname(rel_path).split(os.sep)
+                class_name = os.path.splitext(os.path.basename(file))[0]
+                
+                # Build namespace based on directory structure
+                if namespace_parts[0] == "Types":
+                    if len(namespace_parts) > 1:
+                        # For package-specific types (e.g., Types/Huggingface/...)
+                        full_namespace = f"{namespace}.{'.'.join(namespace_parts[1:])}"
+                    else:
+                        # For core types directly under Types/
+                        full_namespace = namespace
+                elif namespace_parts[0] == "Nodes":
+                    # For nodes, keep the existing namespace structure
+                    full_namespace = f"{namespace}.{'.'.join(namespace_parts)}"
+                else:
+                    # For files in root (shouldn't happen, but just in case)
+                    full_namespace = namespace
+                
+                all_files.append((full_namespace, class_name))
+    
+    # Sort by namespace and class name
+    all_files.sort()
+    
+    # Generate the summary file
+    summary_path = os.path.join(output_dir, "NodeToolTypes.cs")
+    with open(summary_path, "w", encoding="utf-8") as f:
+        f.write(f"""// Auto-generated summary file for all NodeTool types
+using MessagePack;
+using System.Collections.Generic;
+
+namespace {namespace};
+
+/// <summary>
+/// Provides access to all NodeTool types in a single namespace.
+/// This file is auto-generated - do not modify manually.
+/// </summary>
+public static class NodeToolTypes
+{{
+    // Register all types with MessagePack
+    static NodeToolTypes()
+    {{
+        var resolver = MessagePack.Resolvers.CompositeResolver.Create(
+            // Add standard resolvers
+            MessagePack.Resolvers.StandardResolver.Instance,
+            
+            // Add generated types
+            MessagePack.Resolvers.DynamicObjectResolver.Instance
+        );
+
+        var options = MessagePackSerializerOptions.Standard.WithResolver(resolver);
+        MessagePackSerializer.DefaultOptions = options;
+    }}
+
+    // List of all available types for reference
+    public static class Types
+    {{
+{chr(10).join(f'        public static readonly System.Type {class_name} = typeof({full_namespace}.{class_name});' for full_namespace, class_name in all_files)}
+    }}
+}}
+""")
+    
+    print(f"Generated summary file: {os.path.basename(summary_path)}")
+    print(f"Total types included: {len(all_files)}")
+
 def generate_all_types(output_dir: str, namespace: str = "Nodetool.Types") -> None:
     """Generate C# classes for all BaseType subclasses from all sources."""
     print("=== NodeTool SDK Complete Type Generator ===")
@@ -718,6 +799,9 @@ def generate_all_types_and_nodes(output_dir: str, namespace: str = "Nodetool.Typ
     
     # Generate nodes second
     generate_all_nodes(output_dir, namespace)
+    
+    # Generate summary file
+    generate_summary_file(output_dir, namespace)
     
     print("\nComplete type and node generation completed successfully!")
 
