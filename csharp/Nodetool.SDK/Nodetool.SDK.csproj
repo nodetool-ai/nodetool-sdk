@@ -8,27 +8,19 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>Nodetool.SDK</PackageId>
     <Version>0.1.0</Version>
-    <Description>Universal .NET SDK for Nodetool AI workflow integration</Description>
-    <Authors>Nodetool Contributors</Authors>
-    <RepositoryUrl>https://github.com/nodetool-ai/nodetool</RepositoryUrl>
+    <Description>C# SDK for NodeTool with WebSocket communication and type support</Description>
+    <Authors>NodeTool Contributors</Authors>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Text.Json" Version="8.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+    <PackageReference Include="MessagePack" Version="3.0.300" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.0" />
-    <PackageReference Include="MessagePack" Version="3.0.300" />
-    <PackageReference Include="System.Reflection.Metadata" Version="8.0.0" />
+    <PackageReference Include="System.Net.WebSockets.Client" Version="4.3.2" />
   </ItemGroup>
 
-  <!-- TODO: Reference to pre-generated types from nodetool-core (temporarily disabled due to compilation issues) -->
-  <!--
   <ItemGroup>
-    <Compile Include="../../../nodetool-core/csharp_types/*.cs" Link="Generated/%(Filename)%(Extension)" 
-             Exclude="../../../nodetool-core/csharp_types/OpenAIModel.cs" />
+    <ProjectReference Include="../Nodetool.Types/Nodetool.Types.csproj" />
   </ItemGroup>
-  -->
 
 </Project> 
