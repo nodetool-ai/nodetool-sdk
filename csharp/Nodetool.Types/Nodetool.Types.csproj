@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>Nodetool.Types</PackageId>
+    <Version>0.1.0</Version>
+    <Description>Clean C# types for NodeTool data structures with MessagePack support</Description>
+    <Authors>NodeTool Contributors</Authors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MessagePack" Version="3.0.300" />
+  </ItemGroup>
+
+</Project>

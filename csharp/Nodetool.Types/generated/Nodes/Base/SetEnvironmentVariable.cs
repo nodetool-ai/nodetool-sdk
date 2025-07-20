@@ -1,0 +1,18 @@
+using MessagePack;
+using System.Collections.Generic;
+using Nodetool.Types;
+
+namespace Nodetool.Nodes.Base;
+
+[MessagePackObject]
+public class SetEnvironmentVariable
+{
+    [Key(0)]
+    public string name { get; set; } = "";
+    [Key(1)]
+    public string value { get; set; } = "";
+
+    public void Process()
+    {
+    }
+}
