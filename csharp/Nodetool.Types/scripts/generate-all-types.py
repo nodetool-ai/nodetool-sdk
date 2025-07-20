@@ -22,7 +22,7 @@ try:
     from nodetool.packages.discovery import walk_source_modules
     from nodetool.packages.registry import discover_node_packages
 except ImportError as e:
-    print(f"❌ Error importing nodetool modules: {e}")
+    print(f"[ERROR] Error importing nodetool modules: {e}")
     print("   Make sure nodetool-core is installed: pip install -e ../../../nodetool-core")
     sys.exit(1)
 
@@ -141,12 +141,12 @@ def discover_all_base_types() -> Dict[str, List[type[BaseType]]]:
     all_types = {}
     
     # 1. Discover types from nodetool-core
-    print("🔍 Discovering types from nodetool-core...")
+    print(">>> Discovering types from nodetool-core...")
     core_types = []
     import nodetool
     
-    print(f"  📁 nodetool.__path__: {nodetool.__path__}")
-    print(f"  📦 nodetool.__name__: {nodetool.__name__}")
+    print(f"  Path: {nodetool.__path__}")
+    print(f"  Name: {nodetool.__name__}")
     
     # Use pkgutil to walk through nodetool modules
     module_count = 0
@@ -165,17 +165,17 @@ def discover_all_base_types() -> Dict[str, List[type[BaseType]]]:
                 except Exception as e:
                     continue
             if class_count > 0:
-                print(f"    ✅ {module_name}: {class_count} BaseType subclasses")
+                print(f"    [OK] {module_name}: {class_count} BaseType subclasses")
         except Exception as e:
-            print(f"    ⚠️  Could not import {module_name}: {e}")
+            print(f"    [ERROR] Could not import {module_name}: {e}")
             continue
     
-    print(f"  📊 Scanned {module_count} modules")
+    print(f"  Scanned {module_count} modules")
     
     # Remove duplicates and sort
     unique_core = {c.__name__: c for c in core_types}
     all_types["core"] = [unique_core[n] for n in sorted(unique_core.keys())]
-    print(f"✅ Found {len(all_types['core'])} unique types from nodetool-core")
+    print(f"Found {len(all_types['core'])} unique types from nodetool-core")
     
     # List all found types
     for i, cls in enumerate(all_types["core"][:10]):  # Show first 10
@@ -184,10 +184,10 @@ def discover_all_base_types() -> Dict[str, List[type[BaseType]]]:
         print(f"    ... and {len(all_types['core']) - 10} more")
     
     # 2. Discover types from installed packages
-    print("🔍 Discovering types from installed packages...")
+    print(">>> Discovering types from installed packages...")
     try:
         packages = discover_node_packages()
-        print(f"  📦 Found {len(packages)} packages:")
+        print(f"  Found {len(packages)} packages:")
         for p in packages:
             print(f"    - {p.name}: {p.source_folder}")
         
@@ -195,25 +195,25 @@ def discover_all_base_types() -> Dict[str, List[type[BaseType]]]:
             package_types = []
             package_name = package.name.replace("-", "_")
             
-            print(f"\n  📦 Processing package: {package.name}")
-            print(f"    📁 Source folder: {package.source_folder}")
-            print(f"    📦 Has source folder: {bool(package.source_folder and os.path.exists(package.source_folder))}")
+            print(f"\n  Processing package: {package.name}")
+            print(f"    Source folder: {package.source_folder}")
+            print(f"    Has source folder: {bool(package.source_folder and os.path.exists(package.source_folder))}")
             
             if package.source_folder and os.path.exists(package.source_folder):
                 # Package has source folder (development install)
                 package_src = os.path.join(package.source_folder, "src")
-                print(f"    📂 Package src: {package_src}")
-                print(f"    📂 Package src exists: {os.path.exists(package_src)}")
+                print(f"    Package src: {package_src}")
+                print(f"    Package src exists: {os.path.exists(package_src)}")
                 
                 if os.path.exists(package_src):
                     sys.path.insert(0, package_src)
-                    print(f"    🔧 Added {package_src} to Python path")
+                    print(f"    Added {package_src} to Python path")
                     
                     # Walk through package modules
                     try:
                         package_module = importlib.import_module("nodetool")
-                        print(f"    ✅ Successfully imported nodetool from {package_src}")
-                        print(f"    📁 Package module path: {package_module.__path__}")
+                        print(f"    Successfully imported nodetool from {package_src}")
+                        print(f"    Package module path: {package_module.__path__}")
                         
                         module_count = 0
                         for _, module_name, _ in pkgutil.walk_packages(package_module.__path__, package_module.__name__ + "."):
@@ -231,30 +231,30 @@ def discover_all_base_types() -> Dict[str, List[type[BaseType]]]:
                                     except Exception:
                                         continue
                                 if class_count > 0:
-                                    print(f"      ✅ {module_name}: {class_count} BaseType subclasses")
+                                    print(f"      [OK] {module_name}: {class_count} BaseType subclasses")
                             except Exception as e:
-                                print(f"      ⚠️  Could not import {module_name}: {e}")
+                                print(f"      [ERROR] Could not import {module_name}: {e}")
                                 continue
                         
-                        print(f"    📊 Scanned {module_count} modules in {package.name}")
+                        print(f"    Scanned {module_count} modules in {package.name}")
                         
                     except Exception as e:
-                        print(f"    ❌ Error processing package {package.name}: {e}")
+                        print(f"    [ERROR] Error processing package {package.name}: {e}")
                     
                     # Remove package from Python path
                     if package_src in sys.path:
                         sys.path.remove(package_src)
-                        print(f"    🔧 Removed {package_src} from Python path")
+                        print(f"    Removed {package_src} from Python path")
             else:
                 # Package is installed in environment (no source folder)
-                print(f"    📦 Installed package (no source folder)")
+                print(f"    Installed package (no source folder)")
                 try:
                     # Try to import the package's nodetool module
                     package_module_name = f"nodetool.{package.name.replace('-', '_')}"
-                    print(f"    🔍 Trying to import: {package_module_name}")
+                    print(f"    Trying to import: {package_module_name}")
                     package_module = importlib.import_module(package_module_name)
-                    print(f"    ✅ Successfully imported {package_module_name}")
-                    print(f"    📁 Package module path: {package_module.__path__}")
+                    print(f"    Successfully imported {package_module_name}")
+                    print(f"    Package module path: {package_module.__path__}")
                     
                     # Walk through the package's modules
                     module_count = 0
@@ -273,37 +273,37 @@ def discover_all_base_types() -> Dict[str, List[type[BaseType]]]:
                                 except Exception:
                                     continue
                             if class_count > 0:
-                                print(f"      ✅ {module_name}: {class_count} BaseType subclasses")
+                                print(f"      [OK] {module_name}: {class_count} BaseType subclasses")
                         except Exception as e:
-                            print(f"      ⚠️  Could not import {module_name}: {e}")
+                            print(f"      [ERROR] Could not import {module_name}: {e}")
                             continue
                     
-                    print(f"    📊 Scanned {module_count} modules in {package.name}")
+                    print(f"    Scanned {module_count} modules in {package.name}")
                     
                 except Exception as e:
-                    print(f"    ❌ Error importing package {package.name}: {e}")
+                    print(f"    [ERROR] Error importing package {package.name}: {e}")
             
             # Remove duplicates and sort
             unique_package = {c.__name__: c for c in package_types}
             if unique_package:
                 all_types[package_name] = [unique_package[n] for n in sorted(unique_package.keys())]
-                print(f"    ✅ Found {len(all_types[package_name])} unique types from {package.name}")
+                print(f"    Found {len(all_types[package_name])} unique types from {package.name}")
                 # List found types
                 for i, cls in enumerate(all_types[package_name][:5]):  # Show first 5
                     print(f"      {i+1:3d}. {cls.__name__} (from {cls.__module__})")
                 if len(all_types[package_name]) > 5:
                     print(f"      ... and {len(all_types[package_name]) - 5} more")
             else:
-                print(f"    ⚠️  No BaseType subclasses found in {package.name}")
+                print(f"    No BaseType subclasses found in {package.name}")
                         
     except Exception as e:
-        print(f"❌ Error discovering packages: {e}")
+        print(f"[ERROR] Error discovering packages: {e}")
         import traceback
         traceback.print_exc()
     
     return all_types
 
-def generate_types_for_source(source_name: str, classes: List[type[BaseType]], output_dir: str, base_namespace: str) -> int:
+def generate_types_for_source(source_name: str, classes: List[type[BaseType]], output_dir: str, base_namespace: str) -> tuple[int, int]:
     """Generate C# classes for a specific source (core or package)."""
     generated = 0
     errors = 0
@@ -322,21 +322,300 @@ def generate_types_for_source(source_name: str, classes: List[type[BaseType]], o
             with open(output_file, "w", encoding="utf-8") as f:
                 f.write(src)
             
-            print(f"✅ Generated: {cls.__name__}.cs ({source_name})")
+            print(f"Generated: {cls.__name__}.cs ({source_name})")
             generated += 1
             
         except Exception as e:
-            print(f"❌ Error generating {cls.__name__} from {source_name}: {e}")
+            print(f"[ERROR] Error generating {cls.__name__} from {source_name}: {e}")
+            errors += 1
+    
+    return generated, errors
+
+def discover_all_base_nodes() -> Dict[str, List[type[BaseNode]]]:
+    """Discover all BaseNode subclasses from nodetool-core and all packages."""
+    all_nodes = {}
+    
+    # 1. Discover nodes from nodetool-core
+    print(">>> Discovering nodes from nodetool-core...")
+    core_nodes = []
+    import nodetool
+    
+    # Handle namespace package - nodetool has multiple paths
+    nodetool_paths = nodetool.__path__._path if hasattr(nodetool.__path__, '_path') else [nodetool.__path__]
+    print(f"  Looking in nodetool paths: {nodetool_paths}")
+    
+    for base_path in nodetool_paths:
+        nodes_path = os.path.join(base_path, "nodes")
+        if os.path.exists(nodes_path):
+            print(f"  Found nodes directory: {nodes_path}")
+            
+            # Add base path to Python path
+            sys.path.insert(0, os.path.dirname(base_path))
+            
+            # Walk through all Python files in the nodes directory and its subdirectories
+            for root, _, files in os.walk(nodes_path):
+                for file in files:
+                    if file.endswith(".py") and not file.startswith("__"):
+                        module_path = os.path.join(root, file)
+                        # Get relative path from base directory
+                        module_name = os.path.relpath(module_path, os.path.dirname(base_path))
+                        module_name = module_name.replace(os.sep, ".")[:-3]  # Remove .py extension
+                        
+                        try:
+                            module = importlib.import_module(module_name)
+                            class_count = 0
+                            for _, obj in inspect.getmembers(module, inspect.isclass):
+                                try:
+                                    if (inspect.isclass(obj) and
+                                        issubclass(obj, BaseNode) and obj is not BaseNode and
+                                        obj.__module__.startswith("nodetool") and
+                                        hasattr(obj, 'is_visible') and obj.is_visible()):
+                                        core_nodes.append(obj)
+                                        class_count += 1
+                                except Exception:
+                                    continue
+                            if class_count > 0:
+                                print(f"    [OK] {module_name}: {class_count} BaseNode subclasses")
+                        except Exception as e:
+                            print(f"    [ERROR] Could not import {module_name}: {e}")
+                            continue
+            
+            # Remove base path from Python path
+            if os.path.dirname(base_path) in sys.path:
+                sys.path.remove(os.path.dirname(base_path))
+    
+    # Remove duplicates and sort
+    unique_core = {c.__name__: c for c in core_nodes}
+    all_nodes["core"] = [unique_core[n] for n in sorted(unique_core.keys())]
+    print(f"Found {len(all_nodes['core'])} unique nodes from nodetool-core")
+    
+    # 2. Discover nodes from development packages in workspace
+    print(">>> Discovering nodes from development packages...")
+    try:
+        # Look for development packages in the workspace
+        workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+        print(f"  Looking for development packages in workspace: {workspace_root}")
+        
+        for item in os.listdir(workspace_root):
+            if item.startswith("nodetool-") and os.path.isdir(os.path.join(workspace_root, item)):
+                package_path = os.path.join(workspace_root, item)
+                package_src = os.path.join(package_path, "src")
+                nodes_path = os.path.join(package_src, "nodetool", "nodes")
+                
+                if os.path.exists(nodes_path):
+                    print(f"\n  Processing development package: {item}")
+                    print(f"    Package path: {package_path}")
+                    print(f"    Nodes path: {nodes_path}")
+                    
+                    package_nodes = []
+                    package_name = item.replace("-", "_")
+                    
+                    # Add the package's src directory to Python path
+                    sys.path.insert(0, package_src)
+                    print(f"    Added {package_src} to Python path")
+                    
+                    # Walk through all Python files in the nodes directory and its subdirectories
+                    for root, _, files in os.walk(nodes_path):
+                        for file in files:
+                            if file.endswith(".py") and not file.startswith("__"):
+                                module_path = os.path.join(root, file)
+                                # Get relative path from src directory
+                                module_name = os.path.relpath(module_path, package_src)
+                                module_name = module_name.replace(os.sep, ".")[:-3]  # Remove .py extension
+                                
+                                try:
+                                    module = importlib.import_module(module_name)
+                                    class_count = 0
+                                    for _, obj in inspect.getmembers(module, inspect.isclass):
+                                        try:
+                                            if (inspect.isclass(obj) and
+                                                issubclass(obj, BaseNode) and obj is not BaseNode and
+                                                hasattr(obj, 'is_visible') and obj.is_visible()):
+                                                package_nodes.append(obj)
+                                                class_count += 1
+                                        except Exception:
+                                            continue
+                                    if class_count > 0:
+                                        print(f"      [OK] {module_name}: {class_count} BaseNode subclasses")
+                                except Exception as e:
+                                    print(f"      [ERROR] Could not import {module_name}: {e}")
+                                    continue
+                    
+                    # Remove package from Python path
+                    if package_src in sys.path:
+                        sys.path.remove(package_src)
+                        print(f"    Removed {package_src} from Python path")
+                    
+                    # Remove duplicates and sort
+                    unique_package = {c.__name__: c for c in package_nodes}
+                    all_nodes[package_name] = [unique_package[n] for n in sorted(unique_package.keys())]
+                    print(f"    Found {len(all_nodes[package_name])} unique nodes from {item}")
+                else:
+                    print(f"    No nodes directory found in {item}")
+            
+    except Exception as e:
+        print(f"  [ERROR] Error discovering packages: {e}")
+    
+    return all_nodes
+
+def generate_node_class_source(node_cls: type[BaseNode], namespace: str) -> str:
+    """Generate C# class source code for a BaseNode subclass."""
+    try:
+        metadata = node_cls.get_metadata()
+        
+        lines = [
+            "using MessagePack;",
+            "using System.Collections.Generic;",
+            "using Nodetool.Types;",
+            "",
+            f"namespace {namespace};",
+            "",
+            "[MessagePackObject]",
+            f"public class {node_cls.__name__}",
+            "{"
+        ]
+        
+        # Add properties from node metadata
+        index = 0
+        
+        # Add input properties
+        for prop in metadata.properties:
+            python_type = prop.type.get_python_type()
+            csharp_type = python_type_to_csharp(python_type)
+            default = default_value_to_csharp(prop.default)
+            lines.append(f"    [Key({index})]")
+            if default is not None:
+                lines.append(f"    public {csharp_type} {prop.name} {{ get; set; }} = {default};")
+            else:
+                lines.append(f"    public {csharp_type} {prop.name} {{ get; set; }}")
+            index += 1
+        
+        # Check if we need a return type class for multiple outputs
+        if len(metadata.outputs) > 1:
+            # Generate a return type class
+            return_class_name = f"{node_cls.__name__}Output"
+            lines.extend([
+                "",
+                "    [MessagePackObject]",
+                f"    public class {return_class_name}",
+                "    {"
+            ])
+            
+            output_index = 0
+            for output in metadata.outputs:
+                python_type = output.type.get_python_type()
+                output_type = python_type_to_csharp(python_type)
+                lines.append(f"        [Key({output_index})]")
+                lines.append(f"        public {output_type} {output.name} {{ get; set; }}")
+                output_index += 1
+            
+            lines.append("    }")
+            
+            # Add a method to get the return type
+            lines.extend([
+                "",
+                f"    public {return_class_name} Process()",
+                "    {",
+                "        // Implementation would be generated based on node logic",
+                f"        return new {return_class_name}();",
+                "    }"
+            ])
+        else:
+            # Single output or no output
+            if metadata.outputs:
+                python_type = metadata.outputs[0].type.get_python_type()
+                output_type = python_type_to_csharp(python_type)
+                lines.extend([
+                    "",
+                    f"    public {output_type} Process()",
+                    "    {",
+                    "        // Implementation would be generated based on node logic",
+                    f"        return default({output_type});",
+                    "    }"
+                ])
+            else:
+                lines.extend([
+                    "",
+                    "    public void Process()",
+                    "    {",
+                    "        // Implementation would be generated based on node logic",
+                    "    }"
+                ])
+        
+        lines.append("}")
+        return "\n".join(lines) + "\n"
+        
+    except Exception as e:
+        # Fall back to generating from class fields if metadata fails
+        print(f"Warning: Could not get metadata for {node_cls.__name__}: {e}")
+        return generate_fallback_node_class(node_cls, namespace)
+
+def generate_fallback_node_class(node_cls: type[BaseNode], namespace: str) -> str:
+    """Generate C# class from BaseNode fields as fallback when metadata fails."""
+    lines = [
+        "using MessagePack;",
+        "using System.Collections.Generic;", 
+        "using Nodetool.Types;",
+        "",
+        f"namespace {namespace};",
+        "",
+        "[MessagePackObject]",
+        f"public class {node_cls.__name__}",
+        "{"
+    ]
+    
+    index = 0
+    for name, field in node_cls.model_fields.items():
+        if name.startswith("_"):  # Skip private fields
+            continue
+        csharp_type = python_type_to_csharp(field.annotation)
+        default = default_value_to_csharp(field.default)
+        lines.append(f"    [Key({index})]")
+        if default is not None:
+            lines.append(f"    public {csharp_type} {name} {{ get; set; }} = {default};")
+        else:
+            lines.append(f"    public {csharp_type} {name} {{ get; set; }}")
+        index += 1
+    
+    lines.append("}")
+    return "\n".join(lines) + "\n"
+
+def generate_nodes_for_source(source_name: str, nodes: List[type[BaseNode]], output_dir: str, base_namespace: str) -> tuple[int, int]:
+    """Generate C# classes for nodes from a specific source."""
+    generated = 0
+    errors = 0
+    
+    # Create namespace-specific directory
+    namespace = f"{base_namespace}.Nodes.{source_name.capitalize()}"
+    namespace_dir = os.path.join(output_dir, "Nodes", source_name.capitalize())
+    os.makedirs(namespace_dir, exist_ok=True)
+    
+    print(f"\n>>> Generating nodes from {source_name}...")
+    
+    for node_cls in nodes:
+        try:
+            src = generate_node_class_source(node_cls, namespace)
+            filename = f"{node_cls.__name__}.cs"
+            filepath = os.path.join(namespace_dir, filename)
+            
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(src)
+            
+            print(f"Generated: {filename} ({source_name})")
+            generated += 1
+            
+        except Exception as e:
+            print(f"[ERROR] Error generating {node_cls.__name__}: {e}")
             errors += 1
     
     return generated, errors
 
 def generate_all_types(output_dir: str, namespace: str = "Nodetool.Types") -> None:
     """Generate C# classes for all BaseType subclasses from all sources."""
-    print("🚀 NodeTool SDK Complete Type Generator")
-    print("========================================")
-    print(f"📂 Output: {output_dir}")
-    print(f"📦 Namespace: {namespace}")
+    print("=== NodeTool SDK Complete Type Generator ===")
+    print("==========================================")
+    print(f"Output: {output_dir}")
+    print(f"Namespace: {namespace}")
     print()
     
     # Discover all types
@@ -352,30 +631,118 @@ def generate_all_types(output_dir: str, namespace: str = "Nodetool.Types") -> No
     # Generate types for each source
     for source_name, classes in all_types.items():
         if classes:
-            print(f"\n📦 Generating types from {source_name}...")
+            print(f"\n>>> Generating types from {source_name}...")
             generated, errors = generate_types_for_source(source_name, classes, output_dir, namespace)
             total_generated += generated
             total_errors += errors
     
-    print(f"\n📊 Generation Summary:")
-    print(f"  ✅ Generated: {total_generated}")
-    print(f"  ❌ Errors: {total_errors}")
-    print(f"  📁 Output: {output_dir}")
+    print(f"\n=== Type Generation Summary ===")
+    print(f"  Generated: {total_generated}")
+    print(f"  Errors: {total_errors}")
+    print(f"  Output: {output_dir}")
     
     if total_errors == 0:
-        print("\n🎉 Type generation completed successfully!")
+        print("\nType generation completed successfully!")
     else:
-        print(f"\n⚠️  Generation completed with {total_errors} errors.")
+        print(f"\nType generation completed with {total_errors} errors.")
+
+def generate_all_nodes(output_dir: str, namespace: str = "Nodetool.Types") -> None:
+    """Generate C# classes for all BaseNode subclasses from all sources."""
+    print("=== NodeTool SDK Complete Node Generator ===")
+    print("=========================================")
+    print(f"Output: {output_dir}")
+    print(f"Namespace: {namespace}")
+    print()
+    
+    # Discover all nodes
+    all_nodes = discover_all_base_nodes()
+    
+    # Create output directory
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Track statistics
+    total_generated = 0
+    total_errors = 0
+    
+    # Generate nodes for each source
+    for source_name, nodes in all_nodes.items():
+        if nodes:
+            print(f"\n>>> Generating nodes from {source_name}...")
+            
+            # Create source-specific directory
+            source_dir = os.path.join(output_dir, "Nodes", source_name.capitalize())
+            os.makedirs(source_dir, exist_ok=True)
+            
+            # Generate each node class
+            for node_cls in nodes:
+                try:
+                    src = generate_node_class_source(node_cls, f"{namespace}.Nodes.{source_name.capitalize()}")
+                    filename = f"{node_cls.__name__}.cs"
+                    filepath = os.path.join(source_dir, filename)
+                    
+                    # Create subdirectories if needed
+                    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                    
+                    with open(filepath, "w", encoding="utf-8") as f:
+                        f.write(src)
+                    
+                    print(f"Generated: {filename} ({source_name})")
+                    total_generated += 1
+                    
+                except Exception as e:
+                    print(f"[ERROR] Error generating {node_cls.__name__}: {e}")
+                    total_errors += 1
+    
+    print(f"\nNode Generation Summary:")
+    print(f"  Generated: {total_generated}")
+    print(f"  Errors: {total_errors}")
+    print(f"  Output: {output_dir}")
+    
+    if total_errors == 0:
+        print("\nNode generation completed successfully!")
+    else:
+        print(f"\nNode generation completed with {total_errors} errors")
+
+def generate_all_types_and_nodes(output_dir: str, namespace: str = "Nodetool.Types") -> None:
+    """Generate C# classes for all discovered BaseType and BaseNode subclasses."""
+    print("=== NodeTool SDK Complete Type & Node Generator ===")
+    print("==================================================")
+    print(f"Output: {output_dir}")
+    print(f"Namespace: {namespace}")
+    print()
+    
+    # Generate types first
+    generate_all_types(output_dir, namespace)
+    
+    print("\n" + "=" * 50)
+    
+    # Generate nodes second
+    generate_all_nodes(output_dir, namespace)
+    
+    print("\nComplete type and node generation completed successfully!")
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(description="Generate C# types from nodetool-core and all packages")
-    parser.add_argument("--output-dir", default=".", help="Output directory for generated C# files")
+    parser = argparse.ArgumentParser(description="Generate C# types and nodes from nodetool-core and all packages")
+    parser.add_argument("--output-dir", default=os.path.join(os.path.dirname(__file__), "..", "generated"), 
+                       help="Output directory for generated C# files")
     parser.add_argument("--namespace", default="Nodetool.Types", help="C# namespace for generated classes")
+    parser.add_argument("--types-only", action="store_true", help="Generate only types (not nodes)")
+    parser.add_argument("--nodes-only", action="store_true", help="Generate only nodes (not nodes)")
     
     args = parser.parse_args()
     
-    generate_all_types(args.output_dir, args.namespace)
+    # Convert output_dir to absolute path and ensure it exists
+    output_dir = os.path.abspath(args.output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+    print(f"\nOutput directory: {output_dir}\n")
+    
+    if args.types_only:
+        generate_all_types(output_dir, args.namespace)
+    elif args.nodes_only:
+        generate_all_nodes(output_dir, args.namespace)
+    else:
+        generate_all_types_and_nodes(output_dir, args.namespace)
 
 if __name__ == "__main__":
     main() 
