@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Video;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class FrameIterator
@@ -29,7 +29,6 @@ public class FrameIterator
 
     public FrameIteratorOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new FrameIteratorOutput();
     }
 }

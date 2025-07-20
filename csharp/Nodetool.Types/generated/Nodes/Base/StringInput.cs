@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Input;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class StringInput
@@ -16,7 +16,6 @@ public class StringInput
 
     public string Process()
     {
-        // Implementation would be generated based on node logic
         return default(string);
     }
 }

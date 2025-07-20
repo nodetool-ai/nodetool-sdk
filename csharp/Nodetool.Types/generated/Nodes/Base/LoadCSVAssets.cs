@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Data;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class LoadCSVAssets
@@ -21,7 +21,6 @@ public class LoadCSVAssets
 
     public LoadCSVAssetsOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new LoadCSVAssetsOutput();
     }
 }

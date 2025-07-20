@@ -29,7 +29,6 @@ public class QueryImage
 
     public QueryImageOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new QueryImageOutput();
     }
 }

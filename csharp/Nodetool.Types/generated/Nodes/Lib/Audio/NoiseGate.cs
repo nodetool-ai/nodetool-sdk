@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Lib;
+namespace Nodetool.Nodes.Lib.Audio;
 
 [MessagePackObject]
 public class NoiseGate
@@ -18,7 +18,6 @@ public class NoiseGate
 
     public Nodetool.Types.AudioRef Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.AudioRef);
     }
 }

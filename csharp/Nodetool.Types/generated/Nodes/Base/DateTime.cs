@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Constant;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class DateTime
@@ -28,7 +28,6 @@ public class DateTime
 
     public Nodetool.Types.Datetime Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.Datetime);
     }
 }

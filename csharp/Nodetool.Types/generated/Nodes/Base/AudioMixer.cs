@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Audio;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class AudioMixer
@@ -30,7 +30,6 @@ public class AudioMixer
 
     public Nodetool.Types.AudioRef Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.AudioRef);
     }
 }

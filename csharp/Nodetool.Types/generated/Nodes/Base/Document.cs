@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Constant;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class Document
@@ -12,7 +12,6 @@ public class Document
 
     public Nodetool.Types.DocumentRef Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.DocumentRef);
     }
 }

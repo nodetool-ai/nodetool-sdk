@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Chroma;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class IndexTextChunks
@@ -14,6 +14,5 @@ public class IndexTextChunks
 
     public void Process()
     {
-        // Implementation would be generated based on node logic
     }
 }

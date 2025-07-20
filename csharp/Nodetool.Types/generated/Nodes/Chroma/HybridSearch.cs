@@ -35,7 +35,6 @@ public class HybridSearch
 
     public HybridSearchOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new HybridSearchOutput();
     }
 }

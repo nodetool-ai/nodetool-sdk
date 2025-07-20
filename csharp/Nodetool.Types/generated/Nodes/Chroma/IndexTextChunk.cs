@@ -16,6 +16,5 @@ public class IndexTextChunk
 
     public void Process()
     {
-        // Implementation would be generated based on node logic
     }
 }

@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Lib;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class WebFetch
@@ -14,7 +14,6 @@ public class WebFetch
 
     public string Process()
     {
-        // Implementation would be generated based on node logic
         return default(string);
     }
 }

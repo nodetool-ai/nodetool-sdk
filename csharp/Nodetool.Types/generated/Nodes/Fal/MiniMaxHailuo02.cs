@@ -18,7 +18,6 @@ public class MiniMaxHailuo02
 
     public Nodetool.Types.VideoRef Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.VideoRef);
     }
 }

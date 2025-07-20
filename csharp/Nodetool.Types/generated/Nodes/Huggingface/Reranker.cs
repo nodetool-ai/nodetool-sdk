@@ -16,7 +16,6 @@ public class Reranker
 
     public object Process()
     {
-        // Implementation would be generated based on node logic
         return default(object);
     }
 }

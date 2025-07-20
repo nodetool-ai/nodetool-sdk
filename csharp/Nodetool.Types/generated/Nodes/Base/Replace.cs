@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Text;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class Replace
@@ -16,7 +16,6 @@ public class Replace
 
     public string Process()
     {
-        // Implementation would be generated based on node logic
         return default(string);
     }
 }

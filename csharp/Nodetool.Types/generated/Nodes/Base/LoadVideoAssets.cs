@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Video;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class LoadVideoAssets
@@ -21,7 +21,6 @@ public class LoadVideoAssets
 
     public LoadVideoAssetsOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new LoadVideoAssetsOutput();
     }
 }

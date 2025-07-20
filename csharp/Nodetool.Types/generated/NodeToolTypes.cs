@@ -45,7 +45,6 @@ public static class NodeToolTypes
             // Register types from all packages
             Nodes.Base.RegisterTypes();
             Types.Core.RegisterTypes();
-            Nodes.Core.RegisterTypes();
             Nodes.Huggingface.RegisterTypes();
 
             // Configure MessagePack

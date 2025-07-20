@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Text;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class Slice
@@ -18,7 +18,6 @@ public class Slice
 
     public string Process()
     {
-        // Implementation would be generated based on node logic
         return default(string);
     }
 }

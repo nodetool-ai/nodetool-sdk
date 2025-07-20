@@ -22,7 +22,6 @@ public class TextGeneration
 
     public string Process()
     {
-        // Implementation would be generated based on node logic
         return default(string);
     }
 }

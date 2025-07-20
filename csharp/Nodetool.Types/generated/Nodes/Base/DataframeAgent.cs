@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Agents;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class DataframeAgent
@@ -28,7 +28,6 @@ public class DataframeAgent
 
     public Nodetool.Types.DataframeRef Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.DataframeRef);
     }
 }

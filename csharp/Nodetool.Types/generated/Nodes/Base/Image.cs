@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Constant;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class Image
@@ -12,7 +12,6 @@ public class Image
 
     public Nodetool.Types.ImageRef Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.ImageRef);
     }
 }

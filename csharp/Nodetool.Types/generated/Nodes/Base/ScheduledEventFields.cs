@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Calendly;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class ScheduledEventFields
@@ -27,7 +27,6 @@ public class ScheduledEventFields
 
     public ScheduledEventFieldsOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new ScheduledEventFieldsOutput();
     }
 }

@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Openai;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class Embedding
@@ -16,7 +16,6 @@ public class Embedding
 
     public Nodetool.Types.NPArray Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.NPArray);
     }
 }

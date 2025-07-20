@@ -14,7 +14,6 @@ public class TextToSpeech
 
     public Nodetool.Types.AudioRef Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.AudioRef);
     }
 }

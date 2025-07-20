@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Data;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class Pivot
@@ -20,7 +20,6 @@ public class Pivot
 
     public Nodetool.Types.DataframeRef Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.DataframeRef);
     }
 }

@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Output;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class ArrayOutput
@@ -16,7 +16,6 @@ public class ArrayOutput
 
     public Nodetool.Types.NPArray Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.NPArray);
     }
 }

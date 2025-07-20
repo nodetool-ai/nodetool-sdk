@@ -12,7 +12,6 @@ public class Count
 
     public int Process()
     {
-        // Implementation would be generated based on node logic
         return default(int);
     }
 }

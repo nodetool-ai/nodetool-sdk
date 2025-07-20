@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Control;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class IteratorNode
@@ -23,7 +23,6 @@ public class IteratorNode
 
     public IteratorNodeOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new IteratorNodeOutput();
     }
 }

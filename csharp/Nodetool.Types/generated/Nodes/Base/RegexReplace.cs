@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Text;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class RegexReplace
@@ -18,7 +18,6 @@ public class RegexReplace
 
     public string Process()
     {
-        // Implementation would be generated based on node logic
         return default(string);
     }
 }

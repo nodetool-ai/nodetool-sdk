@@ -14,7 +14,6 @@ public class CollectionNode
 
     public Nodetool.Types.Collection Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.Collection);
     }
 }

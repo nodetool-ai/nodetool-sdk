@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Input;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class ChatInput
@@ -35,7 +35,6 @@ public class ChatInput
 
     public ChatInputOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new ChatInputOutput();
     }
 }

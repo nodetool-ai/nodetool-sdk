@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Openai;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class Transcribe
@@ -33,7 +33,6 @@ public class Transcribe
 
     public TranscribeOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new TranscribeOutput();
     }
 }

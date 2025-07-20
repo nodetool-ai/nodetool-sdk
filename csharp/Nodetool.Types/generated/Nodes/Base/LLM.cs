@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Llms;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class LLM
@@ -41,7 +41,6 @@ public class LLM
 
     public LLMOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new LLMOutput();
     }
 }

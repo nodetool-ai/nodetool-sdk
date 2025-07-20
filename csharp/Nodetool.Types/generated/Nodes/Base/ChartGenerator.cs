@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Generators;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class ChartGenerator
@@ -18,7 +18,6 @@ public class ChartGenerator
 
     public Nodetool.Types.PlotlyConfig Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.PlotlyConfig);
     }
 }

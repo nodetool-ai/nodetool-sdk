@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.List;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class Append
@@ -14,7 +14,6 @@ public class Append
 
     public object Process()
     {
-        // Implementation would be generated based on node logic
         return default(object);
     }
 }

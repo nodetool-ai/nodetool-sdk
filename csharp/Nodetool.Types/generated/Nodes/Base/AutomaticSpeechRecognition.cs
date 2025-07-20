@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.HuggingfaceHub;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class AutomaticSpeechRecognition
@@ -23,7 +23,6 @@ public class AutomaticSpeechRecognition
 
     public AutomaticSpeechRecognitionOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new AutomaticSpeechRecognitionOutput();
     }
 }

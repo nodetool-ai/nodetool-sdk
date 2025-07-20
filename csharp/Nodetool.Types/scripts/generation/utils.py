@@ -95,27 +95,27 @@ def default_value_to_csharp(value: Any) -> str | None:
 
 def get_package_name(raw_name: str) -> str:
     """Convert raw package name to proper C# namespace name."""
-    # First clean up any module path format
-    name = raw_name.lower()
+    name = raw_name.lower().replace(".", "_")
 
-    # Handle module paths (e.g., nodetool.types.nodes.huggingface)
-    if '.' in name:
-        parts = name.split('.')
-        # Find the relevant package part (usually after nodetool. or before .nodes)
-        for part in parts:
-            if part not in ['nodetool', 'types', 'nodes']:
-                name = part
-                break
+    if name.startswith("nodetool-"):
+        name = name[len("nodetool-"):]
+    elif name.startswith("nodetool_"):
+        name = name[len("nodetool_"):]
 
-    # Remove nodetool prefix if present
-    if name.startswith("nodetool-") or name.startswith("nodetool_"):
-        name = name[9:]
+    # Handle lib packages as a special case e.g. lib-audio -> Lib.Audio, libaudio -> Lib.Audio
+    if name.startswith("lib"):
+        lib_content = ""
+        if name.startswith("lib-"):
+            lib_content = name[len("lib-"):]
+        elif name.startswith("lib_"):
+            lib_content = name[len("lib_"):]
+        else:  # for cases like 'libaudio'
+            lib_content = name[len("lib"):]
 
-    # Special case for libaudio -> Lib.Audio
-    if any(name.replace("-", "_").replace(".", "_") == variant.replace("-", "_").replace(".", "_")
-           for variant in ['libaudio', 'lib_audio', 'lib-audio', 'lib.audio']):
-        return 'Lib.Audio'
+        if lib_content:
+            # convert to PascalCase and prepend Lib.
+            pascal_name = "".join(part.capitalize() for part in lib_content.replace("-", "_").split("_"))
+            return f"Lib.{pascal_name}"
 
-    # Convert to PascalCase
-    parts = name.replace("-", "_").split("_")
-    return "".join(part.capitalize() for part in parts) 
+    # for other packages, just PascalCase
+    return "".join(part.capitalize() for part in name.replace("-", "_").split("_")) 

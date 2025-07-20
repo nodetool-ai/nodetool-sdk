@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Audio;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class LoadAudioAssets
@@ -21,7 +21,6 @@ public class LoadAudioAssets
 
     public LoadAudioAssetsOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new LoadAudioAssetsOutput();
     }
 }

@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Lib;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class RelativePath
@@ -14,7 +14,6 @@ public class RelativePath
 
     public Nodetool.Types.FilePath Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.FilePath);
     }
 }

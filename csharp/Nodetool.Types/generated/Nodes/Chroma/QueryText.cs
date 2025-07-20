@@ -29,7 +29,6 @@ public class QueryText
 
     public QueryTextOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new QueryTextOutput();
     }
 }

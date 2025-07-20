@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Generators;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class DataStreamer
@@ -20,7 +20,6 @@ public class DataStreamer
 
     public object Process()
     {
-        // Implementation would be generated based on node logic
         return default(object);
     }
 }

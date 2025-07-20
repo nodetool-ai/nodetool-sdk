@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Llms;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class LLMStreaming
@@ -39,7 +39,6 @@ public class LLMStreaming
 
     public LLMStreamingOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new LLMStreamingOutput();
     }
 }

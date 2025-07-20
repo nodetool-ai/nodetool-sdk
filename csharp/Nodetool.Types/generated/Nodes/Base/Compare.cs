@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Boolean;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class Compare
@@ -16,7 +16,6 @@ public class Compare
 
     public bool Process()
     {
-        // Implementation would be generated based on node logic
         return default(bool);
     }
 }

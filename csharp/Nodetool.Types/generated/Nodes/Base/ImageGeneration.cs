@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Google;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class ImageGeneration
@@ -12,7 +12,6 @@ public class ImageGeneration
 
     public Nodetool.Types.ImageRef Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.ImageRef);
     }
 }

@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Text;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class LoadTextAssets
@@ -21,7 +21,6 @@ public class LoadTextAssets
 
     public LoadTextAssetsOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new LoadTextAssetsOutput();
     }
 }

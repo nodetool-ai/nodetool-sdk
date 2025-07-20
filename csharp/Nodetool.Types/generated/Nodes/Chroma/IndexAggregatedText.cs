@@ -24,6 +24,5 @@ public class IndexAggregatedText
 
     public void Process()
     {
-        // Implementation would be generated based on node logic
     }
 }

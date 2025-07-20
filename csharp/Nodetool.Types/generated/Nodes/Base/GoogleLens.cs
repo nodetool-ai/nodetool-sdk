@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Search;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class GoogleLens
@@ -23,7 +23,6 @@ public class GoogleLens
 
     public GoogleLensOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new GoogleLensOutput();
     }
 }

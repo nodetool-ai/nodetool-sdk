@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Chroma;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class QueryImage
@@ -29,7 +29,6 @@ public class QueryImage
 
     public QueryImageOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new QueryImageOutput();
     }
 }

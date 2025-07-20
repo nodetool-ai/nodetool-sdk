@@ -39,7 +39,6 @@ public class Whisper
 
     public WhisperOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new WhisperOutput();
     }
 }

@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Chroma;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class IndexString
@@ -18,6 +18,5 @@ public class IndexString
 
     public void Process()
     {
-        // Implementation would be generated based on node logic
     }
 }

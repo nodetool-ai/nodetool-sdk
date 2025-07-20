@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Lib;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class Compress
@@ -14,7 +14,6 @@ public class Compress
 
     public byte[] Process()
     {
-        // Implementation would be generated based on node logic
         return default(byte[]);
     }
 }

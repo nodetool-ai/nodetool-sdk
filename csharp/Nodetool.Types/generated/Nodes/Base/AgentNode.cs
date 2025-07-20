@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Agents;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class AgentNode
@@ -26,7 +26,6 @@ public class AgentNode
 
     public string Process()
     {
-        // Implementation would be generated based on node logic
         return default(string);
     }
 }

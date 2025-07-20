@@ -12,7 +12,6 @@ public class BriaBackgroundRemove
 
     public Nodetool.Types.ImageRef Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.ImageRef);
     }
 }

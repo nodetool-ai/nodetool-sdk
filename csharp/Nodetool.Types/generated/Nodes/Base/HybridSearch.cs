@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Chroma;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class HybridSearch
@@ -35,7 +35,6 @@ public class HybridSearch
 
     public HybridSearchOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new HybridSearchOutput();
     }
 }

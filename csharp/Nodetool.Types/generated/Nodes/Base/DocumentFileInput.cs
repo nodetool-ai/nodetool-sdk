@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Input;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class DocumentFileInput
@@ -25,7 +25,6 @@ public class DocumentFileInput
 
     public DocumentFileInputOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new DocumentFileInputOutput();
     }
 }

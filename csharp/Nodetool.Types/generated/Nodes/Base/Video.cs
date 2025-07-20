@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Constant;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class Video
@@ -12,7 +12,6 @@ public class Video
 
     public Nodetool.Types.VideoRef Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.VideoRef);
     }
 }

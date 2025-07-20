@@ -14,7 +14,6 @@ public class SentenceSimilarity
 
     public Nodetool.Types.NPArray Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.NPArray);
     }
 }

@@ -22,7 +22,6 @@ public class StableVideoDiffusion
 
     public Nodetool.Types.VideoRef Process()
     {
-        // Implementation would be generated based on node logic
         return default(Nodetool.Types.VideoRef);
     }
 }

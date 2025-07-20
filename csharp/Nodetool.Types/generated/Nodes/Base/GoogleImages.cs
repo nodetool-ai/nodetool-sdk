@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Search;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class GoogleImages
@@ -25,7 +25,6 @@ public class GoogleImages
 
     public GoogleImagesOutput Process()
     {
-        // Implementation would be generated based on node logic
         return new GoogleImagesOutput();
     }
 }

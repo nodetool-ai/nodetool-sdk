@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Chroma;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class GetDocuments
@@ -18,7 +18,6 @@ public class GetDocuments
 
     public object Process()
     {
-        // Implementation would be generated based on node logic
         return default(object);
     }
 }

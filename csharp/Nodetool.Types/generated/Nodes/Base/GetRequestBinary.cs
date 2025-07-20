@@ -2,7 +2,7 @@ using MessagePack;
 using System.Collections.Generic;
 using Nodetool.Types;
 
-namespace Nodetool.Nodes.Lib;
+namespace Nodetool.Nodes.Base;
 
 [MessagePackObject]
 public class GetRequestBinary
@@ -12,7 +12,6 @@ public class GetRequestBinary
 
     public byte[] Process()
     {
-        // Implementation would be generated based on node logic
         return default(byte[]);
     }
 }
