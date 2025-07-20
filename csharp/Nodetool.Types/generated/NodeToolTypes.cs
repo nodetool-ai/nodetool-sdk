@@ -21,8 +21,8 @@ namespace Nodetool;
 ///    using Nodetool.Types;
 ///    using Nodetool.Nodes;
 ///    
-///    var audio = new Core.AudioRef();
-///    var classifier = new Huggingface.AudioClassifier();
+    var audio = new Core.AudioRef();
+    var classifier = new Huggingface.AudioClassifier();
 ///    
 /// 3. MessagePack Serialization:
 ///    var data = MessagePackSerializer.Serialize(obj);
@@ -43,8 +43,8 @@ public static class NodeToolTypes
             if (isInitialized) return;
 
             // Register types from all packages
+            Nodes.Base.RegisterTypes();
             Types.Core.RegisterTypes();
-            Types.Huggingface.RegisterTypes();
             Nodes.Core.RegisterTypes();
             Nodes.Huggingface.RegisterTypes();
 
