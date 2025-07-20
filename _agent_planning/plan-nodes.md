@@ -1,5 +1,7 @@
 # Plan: Nodetool Node-Based VL/vvvv Integration (Refined)
 
+> **✅ STATUS**: Most of this plan has been **completed**. Node discovery, VL integration, and hierarchical categories are working. For execution, see `node-execution-plan.md` and `workflow-execution-plan.md` for WebSocket-based implementation.
+
 ## Overview
 
 Create a new system that reads individual node metadata from Nodetool's API and generates corresponding VL/vvvv nodes with hierarchical namespace-based categories and trigger-based execution.
