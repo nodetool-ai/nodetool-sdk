@@ -74,12 +74,12 @@ namespace Nodetool.Types;
 public static class {pkg_name}
 {{
     // Type definitions
-{chr(10).join(f'    [MessagePackObject] public class {cls.__name__} {{ ... }}' for cls in classes)}
+{chr(10).join(f'    [MessagePackObject] public class {cls.__name__} {{ ... }}' for cls in sorted(classes, key=lambda c: c.__name__))}
 
     // Register types with MessagePack
     internal static void RegisterTypes()
     {{
-{chr(10).join(f'        NodeToolTypes.KnownTypes.Add(typeof({cls.__name__}));' for cls in classes)}
+{chr(10).join(f'        NodeToolTypes.KnownTypes.Add(typeof({cls.__name__}));' for cls in sorted(classes, key=lambda c: c.__name__))}
     }}
 }}
 """)
@@ -139,12 +139,12 @@ namespace Nodetool.Nodes;
 public static class {pkg_name}
 {{
     // Node definitions
-{chr(10).join(f'    [MessagePackObject] public class {node_cls.__name__} {{ ... }}' for node_cls in nodes)}
+{chr(10).join(f'    [MessagePackObject] public class {node_cls.__name__} {{ ... }}' for node_cls in sorted(nodes, key=lambda n: n.__name__))}
 
     // Register types with MessagePack
     internal static void RegisterTypes()
     {{
-{chr(10).join(f'        NodeToolTypes.KnownTypes.Add(typeof({node_cls.__name__}));' for node_cls in nodes)}
+{chr(10).join(f'        NodeToolTypes.KnownTypes.Add(typeof({node_cls.__name__}));' for node_cls in sorted(nodes, key=lambda n: n.__name__))}
     }}
 }}
 """)

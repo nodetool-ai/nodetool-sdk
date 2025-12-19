@@ -30,7 +30,7 @@ def generate_class_source(cls: type[BaseType], namespace: str) -> str:
     index = 0
     # Use model_fields for pydantic v2
     fields = getattr(cls, 'model_fields', {})
-    for name, field in fields.items():
+    for name, field in sorted(fields.items()):
         csharp_type = python_type_to_csharp(field.annotation)
         default = default_value_to_csharp(field.default)
         lines.append(f"    [Key({index})]")
@@ -68,7 +68,7 @@ def generate_node_class_source(node_cls: type[BaseNode], package_name: str) -> s
         index = 0
         
         # Add input properties
-        for prop in metadata.properties:
+        for prop in sorted(metadata.properties, key=lambda p: p.name):
             python_type = prop.type.get_python_type()
             csharp_type = python_type_to_csharp(python_type)
             default = default_value_to_csharp(prop.default)
@@ -91,7 +91,7 @@ def generate_node_class_source(node_cls: type[BaseNode], package_name: str) -> s
             ])
             
             output_index = 0
-            for output in metadata.outputs:
+            for output in sorted(metadata.outputs, key=lambda o: o.name):
                 python_type = output.type.get_python_type()
                 output_type = python_type_to_csharp(python_type)
                 lines.append(f"        [Key({output_index})]")
@@ -161,7 +161,7 @@ def generate_fallback_node_class(node_cls: type[BaseNode], package_name: str) ->
     ]
     
     index = 0
-    for name, field in node_cls.model_fields.items():
+    for name, field in sorted(node_cls.model_fields.items()):
         if name.startswith("_"):  # Skip private fields
             continue
         csharp_type = python_type_to_csharp(field.annotation)
