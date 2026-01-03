@@ -227,18 +227,23 @@ public class AssetManager : IAssetManager
         return targetPath;
     }
 
+    // Placeholder URI for data URI parsing
+    private const string DataUriPlaceholder = "http://data.local/placeholder";
+
     private static string GetCacheKey(string uri)
     {
         using var sha = SHA256.Create();
         var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(uri));
-        return Convert.ToHexString(hash).Substring(0, 16).ToLowerInvariant();
+        // Take first 8 bytes for a shorter cache key
+        return Convert.ToHexString(hash.AsSpan(0, 8)).ToLowerInvariant();
     }
 
     private static string GetExtensionFromUri(string uri)
     {
         try
         {
-            var uriObj = new Uri(uri.StartsWith("data:") ? "http://localhost/file" : uri);
+            // Data URIs don't have a path, use placeholder for parsing
+            var uriObj = new Uri(uri.StartsWith("data:") ? DataUriPlaceholder : uri);
             var path = uriObj.AbsolutePath;
             var ext = Path.GetExtension(path);
             if (!string.IsNullOrEmpty(ext))

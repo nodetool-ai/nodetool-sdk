@@ -288,8 +288,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
                             var jobIdToRemove = jobUpdate.job_id;
                             _ = Task.Delay(TimeSpan.FromMinutes(5)).ContinueWith(t =>
                             {
-                                ExecutionSession? removed;
-                                _sessions.TryRemove(jobIdToRemove, out removed);
+                                _sessions.TryRemove(jobIdToRemove, out var removed);
                             });
                         }
                     }

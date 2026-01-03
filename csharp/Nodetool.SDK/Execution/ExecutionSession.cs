@@ -70,12 +70,21 @@ public class ExecutionSession : IExecutionSession
                 if (value is T typedValue)
                     return typedValue;
 
+                if (value == null)
+                    return default;
+
                 try
                 {
                     return (T?)Convert.ChangeType(value, typeof(T));
                 }
-                catch
+                catch (InvalidCastException)
                 {
+                    // Type cannot be converted directly
+                    return default;
+                }
+                catch (FormatException)
+                {
+                    // Value format doesn't match expected type
                     return default;
                 }
             }
