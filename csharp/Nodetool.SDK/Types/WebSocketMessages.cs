@@ -212,4 +212,139 @@ public class ProgressUpdate
 
     [Key(6)]
     public int? current_step { get; set; } = null;
-} 
+}
+
+/// <summary>
+/// NodeProgress message from the server indicating node execution progress.
+/// </summary>
+[MessagePackObject]
+public class NodeProgress
+{
+    [Key(0)]
+    public string type { get; set; } = "node_progress";
+
+    [Key(1)]
+    public string node_id { get; set; } = "";
+
+    [Key(2)]
+    public int progress { get; set; } = 0;
+
+    [Key(3)]
+    public int total { get; set; } = 100;
+
+    [Key(4)]
+    public string chunk { get; set; } = "";
+}
+
+/// <summary>
+/// Graph structure for workflow execution.
+/// </summary>
+[MessagePackObject]
+public class Graph
+{
+    [Key(0)]
+    public List<GraphNode> nodes { get; set; } = new();
+
+    [Key(1)]
+    public List<GraphEdge> edges { get; set; } = new();
+}
+
+/// <summary>
+/// Node in a workflow graph.
+/// </summary>
+[MessagePackObject]
+public class GraphNode
+{
+    [Key(0)]
+    public string id { get; set; } = "";
+
+    [Key(1)]
+    public string type { get; set; } = "";
+
+    [Key(2)]
+    public Dictionary<string, object> data { get; set; } = new();
+
+    [Key(3)]
+    public string? parent_id { get; set; } = null;
+
+    [Key(4)]
+    public Dictionary<string, object> ui_properties { get; set; } = new();
+
+    [Key(5)]
+    public Dictionary<string, object> dynamic_properties { get; set; } = new();
+
+    [Key(6)]
+    public string sync_mode { get; set; } = "on_any";
+}
+
+/// <summary>
+/// Edge connecting two nodes in a workflow graph.
+/// </summary>
+[MessagePackObject]
+public class GraphEdge
+{
+    [Key(0)]
+    public string? id { get; set; } = null;
+
+    [Key(1)]
+    public string source { get; set; } = "";
+
+    [Key(2)]
+    public string sourceHandle { get; set; } = "";
+
+    [Key(3)]
+    public string target { get; set; } = "";
+
+    [Key(4)]
+    public string targetHandle { get; set; } = "";
+}
+
+/// <summary>
+/// Run job request sent to the server.
+/// </summary>
+[MessagePackObject]
+public class RunJobRequest
+{
+    [Key(0)]
+    public string type { get; set; } = "run_job_request";
+
+    [Key(1)]
+    public string job_type { get; set; } = "workflow";
+
+    [Key(2)]
+    public string workflow_id { get; set; } = "";
+
+    [Key(3)]
+    public Graph? graph { get; set; } = null;
+
+    [Key(4)]
+    public Dictionary<string, object>? parameters { get; set; } = null;
+
+    [Key(5)]
+    public string user_id { get; set; } = "";
+
+    [Key(6)]
+    public string auth_token { get; set; } = "";
+
+    [Key(7)]
+    public string execution_strategy { get; set; } = "threaded";
+
+    [Key(8)]
+    public bool explicit_types { get; set; } = false;
+
+    [Key(9)]
+    public string job_id { get; set; } = "";
+}
+
+/// <summary>
+/// WebSocket command wrapper for sending commands to the server.
+/// </summary>
+[MessagePackObject]
+public class WebSocketCommand
+{
+    [Key(0)]
+    public string command { get; set; } = "";
+
+    [Key(1)]
+    public object data { get; set; } = new Dictionary<string, object>();
+}
