@@ -8,3 +8,6 @@ bin/
 
 .vl/
 /lib/
+
+# Agent plans
+__PLANS__/
