@@ -2,16 +2,13 @@
 
 C# SDK for integrating Nodetool AI workflows into any .NET application.
 
-## WORK IN PROGRESS
+## 🌟 Features
 
-## 🌟 Planned Features
-
-- **Universal .NET Support**: currently working on VL integration
-- **Type-Safe API**: Strongly typed models matching Nodetool's Python type system
-- **Automatic Type Mapping**: Converts Nodetool TypeMetadata to C# types
-- **Workflow Execution**: Execute workflows with full input/output typing
-- **Node Execution**: Execute individual nodes programmatically
-- **Asset Management**: Upload, download, and manage assets
+- **WebSocket Communication**: Real-time workflow execution with progress updates
+- **Execution Sessions**: Track job progress and retrieve results asynchronously
+- **Asset Management**: Download/upload assets with local caching
+- **Type-Safe API**: Strongly typed models matching Nodetool's type system
+- **VL/VVVV Integration**: Ready for visual programming environments
 
 ## 🚀 Quick Start
 
@@ -21,11 +18,49 @@ C# SDK for integrating Nodetool AI workflows into any .NET application.
 <PackageReference Include="Nodetool.SDK" Version="0.1.0" />
 ```
 
-### Basic Usage
+### Basic Usage - WebSocket Execution (Recommended)
+
+```csharp
+using Nodetool.SDK.Execution;
+
+// Create execution client
+using var client = new NodeToolExecutionClient("ws://localhost:7777");
+
+// Connect to server
+await client.ConnectAsync();
+
+// Execute a workflow
+var inputs = new Dictionary<string, object>
+{
+    ["prompt"] = "Generate an image of a sunset",
+    ["width"] = 512,
+    ["height"] = 512
+};
+
+var session = await client.ExecuteWorkflowAsync("workflow-id", inputs);
+
+// Monitor progress
+session.ProgressChanged += (progress) => Console.WriteLine($"Progress: {progress:P0}");
+session.OutputReceived += (name, value) => Console.WriteLine($"Output {name}: {value}");
+
+// Wait for completion
+bool success = await session.WaitForCompletionAsync();
+
+if (success)
+{
+    var outputs = session.GetAllOutputs();
+    Console.WriteLine($"Workflow completed with {outputs.Count} outputs");
+}
+else
+{
+    Console.WriteLine($"Workflow failed: {session.ErrorMessage}");
+}
+```
+
+### HTTP API (Synchronous)
 
 ```csharp
 using Nodetool.SDK.Api;
-using Nodetool.SDK.Types.Assets;
 
 // Create and configure the client
 var client = new NodetoolClient();
@@ -35,143 +70,109 @@ client.Configure("http://localhost:8000");
 var nodeTypes = await client.GetNodeTypesAsync();
 Console.WriteLine($"Found {nodeTypes.Count} node types");
 
-// Execute a workflow
+// Execute a workflow (blocking)
 var parameters = new Dictionary<string, object>
 {
-    ["input_text"] = "Hello, world!",
-    ["temperature"] = 0.7
+    ["input_text"] = "Hello, world!"
 };
 
 var result = await client.ExecuteWorkflowAsync("my-workflow-id", parameters);
-Console.WriteLine($"Workflow result: {result}");
+```
 
-// Work with assets
-var imageRef = new ImageRef
+### Asset Management
+
+```csharp
+using Nodetool.SDK.Assets;
+
+// Create asset manager with caching
+var assetManager = new AssetManager();
+
+// Download an asset
+string localPath = await assetManager.DownloadAssetAsync(new AssetRef
 {
-    Uri = "path/to/image.jpg"
-};
+    Type = "image",
+    Uri = "https://api.nodetool.ai/api/assets/abc123/download"
+});
+
+// Check cache
+string? cachedPath = assetManager.GetCachedPath(assetUri);
+
+// Clear cache
+assetManager.ClearCache();
 ```
 
 ## Architecture
 
 ### Core Components
 
-#### Types System
+#### Execution System
+- **`INodeToolExecutionClient`**: Main interface for workflow/node execution
+- **`NodeToolExecutionClient`**: WebSocket-based implementation
+- **`IExecutionSession`**: Track job progress and results
+- **`ExecutionSession`**: Session implementation with events
 
-- **`TypeMetadata`**: Universal type representation (mirrors Python)
-- **`BaseType`**: Base class for all Nodetool types with automatic registration
-- **Asset Types**: `ImageRef`, `AudioRef`, `VideoRef`, `DocumentRef`, etc.
+#### Asset System
+- **`IAssetManager`**: Asset download/upload with caching
+- **`AssetManager`**: Implementation with local file cache
 
-#### API Client
+#### HTTP API
+- **`INodetoolClient`**: HTTP API interface
+- **`NodetoolClient`**: HTTP client implementation
 
-- **`INodetoolClient`**: Main interface for all API operations
-- **`NodetoolClient`**: HTTP client implementation with logging
-- **API Models**: Strongly typed request/response models
+### Message Types
 
-#### Utilities
+The SDK handles these WebSocket message types:
+- `JobUpdate`: Job lifecycle changes (running, completed, failed)
+- `NodeUpdate`: Individual node execution status
+- `NodeProgress`: Progress for long-running nodes
+- `OutputUpdate`: Streaming output values
 
-- **`TypeMapper`**: Converts TypeMetadata to C# types
-- **JSON Serialization**: Custom converters for Nodetool types
+## VL/VVVV Integration
 
-### Type Mapping Examples
-
-```csharp
-// Python TypeMetadata -> C# Type
-TypeMetadata { type: "list", type_args: [{ type: "str" }] }
-=> List<string>
-
-TypeMetadata { type: "union", type_args: [{ type: "str" }, { type: "int" }] }
-=> object
-
-TypeMetadata { type: "image", optional: true }
-=> ImageRef?
-```
-
-## Platform Integration
-
-### VL/vvvv Integration
-
-work in progress
-
-
-## API Reference
-
-### Client Configuration
-
-```csharp
-var client = new NodetoolClient();
-client.Configure("http://localhost:8000", "optional-api-key");
-```
-
-### Node Operations
-
-```csharp
-// Get all node types
-var nodeTypes = await client.GetNodeTypesAsync();
-
-// Execute a node
-var inputs = new Dictionary<string, object> { ["text"] = "Hello" };
-var result = await client.ExecuteNodeAsync("text.GenerateText", inputs);
-```
-
-### Workflow Operations
-
-```csharp
-// List workflows
-var workflows = await client.GetWorkflowsAsync();
-
-// Get workflow details
-var workflow = await client.GetWorkflowAsync("workflow-id");
-
-// Execute workflow
-var params = new Dictionary<string, object> { ["input"] = "value" };
-var result = await client.ExecuteWorkflowAsync("workflow-id", params);
-```
-
-### Asset Management
-
-```csharp
-// Upload asset
-using var fileStream = File.OpenRead("image.jpg");
-var asset = await client.UploadAssetAsync("image.jpg", fileStream);
-
-// Get asset info
-var assetInfo = await client.GetAssetAsync(asset.Id);
-
-// Download asset
-using var downloadStream = await client.DownloadAssetAsync(asset.Id);
-```
+For VL/VVVV Gamma integration, use the `Nodetool.SDK.VL` package which provides:
+- **Connect** node: Establish connection to NodeTool server
+- **ConnectionStatus** node: Monitor connection state
+- Node factory for dynamically created nodes from API metadata
 
 ## Type System
 
-The SDK automatically maps Nodetool's Python type system to C#:
+| Nodetool Type | C# Type           | Description          |
+| ------------- | ----------------- | -------------------- |
+| `str`         | `string`          | Text strings         |
+| `int`         | `int`             | Integers             |
+| `float`       | `float`           | Floating point       |
+| `bool`        | `bool`            | Booleans             |
+| `list`        | `List<object>`    | Lists                |
+| `dict`        | `Dictionary<string, object>` | Dictionaries |
+| `image`       | `ImageRef`        | Image references     |
+| `audio`       | `AudioRef`        | Audio references     |
+| `video`       | `VideoRef`        | Video references     |
 
-| Python Type | C# Type           | Description          |
-| ----------- | ----------------- | -------------------- |
-| `str`       | `string`          | Text strings         |
-| `int`       | `int`             | Integers             |
-| `float`     | `double`          | Floating point       |
-| `bool`      | `bool`            | Booleans             |
-| `list[T]`   | `List<T>`         | Generic lists        |
-| `dict[K,V]` | `Dictionary<K,V>` | Generic dictionaries |
-| `image`     | `ImageRef`        | Image references     |
-| `audio`     | `AudioRef`        | Audio references     |
-| `video`     | `VideoRef`        | Video references     |
+## Configuration
 
+### Connection Settings
 
-## Future Enhancements
+Default WebSocket URL: `ws://localhost:7777/ws`
+Default HTTP URL: `http://localhost:8000`
 
-- **Code Generation**: Automatic C# type generation from Python
-- **WebSocket Support**: Real-time streaming for long-running workflows
-- **Plugin System**: Custom type extensions
-- **Performance Optimizations**: Caching and batching
+Override via constructor or configuration:
+```csharp
+var client = new NodeToolExecutionClient("wss://api.nodetool.ai", "your-api-key");
+```
+
+### Asset Cache
+
+Default cache location: `~/.nodetool/cache/assets/`
+
+Override via constructor:
+```csharp
+var assetManager = new AssetManager("/custom/cache/path");
+```
 
 ## Contributing
 
-This SDK is designed to be the foundation for all .NET integrations with Nodetool. Contributions welcome!
+Contributions welcome! See the main Nodetool repository for guidelines.
 
 ## License
 
-Same as Nodetool project (AGPL-3.0)
-
----
+AGPL-3.0 (same as Nodetool project)
