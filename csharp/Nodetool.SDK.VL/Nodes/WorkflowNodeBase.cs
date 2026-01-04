@@ -372,11 +372,14 @@ namespace Nodetool.SDK.VL.Nodes
                     // Local file path → send bytes directly (no extra asset creation step).
                     if (File.Exists(s))
                     {
+                        Console.WriteLine($"WorkflowNodeBase: Image input '{inputName}' using local file path: {s}");
                         return new Dictionary<string, object?>
                         {
                             ["type"] = "image",
                             ["asset_id"] = null,
-                            ["uri"] = "",
+                            // Important: also set uri to the local path so local servers can read it directly.
+                            // This makes the ref non-empty even if the runtime drops binary payloads in MessagePack.
+                            ["uri"] = s,
                             ["data"] = await File.ReadAllBytesAsync(s, cancellationToken)
                         };
                     }
