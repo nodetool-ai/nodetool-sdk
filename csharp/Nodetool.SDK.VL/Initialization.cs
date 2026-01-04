@@ -32,17 +32,24 @@ namespace Nodetool.SDK.VL
                 DumpLoadedAssemblies();
 
                 Console.WriteLine("Nodetool.SDK.VL: About to register factories...");
+
+                // Register diagnostics first so Connect is always available (even if API calls fail)
+                Console.WriteLine("Nodetool.SDK.VL: Registering DiagnosticsNodeFactory...");
+                appHost?.RegisterNodeFactory("Nodetool",
+                    vlSelfFactory => DiagnosticsNodeFactory.GetFactory(vlSelfFactory)
+                );
+                Console.WriteLine("Nodetool.SDK.VL: DiagnosticsNodeFactory registered");
                 
                 // Register the workflow node factory
                 Console.WriteLine("Nodetool.SDK.VL: Registering WorkflowNodeFactory...");
-                appHost?.RegisterNodeFactory("Nodetool.SDK.VL.Workflows", 
+                appHost?.RegisterNodeFactory("Nodetool.Workflows", 
                     vlSelfFactory => WorkflowNodeFactory.GetFactory(vlSelfFactory)
                 );
                 Console.WriteLine("Nodetool.SDK.VL: WorkflowNodeFactory registered");
                 
                 // Register the individual nodes factory
                 Console.WriteLine("Nodetool.SDK.VL: Registering NodesFactory...");
-                appHost?.RegisterNodeFactory("Nodetool.SDK.VL.Nodes", 
+                appHost?.RegisterNodeFactory("Nodetool.Nodes", 
                     vlSelfFactory => NodesFactory.GetFactory(vlSelfFactory)
                 );
                 Console.WriteLine("Nodetool.SDK.VL: NodesFactory registered");

@@ -35,7 +35,7 @@ public static class NodetoolConstants
     /// </summary>
     public static class Defaults
     {
-        public const string BaseUrl = "http://localhost:8000";
+        public const string BaseUrl = "http://localhost:7777";
         public const int TimeoutSeconds = 30;
         public const string UserAgent = "Nodetool.SDK/1.0";
         public const int CacheValidTimeMinutes = 5;

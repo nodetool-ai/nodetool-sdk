@@ -114,7 +114,7 @@ using Nodetool.SDK.Api;
 
 // Create and configure the client
 var client = new NodetoolClient();
-client.Configure("http://localhost:8000");
+client.Configure("http://localhost:7777");
 
 // Get available node types
 var nodeTypes = await client.GetNodeTypesAsync();

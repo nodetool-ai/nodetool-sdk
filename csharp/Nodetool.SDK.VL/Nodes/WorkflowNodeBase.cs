@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Threading;
 using VL.Core;
 using Nodetool.SDK.Execution;
 using Nodetool.SDK.Values;
@@ -14,6 +16,8 @@ namespace Nodetool.SDK.VL.Nodes
     /// </summary>
     public class WorkflowNodeBase : IVLNode, IDisposable
     {
+        private const int DefaultWorkflowTimeoutSeconds = 300;
+
         private readonly NodeContext _nodeContext;
         private readonly WorkflowDetail _workflow;
         private readonly WorkflowNodeDescription _description;
@@ -115,10 +119,12 @@ namespace Nodetool.SDK.VL.Nodes
                 SetIsRunning(true);
                 SetError("");
 
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(DefaultWorkflowTimeoutSeconds));
+
                 // Ensure connection
                 if (!NodeToolClientProvider.IsConnected)
                 {
-                    var connected = await NodeToolClientProvider.ConnectAsync();
+                    var connected = await NodeToolClientProvider.ConnectAsync(timeoutCts.Token);
                     if (!connected)
                     {
                         throw new InvalidOperationException(NodeToolClientProvider.LastError ?? "Failed to connect to NodeTool server.");
@@ -127,16 +133,35 @@ namespace Nodetool.SDK.VL.Nodes
 
                 var client = NodeToolClientProvider.GetClient();
 
-                // Collect inputs from pins (excluding Trigger)
-                var parameters = new Dictionary<string, object>(StringComparer.Ordinal);
-                foreach (var kvp in _inputPins)
-                {
-                    if (kvp.Key == "Trigger") continue;
-                    parameters[kvp.Key] = kvp.Value.Value ?? "";
-                }
+                // Collect inputs from pins (excluding Trigger) and adapt values based on workflow schema.
+                var parameters = await BuildWorkflowParametersAsync(timeoutCts.Token);
 
                 // Execute by name (requires ApiBaseUrl on the shared client options)
-                var session = await client.ExecuteWorkflowByNameAsync(_workflow.Name, parameters);
+                var session = await client.ExecuteWorkflowByNameAsync(_workflow.Name, parameters, timeoutCts.Token);
+
+                session.ProgressChanged += progress =>
+                {
+                    // Lightweight progress trace (helps diagnose "runs forever")
+                    Console.WriteLine($"WorkflowNodeBase: Workflow '{_workflow.Name}' progress: {progress:P0}");
+                };
+
+                session.NodeUpdated += update =>
+                {
+                    if (!string.IsNullOrWhiteSpace(update.error))
+                    {
+                        Console.WriteLine($"WorkflowNodeBase: Node error in workflow '{_workflow.Name}': {update.error}");
+                        SetError(update.error);
+                    }
+                };
+
+                session.Completed += (success, err) =>
+                {
+                    if (!success)
+                    {
+                        Console.WriteLine($"WorkflowNodeBase: Workflow '{_workflow.Name}' completed with error: {err}");
+                        SetError(err ?? "Workflow failed.");
+                    }
+                };
 
                 session.OutputReceived += update =>
                 {
@@ -149,7 +174,7 @@ namespace Nodetool.SDK.VL.Nodes
                     }
                 };
 
-                var ok = await session.WaitForCompletionAsync();
+                var ok = await session.WaitForCompletionAsync(timeoutCts.Token);
                 if (!ok)
                 {
                     throw new InvalidOperationException(session.ErrorMessage ?? "Workflow execution failed.");
@@ -274,6 +299,16 @@ namespace Nodetool.SDK.VL.Nodes
             // Prefer primitives when possible; fall back to JSON string for complex values.
             if (expectedType == typeof(string))
             {
+                // Common refs (ImageRef/AudioRef/etc) are maps with a 'uri' field.
+                if (value.Kind == NodeToolValueKind.Map)
+                {
+                    var map = value.AsMapOrEmpty();
+                    if (map.TryGetValue("uri", out var uriVal))
+                        return uriVal.AsString() ?? uriVal.ToJsonString();
+                    if (map.TryGetValue("asset_id", out var assetIdVal))
+                        return assetIdVal.AsString() ?? assetIdVal.ToJsonString();
+                }
+
                 return value.AsString() ?? value.ToJsonString();
             }
 
@@ -303,6 +338,84 @@ namespace Nodetool.SDK.VL.Nodes
             }
 
             return ConvertToExpectedType(value.Raw ?? value.AsString() ?? value.ToJsonString(), expectedType);
+        }
+
+        private async Task<Dictionary<string, object>> BuildWorkflowParametersAsync(CancellationToken cancellationToken)
+        {
+            var parameters = new Dictionary<string, object>(StringComparer.Ordinal);
+
+            foreach (var kvp in _inputPins)
+            {
+                if (kvp.Key == "Trigger")
+                    continue;
+
+                var raw = kvp.Value.Value;
+                parameters[kvp.Key] = await ConvertInputValueForWorkflowAsync(kvp.Key, raw, cancellationToken);
+            }
+
+            return parameters;
+        }
+
+        private async Task<object> ConvertInputValueForWorkflowAsync(string inputName, object? rawValue, CancellationToken cancellationToken)
+        {
+            // If we don't have schema, pass through as string for compatibility with TEST_SDK_01.
+            var propDef = _workflow.InputSchema?.Properties != null && _workflow.InputSchema.Properties.TryGetValue(inputName, out var p)
+                ? p
+                : null;
+
+            // Heuristic: if schema indicates an image, accept a local file path and upload it as an asset,
+            // then send an ImageRef-like dict ({type, asset_id, uri, data}) to the workflow params.
+            if (IsImageSchema(propDef))
+            {
+                if (rawValue is string s && !string.IsNullOrWhiteSpace(s))
+                {
+                    // Local file path → send bytes directly (no extra asset creation step).
+                    if (File.Exists(s))
+                    {
+                        return new Dictionary<string, object?>
+                        {
+                            ["type"] = "image",
+                            ["asset_id"] = null,
+                            ["uri"] = "",
+                            ["data"] = await File.ReadAllBytesAsync(s, cancellationToken)
+                        };
+                    }
+
+                    // URL or already a server-side uri
+                    if (Uri.TryCreate(s, UriKind.Absolute, out var uri))
+                    {
+                        return new Dictionary<string, object?>
+                        {
+                            ["type"] = "image",
+                            ["asset_id"] = null,
+                            ["uri"] = uri.ToString(),
+                            ["data"] = null
+                        };
+                    }
+                }
+            }
+
+            return rawValue ?? "";
+        }
+
+        private static bool IsImageSchema(WorkflowPropertyDefinition? prop)
+        {
+            if (prop == null)
+                return false;
+
+            // JSON schema 'format' is the strongest hint
+            if (string.Equals(prop.Format, "image", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // Fallback hints
+            if (string.Equals(prop.Type, "image", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (!string.IsNullOrWhiteSpace(prop.Title) &&
+                prop.Title.Contains("image", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return false;
         }
 
         public void Dispose()

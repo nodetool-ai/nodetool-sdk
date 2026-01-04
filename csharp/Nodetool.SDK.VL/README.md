@@ -44,35 +44,8 @@ If you reference `Nodetool.SDK.VL.csproj` and hit type-load issues, prefer refer
 
 ### 1) Make sure you referenced the right thing
 
-If you only reference **`Nodetool.SDK`** (the plain .NET library), VL will show lots of imported C# types — but you **won’t** get the dynamic VL nodes like **Connect** or the generated workflow nodes.
-
-You must reference **`Nodetool.SDK.VL`** (the VL integration assembly / NuGet).
-
-### If you see `ReflectionTypeLoadException` in vvvv
-
-If vvvv logs an error like:
-
-> Could not load type `Nodetool.SDK.Execution.IExecutionSession` from assembly `Nodetool.SDK ...`
-
-then vvvv is loading a **stale or conflicting** `Nodetool.SDK.dll` that doesn’t match the `Nodetool.SDK.VL` you built.
-
-This commonly happens because:
-
-- **.NET won’t unload assemblies in-process**: if `Nodetool.SDK` was already loaded once (by another reference or previous compile), the new one won’t replace it until you restart vvvv gamma.
-- there are **multiple copies** of `Nodetool.SDK.dll` on disk (NuGet cache, old build output folders, etc.), and vvvv resolves the wrong one first.
-
-Fix:
-
-- Ensure `Nodetool.SDK.VL.dll`, `Nodetool.SDK.dll`, and `Nodetool.Types.dll` come from the **same build**.
-- **Restart vvvv gamma** (important: this clears already-loaded assemblies).
-- Remove older copies of these packages from the NuGet global cache (optional but helps):
-
-  - `%USERPROFILE%\.nuget\packages\nodetool.sdk\`
-  - `%USERPROFILE%\.nuget\packages\nodetool.sdk.vl\`
-  - `%USERPROFILE%\.nuget\packages\nodetool.types\`
-
-- Also clear vvvv gamma’s NuGet cache (if you installed via NuGet inside vvvv gamma):
-  - `%LOCALAPPDATA%\vvvv\gamma\nugets\`
+All dll files from this folder:
+nodetool-sdk\csharp\Nodetool.SDK.VL\bin\Release\net8.0
 
 ### 2) Find the Connect node
 

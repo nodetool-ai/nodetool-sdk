@@ -11,6 +11,25 @@ namespace Nodetool.SDK.VL.Factories;
 internal static class DiagnosticsNodeFactory
 {
     /// <summary>
+    /// Gets a VL node factory that provides the basic diagnostic nodes (Connect, ConnectionStatus).
+    /// This factory is intentionally lightweight and does not call the Nodetool API.
+    /// </summary>
+    public static NodeBuilding.FactoryImpl GetFactory(IVLNodeDescriptionFactory vlSelfFactory)
+    {
+        Console.WriteLine("=== DiagnosticsNodeFactory.GetFactory called ===");
+        Console.WriteLine($"DiagnosticsNodeFactory: vlSelfFactory type: {vlSelfFactory?.GetType().Name ?? "null"}");
+
+        if (vlSelfFactory == null)
+            return NodeBuilding.NewFactoryImpl(ImmutableArray<IVLNodeDescription>.Empty);
+
+        var nodeDescriptions = new List<IVLNodeDescription>();
+        AddDiagnosticsNodes(vlSelfFactory, nodeDescriptions);
+
+        Console.WriteLine($"DiagnosticsNodeFactory: Creating factory with {nodeDescriptions.Count} node descriptions...");
+        return NodeBuilding.NewFactoryImpl(ImmutableArray.CreateRange(nodeDescriptions));
+    }
+
+    /// <summary>
     /// Creates the Connect node description.
     /// </summary>
     public static IVLNodeDescription? CreateConnectNode(IVLNodeDescriptionFactory vlSelfFactory)
@@ -58,8 +77,8 @@ internal static class DiagnosticsNodeFactory
                                     if (!string.IsNullOrEmpty(val) && val != lastUrl)
                                     {
                                         lastUrl = val;
-                                        // Create/update client with new URL
-                                        _ = NodeToolClientProvider.GetClient(val, lastApiKey);
+                                        // Update config (do not create client here)
+                                        NodeToolClientProvider.Configure(lastUrl, lastApiKey, disposeExistingClient: true);
                                     }
                                 }),
                                 ibc.Input<string>(val =>
@@ -69,11 +88,8 @@ internal static class DiagnosticsNodeFactory
                                     {
                                         lastApiKey = val ?? "";
 
-                                        // Recreate client when API key changes too (not only when URL changes)
                                         if (!string.IsNullOrEmpty(lastUrl))
-                                        {
-                                            _ = NodeToolClientProvider.GetClient(lastUrl, lastApiKey);
-                                        }
+                                            NodeToolClientProvider.Configure(lastUrl, lastApiKey, disposeExistingClient: true);
                                     }
                                 }),
                                 ibc.Input<bool>(val =>

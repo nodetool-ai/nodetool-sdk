@@ -14,6 +14,7 @@ public static class NodeToolClientProvider
     private static string _currentUrl = "ws://localhost:7777";
     private static string? _currentApiKey;
     private static Uri? _currentApiBaseUrl;
+    private static readonly INodeToolExecutionClient _nullClient = new NullNodeToolExecutionClient();
 
     /// <summary>
     /// Current connection status.
@@ -42,6 +43,12 @@ public static class NodeToolClientProvider
     public static Uri? CurrentApiBaseUrl => _currentApiBaseUrl;
 
     /// <summary>
+    /// Current auth token / API key configured via the Connect node (if any).
+    /// Used for HTTP requests (assets/workflow discovery) and WS payload auth token.
+    /// </summary>
+    public static string? CurrentAuthToken => _currentApiKey;
+
+    /// <summary>
     /// Event raised when connection status changes.
     /// </summary>
     public static event Action<string>? StatusChanged;
@@ -59,15 +66,69 @@ public static class NodeToolClientProvider
             var url = serverUrl ?? _currentUrl;
             var key = apiKey ?? _currentApiKey;
 
-            // If client doesn't exist or connection settings changed, create new client
-            if (_client == null || url != _currentUrl || key != _currentApiKey)
+            // If settings changed, dispose current client but DO NOT eagerly create a new one here.
+            // This is important for VL: default value injection should never fail node instantiation.
+            if (url != _currentUrl || key != _currentApiKey)
             {
-                _client?.Dispose();
-                
-                _currentUrl = url;
-                _currentApiKey = key;
+                Configure(url, key, disposeExistingClient: true);
+            }
 
-                var workerUri = new Uri(url);
+            return _client ?? _nullClient;
+        }
+    }
+
+    /// <summary>
+    /// Updates the connection configuration without forcing client creation.
+    /// Safe to call during VL default value injection.
+    /// </summary>
+    public static void Configure(string serverUrl, string? apiKey, bool disposeExistingClient = true)
+    {
+        lock (_lock)
+        {
+            if (disposeExistingClient && _client != null)
+            {
+                try
+                {
+                    _client.ConnectionStatusChanged -= OnClientStatusChanged;
+                    _client.Dispose();
+                }
+                catch
+                {
+                    // ignore dispose errors
+                }
+                _client = null;
+            }
+
+            _currentUrl = serverUrl;
+            _currentApiKey = apiKey;
+
+            try
+            {
+                var workerUri = new Uri(serverUrl);
+                _currentApiBaseUrl = TryDeriveApiBaseUrl(workerUri);
+                Status = "disconnected";
+                LastError = null;
+            }
+            catch (Exception ex)
+            {
+                Status = "error";
+                LastError = $"Invalid URL: {ex.Message}";
+            }
+
+            StatusChanged?.Invoke(Status);
+        }
+    }
+
+    private static INodeToolExecutionClient EnsureClientCreated()
+    {
+        lock (_lock)
+        {
+            if (_client != null)
+                return _client;
+
+            try
+            {
+                var workerUri = new Uri(_currentUrl);
                 var apiBaseUrl = TryDeriveApiBaseUrl(workerUri);
                 _currentApiBaseUrl = apiBaseUrl;
 
@@ -75,18 +136,25 @@ public static class NodeToolClientProvider
                 {
                     WorkerWebSocketUrl = workerUri,
                     ApiBaseUrl = apiBaseUrl,
-                    AuthToken = key,
+                    AuthToken = _currentApiKey,
                 };
 
                 // Pass apiKey separately too (some deployments expect Bearer on HTTP; WS payload uses AuthToken).
-                _client = new NodeToolExecutionClient(options, apiKey: key);
+                _client = new NodeToolExecutionClient(options, apiKey: _currentApiKey);
                 _client.ConnectionStatusChanged += OnClientStatusChanged;
-                
-                Status = "disconnected";
-                StatusChanged?.Invoke(Status);
-            }
 
-            return _client;
+                Status = "disconnected";
+                LastError = null;
+                StatusChanged?.Invoke(Status);
+                return _client;
+            }
+            catch (Exception ex)
+            {
+                Status = "error";
+                LastError = $"Failed to create client: {ex.Message}";
+                StatusChanged?.Invoke(Status);
+                return _nullClient;
+            }
         }
     }
 
@@ -96,7 +164,7 @@ public static class NodeToolClientProvider
     /// <returns>True if connected successfully.</returns>
     public static async Task<bool> ConnectAsync(CancellationToken cancellationToken = default)
     {
-        var client = GetClient();
+        var client = EnsureClientCreated();
         var result = await client.ConnectAsync(cancellationToken);
         
         if (result)
@@ -119,12 +187,13 @@ public static class NodeToolClientProvider
     /// </summary>
     public static async Task DisconnectAsync()
     {
-        if (_client != null)
-        {
-            await _client.DisconnectAsync();
-            Status = "disconnected";
-            StatusChanged?.Invoke(Status);
-        }
+        var client = _client;
+        if (client == null)
+            return;
+
+        await client.DisconnectAsync();
+        Status = "disconnected";
+        StatusChanged?.Invoke(Status);
     }
 
     /// <summary>
@@ -186,5 +255,41 @@ public static class NodeToolClientProvider
         };
 
         return builder.Uri;
+    }
+
+    private sealed class NullNodeToolExecutionClient : INodeToolExecutionClient
+    {
+        public bool IsConnected => false;
+        public string ConnectionStatus => "disconnected";
+        public string? LastError => NodeToolClientProvider.LastError;
+        public event Action<string>? ConnectionStatusChanged;
+
+        public Task<bool> ConnectAsync(CancellationToken cancellationToken = default)
+        {
+            ConnectionStatusChanged?.Invoke(ConnectionStatus);
+            return Task.FromResult(false);
+        }
+
+        public Task DisconnectAsync() => Task.CompletedTask;
+
+        public Task<IExecutionSession> ExecuteWorkflowAsync(string workflowId, Dictionary<string, object>? inputs = null, CancellationToken cancellationToken = default)
+            => Task.FromException<IExecutionSession>(new InvalidOperationException("Not connected."));
+
+        public Task<IExecutionSession> ExecuteWorkflowByNameAsync(string workflowName, Dictionary<string, object>? inputs = null, CancellationToken cancellationToken = default)
+            => Task.FromException<IExecutionSession>(new InvalidOperationException("Not connected."));
+
+        public Task<IExecutionSession> ExecuteWorkflowByNameAsync(string workflowName, string inputName, object? inputValue, CancellationToken cancellationToken = default)
+            => Task.FromException<IExecutionSession>(new InvalidOperationException("Not connected."));
+
+        public Task<IExecutionSession> ExecuteWorkflowByNameAsync(string workflowName, CancellationToken cancellationToken = default, params (string Name, object? Value)[] inputs)
+            => Task.FromException<IExecutionSession>(new InvalidOperationException("Not connected."));
+
+        public Task<IExecutionSession> ExecuteGraphAsync(Nodetool.SDK.Types.Graph graph, Dictionary<string, object>? inputs = null, CancellationToken cancellationToken = default)
+            => Task.FromException<IExecutionSession>(new InvalidOperationException("Not connected."));
+
+        public Task<IExecutionSession> ExecuteNodeAsync(string nodeType, Dictionary<string, object>? inputs = null, CancellationToken cancellationToken = default)
+            => Task.FromException<IExecutionSession>(new InvalidOperationException("Not connected."));
+
+        public void Dispose() { }
     }
 }

@@ -228,17 +228,8 @@ namespace Nodetool.SDK.VL.Factories
                         Console.WriteLine($"NodesFactory: Status node stack trace: {ex.StackTrace}");
                     }
 
-                    // Add connection and diagnostics nodes
-                    Console.WriteLine("NodesFactory: Adding diagnostic nodes...");
-                    try
-                    {
-                        DiagnosticsNodeFactory.AddDiagnosticsNodes(vlSelfFactory, allDescriptions);
-                        Console.WriteLine("NodesFactory: Diagnostic nodes added successfully");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"NodesFactory: Error adding diagnostic nodes: {ex.Message}");
-                    }
+                    // Note: diagnostics nodes (Connect/ConnectionStatus) are provided by DiagnosticsNodeFactory.
+                    // Avoid duplicating them here to prevent duplicate node descriptions under the same category/name.
 
                     Console.WriteLine($"NodesFactory: Creating factory with {allDescriptions.Count} node descriptions...");
                     _factoryImpl = NodeBuilding.NewFactoryImpl(ImmutableArray.CreateRange(allDescriptions));
