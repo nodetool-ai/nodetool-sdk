@@ -7,7 +7,8 @@ namespace Nodetool.SDK.Execution;
 /// </summary>
 public class ExecutionSession : IExecutionSession
 {
-    private readonly string _jobId;
+    private string _jobId;
+    private readonly string? _workflowId;
     private readonly TaskCompletionSource<bool> _completionSource;
     private readonly Dictionary<string, object?> _outputs;
     private readonly object _lock = new();
@@ -17,9 +18,10 @@ public class ExecutionSession : IExecutionSession
     /// Creates a new execution session.
     /// </summary>
     /// <param name="jobId">The job identifier for this session.</param>
-    public ExecutionSession(string jobId)
+    public ExecutionSession(string jobId, string? workflowId = null)
     {
         _jobId = jobId;
+        _workflowId = workflowId;
         _completionSource = new TaskCompletionSource<bool>();
         _outputs = new Dictionary<string, object?>();
         CurrentStatus = "pending";
@@ -27,6 +29,18 @@ public class ExecutionSession : IExecutionSession
 
     /// <inheritdoc/>
     public string JobId => _jobId;
+
+    /// <summary>
+    /// Workflow id this session was started for (used before server assigns job_id).
+    /// </summary>
+    public string? WorkflowId => _workflowId;
+
+    internal void SetJobId(string jobId)
+    {
+        if (string.IsNullOrWhiteSpace(jobId))
+            return;
+        _jobId = jobId;
+    }
 
     /// <inheritdoc/>
     public bool IsRunning { get; private set; }
@@ -106,6 +120,8 @@ public class ExecutionSession : IExecutionSession
     {
         if (CancelAction != null)
         {
+            if (string.IsNullOrWhiteSpace(_jobId))
+                return;
             await CancelAction(_jobId, CancellationToken.None);
         }
     }
@@ -133,7 +149,13 @@ public class ExecutionSession : IExecutionSession
     /// </summary>
     internal void ProcessJobUpdate(JobUpdate update)
     {
-        if (update.job_id != _jobId)
+        // If server assigned job_id after we started, accept the first matching update and lock onto it.
+        if (update.job_id != null && string.IsNullOrWhiteSpace(_jobId))
+        {
+            _jobId = update.job_id;
+        }
+
+        if (update.job_id != null && !string.IsNullOrWhiteSpace(_jobId) && update.job_id != _jobId)
             return;
 
         lock (_lock)

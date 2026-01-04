@@ -12,9 +12,9 @@ namespace Nodetool.SDK.Execution;
 public class NodeToolExecutionClient : INodeToolExecutionClient
 {
     private readonly MessagePackWebSocketClient _webSocketClient;
-    private readonly TypeLookupService _typeLookup;
     private readonly ILogger<NodeToolExecutionClient> _logger;
     private readonly ConcurrentDictionary<string, ExecutionSession> _sessions;
+    private readonly ConcurrentDictionary<string, ExecutionSession> _pendingByWorkflowId;
     private readonly Uri _serverUri;
     private readonly string? _apiKey;
     private bool _disposed;
@@ -41,7 +41,6 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     public NodeToolExecutionClient(
         string serverUrl = "ws://localhost:7777",
         string? apiKey = null,
-        TypeLookupService? typeLookup = null,
         ILogger<NodeToolExecutionClient>? logger = null)
     {
         // Ensure we have a WebSocket URL
@@ -59,23 +58,10 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         _apiKey = apiKey;
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<NodeToolExecutionClient>.Instance;
         _sessions = new ConcurrentDictionary<string, ExecutionSession>();
-
-        // Create type lookup service if not provided
-        if (typeLookup == null)
-        {
-            var typeRegistry = new NodeToolTypeRegistry(
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<NodeToolTypeRegistry>.Instance);
-            var enumRegistry = new EnumRegistry(
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<EnumRegistry>.Instance);
-            typeLookup = new TypeLookupService(typeRegistry, enumRegistry,
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<TypeLookupService>.Instance);
-            typeLookup.Initialize();
-        }
-        _typeLookup = typeLookup;
+        _pendingByWorkflowId = new ConcurrentDictionary<string, ExecutionSession>();
 
         // Create WebSocket client
         _webSocketClient = new MessagePackWebSocketClient(
-            _typeLookup,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<MessagePackWebSocketClient>.Instance);
 
         // Subscribe to WebSocket events
@@ -131,18 +117,18 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         Dictionary<string, object>? inputs = null,
         CancellationToken cancellationToken = default)
     {
-        var jobId = Guid.NewGuid().ToString();
-        var session = CreateSession(jobId);
+        // Server assigns job_id; we start a pending session keyed by workflow_id.
+        var session = CreatePendingSession(workflowId);
 
         var command = new WebSocketCommand
         {
             command = "run_job",
             data = new RunJobRequest
             {
-                job_id = jobId,
-                workflow_id = workflowId,
-                parameters = inputs,
-                job_type = "workflow"
+                WorkflowId = workflowId,
+                Params = inputs,
+                JobType = "workflow",
+                ExplicitTypes = true,
             }
         };
 
@@ -151,7 +137,6 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         {
             session.ProcessJobUpdate(new JobUpdate
             {
-                job_id = jobId,
                 status = "failed",
                 error = "Failed to send execution request"
             });
@@ -166,19 +151,18 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         Dictionary<string, object>? inputs = null,
         CancellationToken cancellationToken = default)
     {
-        var jobId = Guid.NewGuid().ToString();
-        var session = CreateSession(jobId);
+        var session = CreatePendingSession(workflowId: ""); // graph jobs have no workflow_id
 
         var command = new WebSocketCommand
         {
             command = "run_job",
             data = new RunJobRequest
             {
-                job_id = jobId,
-                workflow_id = "",
-                graph = graph,
-                parameters = inputs,
-                job_type = "workflow"
+                WorkflowId = "",
+                Graph = graph,
+                Params = inputs,
+                JobType = "workflow",
+                ExplicitTypes = true,
             }
         };
 
@@ -187,7 +171,6 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         {
             session.ProcessJobUpdate(new JobUpdate
             {
-                job_id = jobId,
                 status = "failed",
                 error = "Failed to send execution request"
             });
@@ -202,8 +185,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         Dictionary<string, object>? inputs = null,
         CancellationToken cancellationToken = default)
     {
-        var jobId = Guid.NewGuid().ToString();
-        var session = CreateSession(jobId);
+        var session = CreatePendingSession(workflowId: "");
 
         // Create a simple graph with just this node
         var nodeId = Guid.NewGuid().ToString();
@@ -226,10 +208,10 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             command = "run_job",
             data = new RunJobRequest
             {
-                job_id = jobId,
-                workflow_id = "",
-                graph = graph,
-                job_type = "workflow"
+                WorkflowId = "",
+                Graph = graph,
+                JobType = "workflow",
+                ExplicitTypes = true,
             }
         };
 
@@ -238,7 +220,6 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         {
             session.ProcessJobUpdate(new JobUpdate
             {
-                job_id = jobId,
                 status = "failed",
                 error = "Failed to send execution request"
             });
@@ -271,6 +252,16 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         return session;
     }
 
+    private ExecutionSession CreatePendingSession(string workflowId)
+    {
+        var session = new ExecutionSession(jobId: "", workflowId: workflowId)
+        {
+            CancelAction = CancelJobAsync
+        };
+        _pendingByWorkflowId[workflowId] = session;
+        return session;
+    }
+
     private void OnMessageReceived(object? sender, MessageReceivedEventArgs args)
     {
         try
@@ -278,6 +269,14 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             switch (args.Message)
             {
                 case JobUpdate jobUpdate:
+                    // Bind pending session (workflow_id -> job_id) on first update
+                    if (jobUpdate.job_id != null && jobUpdate.workflow_id != null &&
+                        _pendingByWorkflowId.TryRemove(jobUpdate.workflow_id, out var pending))
+                    {
+                        pending.SetJobId(jobUpdate.job_id);
+                        _sessions[jobUpdate.job_id] = pending;
+                    }
+
                     if (jobUpdate.job_id != null && _sessions.TryGetValue(jobUpdate.job_id, out var session1))
                     {
                         session1.ProcessJobUpdate(jobUpdate);
@@ -317,10 +316,17 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
                     break;
 
                 case OutputUpdate outputUpdate:
-                    // Route to all sessions
-                    foreach (var session in _sessions.Values)
+                    if (outputUpdate.job_id != null && _sessions.TryGetValue(outputUpdate.job_id, out var sessionOut))
                     {
-                        session.ProcessOutputUpdate(outputUpdate);
+                        sessionOut.ProcessOutputUpdate(outputUpdate);
+                    }
+                    else
+                    {
+                        // Fallback: route to all sessions (v0.1 safety)
+                        foreach (var session in _sessions.Values)
+                        {
+                            session.ProcessOutputUpdate(outputUpdate);
+                        }
                     }
                     break;
             }
@@ -356,6 +362,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
                 session.Dispose();
             }
             _sessions.Clear();
+            _pendingByWorkflowId.Clear();
         }
     }
 }
