@@ -1,4 +1,4 @@
-using MessagePack;
+﻿using MessagePack;
 using System.Collections.Generic;
 
 namespace Nodetool.Types.Core;
@@ -13,5 +13,6 @@ public class ObjectDetectionResult
     [Key(2)]
     public double score { get; set; }
     [Key(3)]
-    public Nodetool.Types.BoundingBox box { get; set; }
+    public Nodetool.Types.Core.BoundingBox box { get; set; }
 }
+

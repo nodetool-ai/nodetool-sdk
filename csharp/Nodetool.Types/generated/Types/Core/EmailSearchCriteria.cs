@@ -1,4 +1,4 @@
-using MessagePack;
+﻿using MessagePack;
 using System.Collections.Generic;
 
 namespace Nodetool.Types.Core;
@@ -21,13 +21,15 @@ public class EmailSearchCriteria
     [Key(6)]
     public string? bcc { get; set; } = null;
     [Key(7)]
-    public Nodetool.Types.DateSearchCondition? date_condition { get; set; } = null;
+    public Nodetool.Types.Core.DateSearchCondition? date_condition { get; set; } = null;
     [Key(8)]
-    public List<object> flags { get; set; } = new List<object>();
+    public List<object> flags { get; set; } = new();
     [Key(9)]
-    public List<string> keywords { get; set; } = new List<object>();
+    public List<string> keywords { get; set; } = new();
     [Key(10)]
     public string? folder { get; set; } = null;
     [Key(11)]
     public string? text { get; set; } = null;
 }
+
+

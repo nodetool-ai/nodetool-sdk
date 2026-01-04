@@ -1,4 +1,4 @@
-using MessagePack;
+﻿using MessagePack;
 using System.Collections.Generic;
 
 namespace Nodetool.Types.Core;
@@ -11,9 +11,9 @@ public class CalendarEvent
     [Key(1)]
     public string title { get; set; } = "";
     [Key(2)]
-    public Nodetool.Types.Datetime start_date { get; set; } = new Nodetool.Types.Datetime();
+    public Nodetool.Types.Core.Datetime start_date { get; set; } = new Nodetool.Types.Core.Datetime();
     [Key(3)]
-    public Nodetool.Types.Datetime end_date { get; set; } = new Nodetool.Types.Datetime();
+    public Nodetool.Types.Core.Datetime end_date { get; set; } = new Nodetool.Types.Core.Datetime();
     [Key(4)]
     public string calendar { get; set; } = "";
     [Key(5)]
@@ -21,3 +21,4 @@ public class CalendarEvent
     [Key(6)]
     public string notes { get; set; } = "";
 }
+

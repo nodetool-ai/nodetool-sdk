@@ -1,4 +1,4 @@
-using MessagePack;
+﻿using MessagePack;
 using System.Collections.Generic;
 
 namespace Nodetool.Types.Core;
@@ -15,7 +15,8 @@ public class Email
     [Key(3)]
     public string subject { get; set; } = "";
     [Key(4)]
-    public Nodetool.Types.Datetime date { get; set; } = new Nodetool.Types.Datetime();
+    public Nodetool.Types.Core.Datetime date { get; set; } = new Nodetool.Types.Core.Datetime();
     [Key(5)]
     public object body { get; set; } = "";
 }
+

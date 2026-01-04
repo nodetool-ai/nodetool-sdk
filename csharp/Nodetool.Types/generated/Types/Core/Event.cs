@@ -1,4 +1,4 @@
-using MessagePack;
+﻿using MessagePack;
 using System.Collections.Generic;
 
 namespace Nodetool.Types.Core;
@@ -11,5 +11,6 @@ public class Event
     [Key(1)]
     public string name { get; set; } = "";
     [Key(2)]
-    public Dictionary<string, object> payload { get; set; } = new Dictionary<string, object>();
+    public Dictionary<string, object> payload { get; set; } = new();
 }
+

@@ -21,6 +21,34 @@ _PRIMITIVE_TYPE_MAP = {
     object: "object",
 }
 
+CSHARP_KEYWORDS = {
+    "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char",
+    "checked", "class", "const", "continue", "decimal", "default", "delegate",
+    "do", "double", "else", "enum", "event", "explicit", "extern", "false",
+    "finally", "fixed", "float", "for", "foreach", "goto", "if", "implicit",
+    "in", "int", "interface", "internal", "is", "lock", "long", "namespace",
+    "new", "null", "object", "operator", "out", "override", "params", "private",
+    "protected", "public", "readonly", "ref", "return", "sbyte", "sealed",
+    "short", "sizeof", "stackalloc", "static", "string", "struct", "switch",
+    "this", "throw", "true", "try", "typeof", "uint", "ulong", "unchecked",
+    "unsafe", "ushort", "using", "virtual", "void", "volatile", "while",
+}
+
+def csharp_identifier(name: str) -> str:
+    """
+    Return a C# identifier that compiles (escape keywords with @).
+
+    We intentionally keep the original field name (often snake_case) to
+    preserve wire compatibility for map-keyed formats if/when enabled.
+    """
+    if not name:
+        return "_"
+    if name in CSHARP_KEYWORDS:
+        return f"@{name}"
+    if name[0].isdigit():
+        return "_" + name
+    return name
+
 def python_type_to_csharp(tp: Any) -> str:
     """Convert a Python type annotation to a C# type string."""
     origin = get_origin(tp)
@@ -31,7 +59,8 @@ def python_type_to_csharp(tp: Any) -> str:
             # Handle BaseType subclasses
             try:
                 if issubclass(tp, BaseType):
-                    return f"Nodetool.Types.{tp.__name__}"
+                    # Prefer unqualified names; generated files share a namespace per source.
+                    return tp.__name__
             except TypeError:
                 pass
         # typing.Any or unknown
@@ -86,11 +115,12 @@ def default_value_to_csharp(value: Any) -> str | None:
     if isinstance(value, (int, float)):
         return str(value)
     if isinstance(value, list):
-        return "new List<object>()"
+        # Caller should use target-typed new() when the property is a generic list.
+        return "new()"
     if isinstance(value, dict):
-        return "new Dictionary<string, object>()"
+        return "new()"
     if isinstance(value, BaseType):
-        return f"new Nodetool.Types.{type(value).__name__}()"
+        return f"new {type(value).__name__}()"
     return None
 
 def get_package_name(raw_name: str) -> str:

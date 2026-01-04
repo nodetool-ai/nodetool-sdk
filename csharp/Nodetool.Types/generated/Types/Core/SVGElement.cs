@@ -1,4 +1,4 @@
-using MessagePack;
+﻿using MessagePack;
 using System.Collections.Generic;
 
 namespace Nodetool.Types.Core;
@@ -11,9 +11,11 @@ public class SVGElement
     [Key(1)]
     public string name { get; set; } = "";
     [Key(2)]
-    public Dictionary<string, string> attributes { get; set; } = new Dictionary<string, object>();
+    public Dictionary<string, string> attributes { get; set; } = new();
     [Key(3)]
     public object content { get; set; } = null;
     [Key(4)]
-    public List<Nodetool.Types.SVGElement> children { get; set; }
+    public List<Nodetool.Types.Core.SVGElement> children { get; set; }
 }
+
+

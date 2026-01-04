@@ -2,7 +2,7 @@
 C# code generation functions.
 """
 from typing import List
-from .utils import python_type_to_csharp, default_value_to_csharp, get_package_name
+from .utils import python_type_to_csharp, default_value_to_csharp, get_package_name, csharp_identifier
 
 try:
     from nodetool.metadata.types import BaseType
@@ -31,13 +31,14 @@ def generate_class_source(cls: type[BaseType], namespace: str) -> str:
     # Use model_fields for pydantic v2
     fields = getattr(cls, 'model_fields', {})
     for name, field in sorted(fields.items()):
+        prop_name = csharp_identifier(name)
         csharp_type = python_type_to_csharp(field.annotation)
         default = default_value_to_csharp(field.default)
         lines.append(f"    [Key({index})]")
         if default is not None:
-            lines.append(f"    public {csharp_type} {name} {{ get; set; }} = {default};")
+            lines.append(f"    public {csharp_type} {prop_name} {{ get; set; }} = {default};")
         else:
-            lines.append(f"    public {csharp_type} {name} {{ get; set; }}")
+            lines.append(f"    public {csharp_type} {prop_name} {{ get; set; }}")
         index += 1
     
     lines.append("}")
@@ -72,11 +73,12 @@ def generate_node_class_source(node_cls: type[BaseNode], package_name: str) -> s
             python_type = prop.type.get_python_type()
             csharp_type = python_type_to_csharp(python_type)
             default = default_value_to_csharp(prop.default)
+            prop_name = csharp_identifier(prop.name)
             lines.append(f"    [Key({index})]")
             if default is not None:
-                lines.append(f"    public {csharp_type} {prop.name} {{ get; set; }} = {default};")
+                lines.append(f"    public {csharp_type} {prop_name} {{ get; set; }} = {default};")
             else:
-                lines.append(f"    public {csharp_type} {prop.name} {{ get; set; }}")
+                lines.append(f"    public {csharp_type} {prop_name} {{ get; set; }}")
             index += 1
         
         # Check if we need a return type class for multiple outputs
@@ -94,8 +96,9 @@ def generate_node_class_source(node_cls: type[BaseNode], package_name: str) -> s
             for output in sorted(metadata.outputs, key=lambda o: o.name):
                 python_type = output.type.get_python_type()
                 output_type = python_type_to_csharp(python_type)
+                output_name = csharp_identifier(output.name)
                 lines.append(f"        [Key({output_index})]")
-                lines.append(f"        public {output_type} {output.name} {{ get; set; }}")
+                lines.append(f"        public {output_type} {output_name} {{ get; set; }}")
                 output_index += 1
             
             lines.append("    }")
@@ -164,13 +167,14 @@ def generate_fallback_node_class(node_cls: type[BaseNode], package_name: str) ->
     for name, field in sorted(node_cls.model_fields.items()):
         if name.startswith("_"):  # Skip private fields
             continue
+        prop_name = csharp_identifier(name)
         csharp_type = python_type_to_csharp(field.annotation)
         default = default_value_to_csharp(field.default)
         lines.append(f"    [Key({index})]")
         if default is not None:
-            lines.append(f"    public {csharp_type} {name} {{ get; set; }} = {default};")
+            lines.append(f"    public {csharp_type} {prop_name} {{ get; set; }} = {default};")
         else:
-            lines.append(f"    public {csharp_type} {name} {{ get; set; }}")
+            lines.append(f"    public {csharp_type} {prop_name} {{ get; set; }}")
         index += 1
     
     lines.append("}")

@@ -1,4 +1,4 @@
-using MessagePack;
+﻿using MessagePack;
 using System.Collections.Generic;
 
 namespace Nodetool.Types.Core;
@@ -11,5 +11,6 @@ public class DateSearchCondition
     [Key(1)]
     public object criteria { get; set; }
     [Key(2)]
-    public Nodetool.Types.Datetime date { get; set; }
+    public Nodetool.Types.Core.Datetime date { get; set; }
 }
+

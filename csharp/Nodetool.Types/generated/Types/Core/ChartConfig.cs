@@ -1,4 +1,4 @@
-using MessagePack;
+﻿using MessagePack;
 using System.Collections.Generic;
 
 namespace Nodetool.Types.Core;
@@ -17,7 +17,7 @@ public class ChartConfig
     [Key(4)]
     public bool legend { get; set; } = true;
     [Key(5)]
-    public Nodetool.Types.ChartData data { get; set; } = new Nodetool.Types.ChartData();
+    public Nodetool.Types.Core.ChartData data { get; set; } = new Nodetool.Types.Core.ChartData();
     [Key(6)]
     public object height { get; set; } = null;
     [Key(7)]
@@ -67,3 +67,4 @@ public class ChartConfig
     [Key(29)]
     public bool square { get; set; } = false;
 }
+

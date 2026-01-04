@@ -1,4 +1,4 @@
-using MessagePack;
+﻿using MessagePack;
 using System.Collections.Generic;
 
 namespace Nodetool.Types.Core;
@@ -15,5 +15,7 @@ public class Task
     [Key(3)]
     public string description { get; set; } = "";
     [Key(4)]
-    public List<Nodetool.Types.SubTask> subtasks { get; set; } = new List<object>();
+    public List<Nodetool.Types.Core.SubTask> subtasks { get; set; } = new();
 }
+
+

@@ -1,4 +1,4 @@
-using MessagePack;
+﻿using MessagePack;
 using System.Collections.Generic;
 
 namespace Nodetool.Types.Core;
@@ -13,9 +13,10 @@ public class RSSEntry
     [Key(2)]
     public string link { get; set; } = "";
     [Key(3)]
-    public Nodetool.Types.Datetime published { get; set; } = new Nodetool.Types.Datetime();
+    public Nodetool.Types.Core.Datetime published { get; set; } = new Nodetool.Types.Core.Datetime();
     [Key(4)]
     public string summary { get; set; } = "";
     [Key(5)]
     public string author { get; set; } = "";
 }
+

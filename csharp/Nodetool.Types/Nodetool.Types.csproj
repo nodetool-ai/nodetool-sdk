@@ -27,19 +27,8 @@
   <ItemGroup>
     <Compile Remove="scripts\**\*.cs" />
     <Compile Remove="generated\Types\Core.cs" />
-    <Compile Remove="generated\Types\Core\**\*.cs" />
     <Compile Remove="generated\Nodes\**\*.cs" />
     <Compile Remove="generated\NodeToolTypes.cs" />
-  </ItemGroup>
-
-  <!-- Include only the per-type DTO files (these are valid and used by SDK consumers). -->
-  <ItemGroup>
-    <!-- Minimal v0.1 set (mini-app style media + text refs) -->
-    <Compile Include="generated\Types\Core\ImageRef.cs" />
-    <Compile Include="generated\Types\Core\AudioRef.cs" />
-    <Compile Include="generated\Types\Core\VideoRef.cs" />
-    <Compile Include="generated\Types\Core\DocumentRef.cs" />
-    <Compile Include="generated\Types\Core\TextRef.cs" />
   </ItemGroup>
 
 </Project>
