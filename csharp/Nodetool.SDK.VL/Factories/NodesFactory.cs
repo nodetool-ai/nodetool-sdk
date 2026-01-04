@@ -138,6 +138,9 @@ namespace Nodetool.SDK.VL.Factories
                                     outputPins.Add(bc.Pin("Error", typeof(string), "",
                                         "❌ Error message", 
                                         "Contains error details if execution fails, empty string if successful"));
+                                    outputPins.Add(bc.Pin("Debug", typeof(string), "",
+                                        "🪵 Debug (last updates)",
+                                        "Last few runner updates (progress/node_update/output_update). Useful when results are partial or missing."));
 
                                     // Build comprehensive node documentation
                                     var nodeRemarks = BuildNodeRemarks(nodeMetadata);
@@ -169,7 +172,7 @@ namespace Nodetool.SDK.VL.Factories
                             catch (Exception ex)
                             {
                                 failedToProcessCount++;
-                                Console.WriteLine($"NodesFactory: Error creating NodeDescription for '{nodeMetadata.NodeType}': {ex.Message}");
+                                Console.WriteLine($"NodesFactory: Error creating VL node for '{nodeMetadata.NodeType}': {ex.Message}");
                                 Console.WriteLine($"NodesFactory: Stack trace: {ex.StackTrace}");
                             }
                         }
@@ -532,9 +535,7 @@ namespace Nodetool.SDK.VL.Factories
             var inputCount = nodeMetadata.Properties?.Count ?? 0;
             var outputCount = nodeMetadata.Outputs?.Count ?? 0;
             parts.Add($"📌 {inputCount} inputs, {outputCount} outputs");
-            
-            if (!string.IsNullOrWhiteSpace(nodeMetadata.Description))
-                parts.Add($"Description: {nodeMetadata.Description}");
+            // Don't repeat Description here: vvvv shows Summary + Remarks, and Summary already contains the description/title.
             
             return string.Join("\n", parts);
         }

@@ -33,6 +33,8 @@ namespace Nodetool.SDK.VL.Nodes
         private bool _isRunning = false;
         private readonly Dictionary<string, StringBuilder> _chunkBuffers = new(StringComparer.Ordinal);
         private readonly Dictionary<string, SKImage> _latestImages = new(StringComparer.Ordinal);
+        private readonly Queue<string> _debugLines = new();
+        private const int DebugMaxLines = 30;
 
         public WorkflowNodeBase(NodeContext nodeContext, WorkflowNodeDescription description, WorkflowDetail workflow)
         {
@@ -63,6 +65,32 @@ namespace Nodetool.SDK.VL.Nodes
             // Add standard output pins
             _outputPins["IsRunning"] = new InternalPin("IsRunning", typeof(bool), false);
             _outputPins["Error"] = new InternalPin("Error", typeof(string), "");
+            _outputPins["Debug"] = new InternalPin("Debug", typeof(string), "");
+            _outputPins["InputSchemaJson"] = new InternalPin("InputSchemaJson", typeof(string), "");
+            _outputPins["OutputSchemaJson"] = new InternalPin("OutputSchemaJson", typeof(string), "");
+
+            // Set schema pins once (debug convenience)
+            try
+            {
+                _outputPins["InputSchemaJson"].Value = _workflow.InputSchema == null
+                    ? ""
+                    : JsonSerializer.Serialize(_workflow.InputSchema, new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch
+            {
+                _outputPins["InputSchemaJson"].Value = "<failed to serialize input schema>";
+            }
+
+            try
+            {
+                _outputPins["OutputSchemaJson"].Value = _workflow.OutputSchema == null
+                    ? ""
+                    : JsonSerializer.Serialize(_workflow.OutputSchema, new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch
+            {
+                _outputPins["OutputSchemaJson"].Value = "<failed to serialize output schema>";
+            }
             
             // Add workflow output pins
             foreach (var property in _workflow.GetOutputProperties())
@@ -121,6 +149,7 @@ namespace Nodetool.SDK.VL.Nodes
             _isRunning = true;
             try
             {
+                AppendDebug($"start workflow='{_workflow.Name}'");
                 Console.WriteLine($"WorkflowNodeBase: Starting execution of workflow '{_workflow.Name}'");
                 // Help debug "changes not taking effect": print the actual loaded DLL + version at runtime.
                 var asm = typeof(WorkflowNodeBase).Assembly;
@@ -149,6 +178,7 @@ namespace Nodetool.SDK.VL.Nodes
                         throw new InvalidOperationException(NodeToolClientProvider.LastError ?? "Failed to connect to NodeTool server.");
                     }
                 }
+                AppendDebug("connected");
 
                 var client = NodeToolClientProvider.GetClient();
 
@@ -162,6 +192,7 @@ namespace Nodetool.SDK.VL.Nodes
                 {
                     // Lightweight progress trace (helps diagnose "runs forever")
                     Console.WriteLine($"WorkflowNodeBase: Workflow '{_workflow.Name}' progress: {progress:P0}");
+                    AppendDebug($"progress={(progress * 100):0}%");
                 };
 
                 session.NodeUpdated += update =>
@@ -170,6 +201,7 @@ namespace Nodetool.SDK.VL.Nodes
                     {
                         Console.WriteLine($"WorkflowNodeBase: Node error in workflow '{_workflow.Name}': {update.error}");
                         SetError(update.error);
+                        AppendDebug($"node_error: {update.error}");
                     }
                 };
 
@@ -179,6 +211,11 @@ namespace Nodetool.SDK.VL.Nodes
                     {
                         Console.WriteLine($"WorkflowNodeBase: Workflow '{_workflow.Name}' completed with error: {err}");
                         SetError(err ?? "Workflow failed.");
+                        AppendDebug($"completed: failed err='{err ?? ""}'");
+                    }
+                    else
+                    {
+                        AppendDebug("completed: ok");
                     }
                 };
 
@@ -188,6 +225,7 @@ namespace Nodetool.SDK.VL.Nodes
                     var hasPin = _outputPins.TryGetValue(update.OutputName, out var pin);
                     Console.WriteLine(
                         $"WorkflowNodeBase: output_update received: output_name='{update.OutputName}' node_name='{update.NodeName}' output_type='{update.OutputType}' hasPin={hasPin}");
+                    AppendDebug($"output_update: {update.OutputName} type={update.OutputType}");
 
                     if (pin != null)
                     {
@@ -260,17 +298,41 @@ namespace Nodetool.SDK.VL.Nodes
                 ApplyFinalOutputsFromSession(session);
 
                 Console.WriteLine($"WorkflowNodeBase: Workflow '{_workflow.Name}' execution completed");
+                AppendDebug("done");
                 SetIsRunning(false);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"WorkflowNodeBase: Error executing workflow '{_workflow.Name}': {ex.Message}");
                 SetError($"Execution failed: {ex.Message}");
+                AppendDebug($"exception: {ex.Message}");
                 SetIsRunning(false);
             }
             finally
             {
                 _isRunning = false;
+            }
+        }
+
+        private void AppendDebug(string line)
+        {
+            try
+            {
+                var ts = DateTime.Now.ToString("HH:mm:ss.fff");
+                var msg = $"{ts} {line}";
+
+                while (_debugLines.Count >= DebugMaxLines)
+                    _debugLines.Dequeue();
+                _debugLines.Enqueue(msg);
+
+                if (_outputPins.TryGetValue("Debug", out var pin))
+                {
+                    pin.Value = string.Join(Environment.NewLine, _debugLines);
+                }
+            }
+            catch
+            {
+                // ignore debug failures
             }
         }
 

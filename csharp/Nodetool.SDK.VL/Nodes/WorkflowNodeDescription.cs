@@ -22,6 +22,9 @@ namespace Nodetool.SDK.VL.Nodes
         public const string TriggerInputName = "Trigger";
         public const string IsRunningOutputName = "IsRunning";
         public const string ErrorOutputName = "Error";
+        public const string DebugOutputName = "Debug";
+        public const string InputSchemaJsonOutputName = "InputSchemaJson";
+        public const string OutputSchemaJsonOutputName = "OutputSchemaJson";
 
         public WorkflowNodeDescription(
             WorkflowDetail workflow,
@@ -88,6 +91,18 @@ namespace Nodetool.SDK.VL.Nodes
                 "❌ Error message",
                 "Contains error details if execution fails, empty string if successful"));
 
+            outputPins.Add(new PinDescription(DebugOutputName, typeof(string), "",
+                "🪵 Debug (last updates)",
+                "Last few workflow runner updates (progress/node_update/output_update). Useful when results are partial or missing."));
+
+            outputPins.Add(new PinDescription(InputSchemaJsonOutputName, typeof(string), "",
+                "📄 Input schema (JSON)",
+                "The workflow input_schema as JSON (for debugging/type inspection)."));
+
+            outputPins.Add(new PinDescription(OutputSchemaJsonOutputName, typeof(string), "",
+                "📄 Output schema (JSON)",
+                "The workflow output_schema as JSON (for debugging/type inspection)."));
+
             // Add workflow output pins
             foreach (var property in _workflow.GetOutputProperties())
             {
@@ -134,11 +149,8 @@ namespace Nodetool.SDK.VL.Nodes
         {
             var parts = new List<string>();
             parts.Add($"Nodetool Workflow ID: {_workflow.Id}");
-            parts.Add($"Name: {_workflow.Name}");
-
-            if (!string.IsNullOrWhiteSpace(_workflow.Description) &&
-                _workflow.Description != _workflow.Name)
-                parts.Add($"Description: {_workflow.Description}");
+            // Don't repeat Name/Description here: vvvv shows Summary + Remarks, and Summary already contains the
+            // human-readable description/title.
 
             var inputCount = _workflow.GetInputProperties().Count();
             var outputCount = _workflow.GetOutputProperties().Count();

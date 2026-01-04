@@ -33,19 +33,17 @@ If you reference `Nodetool.SDK.VL.csproj` and hit type-load issues, prefer refer
 - `csharp/Nodetool.SDK/Nodetool.SDK.csproj`
 - `csharp/Nodetool.SDK.VL/Nodetool.SDK.VL.csproj`
 
-**Recommended (most reliable):** reference this DLL directly:
+**Recommended (most reliable for dev in this repo):** reference the built DLLs from the stable folder:
 
-- `csharp/Nodetool.SDK.VL/bin/Release/net8.0/Nodetool.SDK.VL.dll`
-
-…and keep these DLLs next to it (same folder), so .NET can resolve dependencies:
-
-- `Nodetool.SDK.dll`
-- `Nodetool.Types.dll`
+- `csharp/_vvvv_builds/Release/net8.0/Nodetool.SDK.VL.dll`
+- `csharp/_vvvv_builds/Release/net8.0/Nodetool.SDK.dll`
+- `csharp/_vvvv_builds/Release/net8.0/Nodetool.Types.dll`
 
 ### 1) Make sure you referenced the right thing
 
-All dll files from this folder:
-nodetool-sdk\csharp\Nodetool.SDK.VL\bin\Release\net8.0
+All DLL files from:
+
+- `nodetool-sdk/csharp/_vvvv_builds/Release/net8.0/`
 
 ### 2) Find the Connect node
 
@@ -70,6 +68,12 @@ Look under:
 
 If you see **no workflows**, place `WorkflowAPIStatus` and check its `Status` / `ProcessingSummary` outputs.
 
+#### Workflow outputs
+
+- **Images**: workflow outputs inferred as images are exposed as **`SkiaSharp.SKImage`** pins (VL can preview them).
+- **Text/unknown**: outputs default to **`string`** pins (readable + avoids `Object` warnings).
+- **Debug**: every workflow node has a **`Debug`** output pin with the last ~30 runner updates.
+
 ### 4) Where are the “normal” node nodes?
 
 Node nodes are generated from server metadata (`GET /api/nodes/metadata`).
@@ -77,6 +81,20 @@ Node nodes are generated from server metadata (`GET /api/nodes/metadata`).
 Look under categories like:
 
 - **`Nodetool Nodes.*`** (plus `NodesAPIStatus`)
+
+#### Node outputs
+
+Every node has:
+
+- `IsRunning` / `Error`
+- **`Debug`**: last ~30 runner updates (progress/node_update/output_update).
+
+### 5) Image helper nodes
+
+Look under:
+
+- **`Nodetool` → `DecodeImageRef`** (extract encoded bytes from an ImageRef JSON/wrapper)
+- **`Nodetool.Images` → `DecodeImageRefToSKImage`** (decode to `SKImage`)
 
 ### Important note about URLs
 

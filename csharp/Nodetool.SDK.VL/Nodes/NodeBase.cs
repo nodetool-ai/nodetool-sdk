@@ -30,6 +30,8 @@ namespace Nodetool.SDK.VL.Nodes
 
         private readonly object _lock = new();
         private readonly Dictionary<string, StringBuilder> _chunkBuffers = new(StringComparer.Ordinal);
+        private readonly Queue<string> _debugLines = new();
+        private const int DebugMaxLines = 30;
         
         // Execution state
         private bool _isRunning = false;
@@ -79,6 +81,7 @@ namespace Nodetool.SDK.VL.Nodes
             // Add standard status outputs
             _outputPins["IsRunning"] = new InternalPin("IsRunning", typeof(bool), false);
             _outputPins["Error"] = new InternalPin("Error", typeof(string), "");
+            _outputPins["Debug"] = new InternalPin("Debug", typeof(string), "");
 
             // Set initial output states
             if (_outputPins.TryGetValue("IsRunning", out var isRunningPin))
@@ -145,10 +148,12 @@ namespace Nodetool.SDK.VL.Nodes
                 _lastError = "";
                 _lastOutputs.Clear();
                 _chunkBuffers.Clear();
+                _debugLines.Clear();
             }
 
             try
             {
+                AppendDebug($"start node='{_nodeMetadata.NodeType}'");
                 // Help debug "changes not taking effect": print the actual loaded DLL + version at runtime.
                 var asm = typeof(NodeBase).Assembly;
                 Console.WriteLine($"NodeBase: Using assembly '{asm.Location}', version={asm.GetName().Version}");
@@ -163,6 +168,7 @@ namespace Nodetool.SDK.VL.Nodes
                     if (!connected)
                         throw new InvalidOperationException($"Not connected: {NodeToolClientProvider.LastError ?? "unknown error"}");
                 }
+                AppendDebug("connected");
 
                 var client = NodeToolClientProvider.GetClient();
 
@@ -192,11 +198,13 @@ namespace Nodetool.SDK.VL.Nodes
                 {
                     session = await client.ExecuteNodeAsync(_nodeMetadata.NodeType, inputData, linked.Token);
 
+                    session.ProgressChanged += p => AppendDebug($"progress={(p * 100):0}%");
                     session.OutputReceived += update =>
                     {
                         if (string.IsNullOrWhiteSpace(update.OutputName))
                             return;
 
+                        AppendDebug($"output_update: {update.OutputName} type={update.OutputType}");
                         lock (_lock)
                         {
                             // Chunk streaming: turn {type:"chunk", content:"..."} into accumulated text.
@@ -231,6 +239,7 @@ namespace Nodetool.SDK.VL.Nodes
                             {
                                 _lastError = update.error ?? "";
                             }
+                            AppendDebug($"node_error: {update.error}");
                         }
 
                         if (update.result != null)
@@ -254,6 +263,11 @@ namespace Nodetool.SDK.VL.Nodes
                         {
                             _lastError = session.ErrorMessage ?? _lastError;
                         }
+                        AppendDebug($"completed: failed err='{session.ErrorMessage ?? _lastError}'");
+                    }
+                    else
+                    {
+                        AppendDebug("completed: ok");
                     }
                 }
                 finally
@@ -268,6 +282,7 @@ namespace Nodetool.SDK.VL.Nodes
                     _lastError = $"Execution error: {ex.Message}";
                     _lastOutputs.Clear();
                 }
+                AppendDebug($"exception: {ex.Message}");
             }
             finally
             {
@@ -275,6 +290,7 @@ namespace Nodetool.SDK.VL.Nodes
                 {
                     _isRunning = false;
                 }
+                AppendDebug("done");
             }
         }
 
@@ -288,12 +304,14 @@ namespace Nodetool.SDK.VL.Nodes
                 bool isRunning;
                 string lastError;
                 Dictionary<string, NodeToolValue> outputsSnapshot;
+                string debugText;
 
                 lock (_lock)
                 {
                     isRunning = _isRunning;
                     lastError = _lastError;
                     outputsSnapshot = new Dictionary<string, NodeToolValue>(_lastOutputs, StringComparer.Ordinal);
+                    debugText = string.Join(Environment.NewLine, _debugLines);
                 }
 
                 // Set standard outputs
@@ -301,6 +319,8 @@ namespace Nodetool.SDK.VL.Nodes
                     isRunningPin.Value = isRunning;
                 if (_outputPins.TryGetValue("Error", out var errorPin))
                     errorPin.Value = lastError;
+                if (_outputPins.TryGetValue("Debug", out var debugPin))
+                    debugPin.Value = debugText;
 
                 // Set node-specific outputs - ensure type safety
                 if (_nodeMetadata.Outputs != null)
@@ -334,6 +354,18 @@ namespace Nodetool.SDK.VL.Nodes
                 {
                     _lastError = $"Output update error: {ex.Message}";
                 }
+            }
+        }
+
+        private void AppendDebug(string line)
+        {
+            lock (_lock)
+            {
+                var ts = DateTime.Now.ToString("HH:mm:ss.fff");
+                var msg = $"{ts} {line}";
+                while (_debugLines.Count >= DebugMaxLines)
+                    _debugLines.Dequeue();
+                _debugLines.Enqueue(msg);
             }
         }
 

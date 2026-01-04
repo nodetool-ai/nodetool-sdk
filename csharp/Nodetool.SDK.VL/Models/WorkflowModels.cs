@@ -206,11 +206,25 @@ public class WorkflowDetail
         {
             var metadata = prop.Value.ToTypeMetadata();
 
+            // Prefer output_schema for inference when possible (better than graph heuristics).
+            if (TryInferOutputTypeFromSchema(prop.Value, OutputSchema, out var schemaInferred))
+            {
+                metadata.Type = schemaInferred;
+            }
+
             // If output schema is too generic ("any"), try to infer type from workflow graph edges.
             if (string.Equals(metadata.Type, "any", StringComparison.OrdinalIgnoreCase) &&
                 TryInferOutputTypeFromGraph(prop.Key, out var inferred))
             {
                 metadata.Type = inferred;
+            }
+
+            // If it's still "any", default to string for VL ergonomics.
+            // Rationale: NodeTool outputs are frequently dynamic, and VL users strongly prefer a readable string pin
+            // over an Object pin (Object works but is noisy and triggers warnings).
+            if (string.Equals(metadata.Type, "any", StringComparison.OrdinalIgnoreCase))
+            {
+                metadata.Type = "string";
             }
 
             yield return (
@@ -219,6 +233,128 @@ public class WorkflowDetail
                 Description: prop.Value.Description ?? prop.Value.Title ?? ""
             );
         }
+    }
+
+    private static bool TryInferOutputTypeFromSchema(
+        WorkflowPropertyDefinition prop,
+        WorkflowSchemaDefinition rootSchema,
+        out string inferredType)
+    {
+        inferredType = "";
+        return TryInferOutputTypeFromSchemaRecursive(prop, rootSchema, depth: 0, out inferredType);
+    }
+
+    private static bool TryInferOutputTypeFromSchemaRecursive(
+        WorkflowPropertyDefinition? prop,
+        WorkflowSchemaDefinition rootSchema,
+        int depth,
+        out string inferredType)
+    {
+        inferredType = "";
+        if (prop == null || depth > 12)
+            return false;
+
+        // $ref resolution (best-effort; only works if schema includes definitions/$defs)
+        if (!string.IsNullOrWhiteSpace(prop.Ref))
+        {
+            var resolved = ResolveRef(rootSchema, prop.Ref!);
+            if (resolved != null)
+                return TryInferOutputTypeFromSchemaRecursive(resolved, rootSchema, depth + 1, out inferredType);
+        }
+
+        // anyOf/oneOf/allOf wrappers
+        if (prop.AnyOf != null)
+        {
+            foreach (var p in prop.AnyOf)
+                if (TryInferOutputTypeFromSchemaRecursive(p, rootSchema, depth + 1, out inferredType))
+                    return true;
+        }
+        if (prop.OneOf != null)
+        {
+            foreach (var p in prop.OneOf)
+                if (TryInferOutputTypeFromSchemaRecursive(p, rootSchema, depth + 1, out inferredType))
+                    return true;
+        }
+        if (prop.AllOf != null)
+        {
+            foreach (var p in prop.AllOf)
+                if (TryInferOutputTypeFromSchemaRecursive(p, rootSchema, depth + 1, out inferredType))
+                    return true;
+        }
+
+        // Strong hint: format
+        if (!string.IsNullOrWhiteSpace(prop.Format))
+        {
+            var fmt = prop.Format.Trim().ToLowerInvariant();
+            if (fmt is "image" or "audio" or "video")
+            {
+                inferredType = fmt;
+                return true;
+            }
+        }
+
+        // Primitive types
+        if (!string.IsNullOrWhiteSpace(prop.Type))
+        {
+            var t = prop.Type.Trim().ToLowerInvariant();
+            if (t is "string" or "str")
+            {
+                inferredType = "string";
+                return true;
+            }
+        }
+
+        // Common NodeTool ref schema: { type:"object", properties:{ type:{enum:["image"]}, uri:{format:"uri"} } }
+        if (string.Equals(prop.Type, "object", StringComparison.OrdinalIgnoreCase) &&
+            prop.Properties != null &&
+            prop.Properties.TryGetValue("type", out var typeProp))
+        {
+            // const "image"
+            if (typeProp.Const is string cs && !string.IsNullOrWhiteSpace(cs))
+            {
+                var s = cs.Trim().ToLowerInvariant();
+                if (s is "image" or "audio" or "video")
+                {
+                    inferredType = s;
+                    return true;
+                }
+            }
+
+            // enum ["image"]
+            if (typeProp.Enum != null)
+            {
+                foreach (var v in typeProp.Enum)
+                {
+                    var s = v?.ToString()?.Trim().ToLowerInvariant();
+                    if (s is "image" or "audio" or "video")
+                    {
+                        inferredType = s;
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static WorkflowPropertyDefinition? ResolveRef(WorkflowSchemaDefinition root, string refStr)
+    {
+        if (!refStr.StartsWith("#/", StringComparison.Ordinal))
+            return null;
+
+        // "#/definitions/X" or "#/$defs/X"
+        var path = refStr.Substring(2);
+        var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 2 && string.Equals(parts[0], "definitions", StringComparison.Ordinal))
+        {
+            return root.Definitions != null && root.Definitions.TryGetValue(parts[1], out var def) ? def : null;
+        }
+        if (parts.Length == 2 && string.Equals(parts[0], "$defs", StringComparison.Ordinal))
+        {
+            return root.Defs != null && root.Defs.TryGetValue(parts[1], out var def) ? def : null;
+        }
+        return null;
     }
 
     private bool TryInferOutputTypeFromGraph(string outputName, out string inferredType)
@@ -269,6 +405,11 @@ public class WorkflowDetail
                 return true;
             }
             if (c == "text")
+            {
+                inferredType = "string";
+                return true;
+            }
+            if (c == "chunk")
             {
                 inferredType = "string";
                 return true;
