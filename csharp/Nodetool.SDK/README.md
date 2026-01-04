@@ -18,6 +18,17 @@ C# SDK for integrating Nodetool AI workflows into any .NET application.
 <PackageReference Include="Nodetool.SDK" Version="0.1.0" />
 ```
 
+### Run the included Test Console (local)
+
+The SDK repository includes a runnable console project at `csharp/Nodetool.SDK/TestConsole`.
+
+Example: run your `TEST_SDK_01` workflow by name (discover via HTTP, execute via worker WebSocket):
+
+```bash
+cd M:\P\NODETOOL\nodetool-sdk\csharp\Nodetool.SDK
+dotnet run -c Release --project .\TestConsole\Nodetool.SDK.TestConsole.csproj -- run-workflow --ws http://localhost:7777/ws --http http://localhost:7777 --workflow TEST_SDK_01
+```
+
 ### Basic Usage - WebSocket Execution (Recommended)
 
 ```csharp

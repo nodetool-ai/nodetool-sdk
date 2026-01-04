@@ -297,8 +297,11 @@ class Program
         var session = await exec.ExecuteWorkflowAsync(wf.Id, inputs);
         session.OutputReceived += update =>
         {
+            var renderedValue = update.Value.Kind == NodeToolValueKind.String
+                ? (update.Value.AsString() ?? "")
+                : update.Value.ToJsonString();
             logger.LogInformation("output_update: node={NodeName} output={OutputName} type={OutputType} value={Value}",
-                update.NodeName, update.OutputName, update.OutputType, update.Value.AsString() ?? update.Value.ToJsonString());
+                update.NodeName, update.OutputName, update.OutputType, renderedValue);
         };
         session.PreviewReceived += update =>
         {
@@ -329,7 +332,11 @@ class Program
             logger.LogInformation("Final outputs ({Count}):", outputs.Count);
             foreach (var kvp in outputs.OrderBy(k => k.Key, StringComparer.Ordinal))
             {
-                logger.LogInformation("  {Key} = {Value}", kvp.Key, kvp.Value.AsString() ?? kvp.Value.ToJsonString());
+                // Avoid "System.Collections.Generic.Dictionary`2" noise by preferring JSON for non-strings.
+                var rendered = kvp.Value.Kind == NodeToolValueKind.String
+                    ? (kvp.Value.AsString() ?? "")
+                    : kvp.Value.ToJsonString();
+                logger.LogInformation("  {Key} = {Value}", kvp.Key, rendered);
             }
         }
         else
