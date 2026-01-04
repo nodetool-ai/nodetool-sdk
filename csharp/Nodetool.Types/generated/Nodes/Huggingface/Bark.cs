@@ -8,12 +8,7 @@ namespace Nodetool.Nodes.Huggingface;
 public class Bark
 {
     [Key(0)]
-    public Nodetool.Types.HFTextToSpeech model { get; set; } = new Nodetool.Types.HFTextToSpeech();
+    public Nodetool.Types.Core.HFTextToSpeech model { get; set; } = new Nodetool.Types.Core.HFTextToSpeech();
     [Key(1)]
-    public string prompt { get; set; } = "";
-
-    public Nodetool.Types.AudioRef Process()
-    {
-        return default(Nodetool.Types.AudioRef);
-    }
+    public string prompt { get; set; } = @"";
 }

@@ -8,19 +8,19 @@ namespace Nodetool.Nodes.Base;
 public class DocumentFileInput
 {
     [Key(0)]
-    public Nodetool.Types.FilePath value { get; set; } = new Nodetool.Types.FilePath();
+    public string description { get; set; } = @"";
     [Key(1)]
-    public string name { get; set; } = "";
+    public string name { get; set; } = @"";
     [Key(2)]
-    public string description { get; set; } = "";
+    public string value { get; set; } = @"";
 
     [MessagePackObject]
     public class DocumentFileInputOutput
     {
         [Key(0)]
-        public Nodetool.Types.DocumentRef document { get; set; }
+        public Nodetool.Types.Core.DocumentRef document { get; set; }
         [Key(1)]
-        public Nodetool.Types.FilePath path { get; set; }
+        public string path { get; set; }
     }
 
     public DocumentFileInputOutput Process()

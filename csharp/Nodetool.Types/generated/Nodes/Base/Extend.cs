@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class Extend
 {
     [Key(0)]
-    public object values { get; set; } = new List<object>();
+    public object other_values { get; set; } = new();
     [Key(1)]
-    public object other_values { get; set; } = new List<object>();
+    public object values { get; set; } = new();
 
     public object Process()
     {

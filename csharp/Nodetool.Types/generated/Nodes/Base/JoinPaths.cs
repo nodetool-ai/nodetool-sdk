@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class JoinPaths
 {
     [Key(0)]
-    public object paths { get; set; } = new List<object>();
+    public object paths { get; set; } = new();
 
-    public Nodetool.Types.FilePath Process()
+    public string Process()
     {
-        return default(Nodetool.Types.FilePath);
+        return default(string);
     }
 }

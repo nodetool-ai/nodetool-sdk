@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class Split
 {
     [Key(0)]
-    public string text { get; set; } = "";
+    public string delimiter { get; set; } = @",";
     [Key(1)]
-    public string delimiter { get; set; } = ",";
+    public string text { get; set; } = @"";
 
     public object Process()
     {

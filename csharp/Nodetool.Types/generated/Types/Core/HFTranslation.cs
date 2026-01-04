@@ -7,15 +7,15 @@ namespace Nodetool.Types.Core;
 public class HFTranslation
 {
     [Key(0)]
-    public object type { get; set; } = "hf.translation";
+    public object allow_patterns { get; set; } = null;
     [Key(1)]
-    public string repo_id { get; set; } = "";
+    public object ignore_patterns { get; set; } = null;
     [Key(2)]
     public object path { get; set; } = null;
     [Key(3)]
-    public object variant { get; set; } = null;
+    public string repo_id { get; set; } = @"";
     [Key(4)]
-    public object allow_patterns { get; set; } = null;
+    public object type { get; set; } = @"hf.translation";
     [Key(5)]
-    public object ignore_patterns { get; set; } = null;
+    public object variant { get; set; } = null;
 }

@@ -7,9 +7,9 @@ namespace Nodetool.Types.Core;
 public class ComfyModel
 {
     [Key(0)]
-    public string type { get; set; }
-    [Key(1)]
-    public string name { get; set; } = "";
-    [Key(2)]
     public object model { get; set; } = null;
+    [Key(1)]
+    public string name { get; set; } = @"";
+    [Key(2)]
+    public object type { get; set; }
 }

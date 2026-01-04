@@ -8,11 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class ListOutput
 {
     [Key(0)]
-    public object value { get; set; } = new List<object>();
+    public string description { get; set; } = @"";
     [Key(1)]
-    public string name { get; set; } = "";
+    public string name { get; set; } = @"";
     [Key(2)]
-    public string description { get; set; } = "";
+    public object value { get; set; } = new();
 
     public object Process()
     {

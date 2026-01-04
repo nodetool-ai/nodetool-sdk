@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class FilterDicts
 {
     [Key(0)]
-    public object values { get; set; } = new List<object>();
+    public string condition { get; set; } = @"";
     [Key(1)]
-    public string condition { get; set; } = "";
+    public object values { get; set; } = new();
 
     public object Process()
     {

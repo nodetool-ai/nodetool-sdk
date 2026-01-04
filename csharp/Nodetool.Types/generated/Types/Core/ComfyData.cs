@@ -7,7 +7,7 @@ namespace Nodetool.Types.Core;
 public class ComfyData
 {
     [Key(0)]
-    public string type { get; set; }
-    [Key(1)]
     public object data { get; set; } = null;
+    [Key(1)]
+    public object type { get; set; }
 }

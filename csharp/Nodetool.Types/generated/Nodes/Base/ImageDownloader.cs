@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class ImageDownloader
 {
     [Key(0)]
-    public object images { get; set; } = new List<object>();
+    public string base_url { get; set; } = @"";
     [Key(1)]
-    public string base_url { get; set; } = "";
+    public object images { get; set; } = new();
     [Key(2)]
     public int max_concurrent_downloads { get; set; } = 10;
 
@@ -18,9 +18,9 @@ public class ImageDownloader
     public class ImageDownloaderOutput
     {
         [Key(0)]
-        public object images { get; set; }
-        [Key(1)]
         public object failed_urls { get; set; }
+        [Key(1)]
+        public object images { get; set; }
     }
 
     public ImageDownloaderOutput Process()

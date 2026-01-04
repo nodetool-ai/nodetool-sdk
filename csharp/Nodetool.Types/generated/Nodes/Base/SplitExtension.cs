@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class SplitExtension
 {
     [Key(0)]
-    public string path { get; set; } = "";
+    public string path { get; set; } = @"";
 
     public object Process()
     {

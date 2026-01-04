@@ -8,11 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class GetValue
 {
     [Key(0)]
-    public object dictionary { get; set; } = new Dictionary<string, object>();
+    public object default_ { get; set; } = null;
     [Key(1)]
-    public string key { get; set; } = "";
+    public object dictionary { get; set; } = new();
     [Key(2)]
-    public object default { get; set; } = null;
+    public string key { get; set; } = @"";
 
     public object Process()
     {

@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class Sqrt
 {
     [Key(0)]
-    public object x { get; set; } = 1.0;
+    public object x { get; set; } = 0.0;
 
     public object Process()
     {

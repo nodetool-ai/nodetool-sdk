@@ -7,11 +7,11 @@ namespace Nodetool.Types.Core;
 public class JSONRef
 {
     [Key(0)]
-    public object type { get; set; } = "json";
-    [Key(1)]
-    public string uri { get; set; } = "";
-    [Key(2)]
     public object asset_id { get; set; } = null;
-    [Key(3)]
+    [Key(1)]
     public object data { get; set; } = null;
+    [Key(2)]
+    public object type { get; set; } = @"json";
+    [Key(3)]
+    public string uri { get; set; } = @"";
 }

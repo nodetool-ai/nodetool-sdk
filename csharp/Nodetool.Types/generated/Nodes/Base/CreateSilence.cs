@@ -10,8 +10,8 @@ public class CreateSilence
     [Key(0)]
     public double duration { get; set; } = 1.0;
 
-    public Nodetool.Types.AudioRef Process()
+    public Nodetool.Types.Core.AudioRef Process()
     {
-        return default(Nodetool.Types.AudioRef);
+        return default(Nodetool.Types.Core.AudioRef);
     }
 }

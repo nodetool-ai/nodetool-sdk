@@ -7,9 +7,9 @@ namespace Nodetool.Types.Core;
 public class InferenceProviderImageClassificationModel
 {
     [Key(0)]
-    public object type { get; set; } = "inference_provider_image_classification_model";
+    public string model_id { get; set; } = @"";
     [Key(1)]
-    public object provider { get; set; } = "InferenceProvider.hf_inference";
+    public object provider { get; set; } = @"hf-inference";
     [Key(2)]
-    public string model_id { get; set; } = "";
+    public object type { get; set; } = @"inference_provider_image_classification_model";
 }

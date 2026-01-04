@@ -7,7 +7,7 @@ namespace Nodetool.Types.Core;
 public class StyleModelFile
 {
     [Key(0)]
-    public object type { get; set; } = "comfy.style_model_file";
+    public string name { get; set; } = @"";
     [Key(1)]
-    public string name { get; set; } = "";
+    public object type { get; set; } = @"comfy.style_model_file";
 }

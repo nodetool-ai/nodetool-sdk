@@ -7,7 +7,7 @@ namespace Nodetool.Types.Core;
 public class ColorRef
 {
     [Key(0)]
-    public object type { get; set; } = "color";
+    public object type { get; set; } = @"color";
     [Key(1)]
     public object value { get; set; } = null;
 }

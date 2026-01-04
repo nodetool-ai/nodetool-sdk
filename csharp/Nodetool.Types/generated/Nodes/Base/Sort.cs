@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class Sort
 {
     [Key(0)]
-    public object values { get; set; } = new List<object>();
+    public object order { get; set; } = @"ascending";
     [Key(1)]
-    public object order { get; set; } = "SortOrder.ASCENDING";
+    public object values { get; set; } = new();
 
     public object Process()
     {

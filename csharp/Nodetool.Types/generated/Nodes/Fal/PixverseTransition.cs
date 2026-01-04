@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Fal;
 public class PixverseTransition
 {
     [Key(0)]
-    public Nodetool.Types.ImageRef start_image { get; set; } = new Nodetool.Types.ImageRef();
+    public Nodetool.Types.Core.ImageRef end_image { get; set; } = new Nodetool.Types.Core.ImageRef();
     [Key(1)]
-    public Nodetool.Types.ImageRef end_image { get; set; } = new Nodetool.Types.ImageRef();
-    [Key(2)]
     public int seed { get; set; } = -1;
+    [Key(2)]
+    public Nodetool.Types.Core.ImageRef start_image { get; set; } = new Nodetool.Types.Core.ImageRef();
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

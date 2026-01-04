@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class StringifyJSON
 {
     [Key(0)]
-    public object data { get; set; } = new Dictionary<string, object>();
+    public object data { get; set; } = new();
     [Key(1)]
     public int indent { get; set; } = 2;
 

@@ -10,8 +10,8 @@ public class Sine
     [Key(0)]
     public object angle_rad { get; set; } = 0.0;
 
-    public double Process()
+    public object Process()
     {
-        return default(double);
+        return default(object);
     }
 }

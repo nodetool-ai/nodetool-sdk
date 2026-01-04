@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class Remove
 {
     [Key(0)]
-    public object dictionary { get; set; } = new Dictionary<string, object>();
+    public object dictionary { get; set; } = new();
     [Key(1)]
-    public string key { get; set; } = "";
+    public string key { get; set; } = @"";
 
     public object Process()
     {

@@ -10,9 +10,9 @@ public class GetJSONPathStr
     [Key(0)]
     public object data { get; set; } = null;
     [Key(1)]
-    public string path { get; set; } = "";
+    public string default_ { get; set; } = @"";
     [Key(2)]
-    public string default { get; set; } = "";
+    public string path { get; set; } = @"";
 
     public string Process()
     {

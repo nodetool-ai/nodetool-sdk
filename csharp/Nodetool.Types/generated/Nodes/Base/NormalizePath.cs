@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class NormalizePath
 {
     [Key(0)]
-    public string path { get; set; } = "";
+    public string path { get; set; } = @"";
 
-    public Nodetool.Types.FilePath Process()
+    public string Process()
     {
-        return default(Nodetool.Types.FilePath);
+        return default(string);
     }
 }

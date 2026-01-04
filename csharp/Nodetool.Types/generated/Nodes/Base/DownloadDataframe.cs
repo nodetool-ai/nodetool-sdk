@@ -8,18 +8,18 @@ namespace Nodetool.Nodes.Base;
 public class DownloadDataframe
 {
     [Key(0)]
-    public string url { get; set; } = "";
+    public Nodetool.Types.Core.RecordType columns { get; set; } = new Nodetool.Types.Core.RecordType();
     [Key(1)]
-    public object file_format { get; set; } = "FileFormat.CSV";
+    public string delimiter { get; set; } = @",";
     [Key(2)]
-    public Nodetool.Types.RecordType columns { get; set; } = new Nodetool.Types.RecordType();
+    public string encoding { get; set; } = @"utf-8";
     [Key(3)]
-    public string encoding { get; set; } = "utf-8";
+    public object file_format { get; set; } = @"csv";
     [Key(4)]
-    public string delimiter { get; set; } = ",";
+    public string url { get; set; } = @"";
 
-    public Nodetool.Types.DataframeRef Process()
+    public Nodetool.Types.Core.DataframeRef Process()
     {
-        return default(Nodetool.Types.DataframeRef);
+        return default(Nodetool.Types.Core.DataframeRef);
     }
 }

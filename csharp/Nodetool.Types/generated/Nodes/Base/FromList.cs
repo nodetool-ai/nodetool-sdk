@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class FromList
 {
     [Key(0)]
-    public object values { get; set; } = new List<object>();
+    public object values { get; set; } = new();
 
-    public Nodetool.Types.DataframeRef Process()
+    public Nodetool.Types.Core.DataframeRef Process()
     {
-        return default(Nodetool.Types.DataframeRef);
+        return default(Nodetool.Types.Core.DataframeRef);
     }
 }

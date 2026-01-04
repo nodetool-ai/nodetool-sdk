@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class ConvertToMarkdown
 {
     [Key(0)]
-    public Nodetool.Types.DocumentRef document { get; set; } = new Nodetool.Types.DocumentRef();
+    public Nodetool.Types.Core.DocumentRef document { get; set; } = new Nodetool.Types.Core.DocumentRef();
 
-    public string Process()
+    public Nodetool.Types.Core.DocumentRef Process()
     {
-        return default(string);
+        return default(Nodetool.Types.Core.DocumentRef);
     }
 }

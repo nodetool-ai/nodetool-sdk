@@ -8,23 +8,23 @@ namespace Nodetool.Nodes.Huggingface;
 public class TableQuestionAnswering
 {
     [Key(0)]
-    public Nodetool.Types.HFTableQuestionAnswering model { get; set; } = new Nodetool.Types.HFTableQuestionAnswering();
+    public Nodetool.Types.Core.DataframeRef dataframe { get; set; } = new Nodetool.Types.Core.DataframeRef();
     [Key(1)]
-    public Nodetool.Types.DataframeRef dataframe { get; set; } = new Nodetool.Types.DataframeRef();
+    public Nodetool.Types.Core.HFTableQuestionAnswering model { get; set; } = new Nodetool.Types.Core.HFTableQuestionAnswering();
     [Key(2)]
-    public string question { get; set; } = "";
+    public string question { get; set; } = @"";
 
     [MessagePackObject]
     public class TableQuestionAnsweringOutput
     {
         [Key(0)]
-        public string answer { get; set; }
+        public string aggregator { get; set; }
         [Key(1)]
-        public object coordinates { get; set; }
+        public string answer { get; set; }
         [Key(2)]
         public object cells { get; set; }
         [Key(3)]
-        public string aggregator { get; set; }
+        public object coordinates { get; set; }
     }
 
     public TableQuestionAnsweringOutput Process()

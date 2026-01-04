@@ -8,14 +8,9 @@ namespace Nodetool.Nodes.Huggingface;
 public class MusicGen
 {
     [Key(0)]
-    public Nodetool.Types.HFTextToAudio model { get; set; } = new Nodetool.Types.HFTextToAudio();
-    [Key(1)]
-    public string prompt { get; set; } = "";
-    [Key(2)]
     public int max_new_tokens { get; set; } = 1024;
-
-    public Nodetool.Types.AudioRef Process()
-    {
-        return default(Nodetool.Types.AudioRef);
-    }
+    [Key(1)]
+    public Nodetool.Types.Core.HFTextToAudio model { get; set; } = new Nodetool.Types.Core.HFTextToAudio();
+    [Key(2)]
+    public string prompt { get; set; } = @"";
 }

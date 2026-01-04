@@ -8,16 +8,16 @@ namespace Nodetool.Nodes.Base;
 public class ChartGenerator
 {
     [Key(0)]
-    public Nodetool.Types.LanguageModel model { get; set; } = new Nodetool.Types.LanguageModel();
+    public Nodetool.Types.Core.DataframeRef data { get; set; } = new Nodetool.Types.Core.DataframeRef();
     [Key(1)]
-    public string prompt { get; set; } = "";
-    [Key(2)]
-    public Nodetool.Types.DataframeRef data { get; set; } = new Nodetool.Types.DataframeRef();
-    [Key(3)]
     public int max_tokens { get; set; } = 4096;
+    [Key(2)]
+    public Nodetool.Types.Core.LanguageModel model { get; set; } = new Nodetool.Types.Core.LanguageModel();
+    [Key(3)]
+    public string prompt { get; set; } = @"";
 
-    public Nodetool.Types.PlotlyConfig Process()
+    public Nodetool.Types.Core.PlotlyConfig Process()
     {
-        return default(Nodetool.Types.PlotlyConfig);
+        return default(Nodetool.Types.Core.PlotlyConfig);
     }
 }

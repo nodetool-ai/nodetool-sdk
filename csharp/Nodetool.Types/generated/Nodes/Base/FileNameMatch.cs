@@ -8,11 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class FileNameMatch
 {
     [Key(0)]
-    public string filename { get; set; } = "";
-    [Key(1)]
-    public string pattern { get; set; } = "*";
-    [Key(2)]
     public bool case_sensitive { get; set; } = true;
+    [Key(1)]
+    public string filename { get; set; } = @"";
+    [Key(2)]
+    public string pattern { get; set; } = @"*";
 
     public bool Process()
     {

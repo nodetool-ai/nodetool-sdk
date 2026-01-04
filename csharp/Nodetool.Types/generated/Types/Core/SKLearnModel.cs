@@ -7,7 +7,7 @@ namespace Nodetool.Types.Core;
 public class SKLearnModel
 {
     [Key(0)]
-    public object type { get; set; } = "sklearn_model";
-    [Key(1)]
     public object model { get; set; } = null;
+    [Key(1)]
+    public object type { get; set; } = @"sklearn_model";
 }

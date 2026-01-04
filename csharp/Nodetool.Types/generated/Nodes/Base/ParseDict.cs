@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class ParseDict
 {
     [Key(0)]
-    public string json_string { get; set; } = "";
+    public string json_string { get; set; } = @"";
 
     public object Process()
     {

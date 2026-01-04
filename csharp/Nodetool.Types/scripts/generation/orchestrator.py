@@ -14,9 +14,18 @@ except ImportError:
     class BaseNode: pass
     def discover_node_packages(): return []
 
-from .utils import get_package_name
+from .utils import get_package_name, set_known_csharp_type_names
 from .codegen import generate_class_source, generate_node_class_source
 from .discovery import discover_all_base_types, discover_all_base_nodes
+
+def _build_csharp_type_name_map(all_types: Dict[str, List[type[BaseType]]]) -> Dict[type[BaseType], str]:
+    mapping: Dict[type[BaseType], str] = {}
+    for source_name, classes in all_types.items():
+        pkg_name = get_package_name(source_name)
+        ns = f"Nodetool.Types.{pkg_name}"
+        for cls in classes:
+            mapping[cls] = f"{ns}.{cls.__name__}"
+    return mapping
 
 def generate_types_for_source(source_name: str, classes: List[type[BaseType]], output_dir: str) -> tuple[int, int]:
     """Generate C# classes for a specific source (core or package)."""
@@ -311,6 +320,9 @@ def generate_all_types(output_dir: str, namespace: str = "Nodetool.Types") -> No
     
     # Discover all types
     all_types = discover_all_base_types()
+
+    # Provide a fully-qualified name map so node generation can reference types across packages.
+    set_known_csharp_type_names(_build_csharp_type_name_map(all_types))
     
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
@@ -344,7 +356,10 @@ def generate_all_nodes(output_dir: str, namespace: str = "Nodetool.Types") -> No
     print(f"Namespace: {namespace}")
     print()
     
-    # Discover all nodes
+    # Discover nodes and types (types are needed to generate correct type references in node properties).
+    all_types = discover_all_base_types()
+    set_known_csharp_type_names(_build_csharp_type_name_map(all_types))
+
     all_nodes = discover_all_base_nodes()
     
     # Create output directory

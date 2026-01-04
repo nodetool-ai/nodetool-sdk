@@ -8,13 +8,13 @@ namespace Nodetool.Nodes.Base;
 public class IndexString
 {
     [Key(0)]
-    public Nodetool.Types.Collection collection { get; set; } = new Nodetool.Types.Collection();
+    public Nodetool.Types.Core.Collection collection { get; set; } = new Nodetool.Types.Core.Collection();
     [Key(1)]
-    public string text { get; set; } = "";
+    public string document_id { get; set; } = @"";
     [Key(2)]
-    public string document_id { get; set; } = "";
+    public object metadata { get; set; } = new();
     [Key(3)]
-    public object metadata { get; set; } = new Dictionary<string, object>();
+    public string text { get; set; } = @"";
 
     public void Process()
     {

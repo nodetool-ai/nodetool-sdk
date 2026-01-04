@@ -8,16 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class FrameToVideo
 {
     [Key(0)]
-    public Nodetool.Types.ImageRef frame { get; set; } = new Nodetool.Types.ImageRef();
-    [Key(1)]
-    public int index { get; set; } = 0;
-    [Key(2)]
     public double fps { get; set; } = 30;
-    [Key(3)]
-    public Nodetool.Types.Event event { get; set; } = new Nodetool.Types.Event();
+    [Key(1)]
+    public Nodetool.Types.Core.ImageRef frame { get; set; } = new Nodetool.Types.Core.ImageRef();
 
-    public object Process()
+    public void Process()
     {
-        return default(object);
     }
 }

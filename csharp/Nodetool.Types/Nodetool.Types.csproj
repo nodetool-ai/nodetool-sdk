@@ -27,7 +27,6 @@
   <ItemGroup>
     <Compile Remove="scripts\**\*.cs" />
     <Compile Remove="generated\Types\Core.cs" />
-    <Compile Remove="generated\Nodes\**\*.cs" />
     <Compile Remove="generated\NodeToolTypes.cs" />
   </ItemGroup>
 

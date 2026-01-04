@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class PostRequestBinary
 {
     [Key(0)]
-    public string url { get; set; } = "";
+    public object data { get; set; } = @"";
     [Key(1)]
-    public object data { get; set; } = "";
+    public string url { get; set; } = @"";
 
     public byte[] Process()
     {

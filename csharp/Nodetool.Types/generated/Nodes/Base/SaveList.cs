@@ -8,12 +8,12 @@ namespace Nodetool.Nodes.Base;
 public class SaveList
 {
     [Key(0)]
-    public object values { get; set; } = new List<object>();
+    public string name { get; set; } = @"text.txt";
     [Key(1)]
-    public string name { get; set; } = "text.txt";
+    public object values { get; set; } = new();
 
-    public Nodetool.Types.TextRef Process()
+    public Nodetool.Types.Core.TextRef Process()
     {
-        return default(Nodetool.Types.TextRef);
+        return default(Nodetool.Types.Core.TextRef);
     }
 }

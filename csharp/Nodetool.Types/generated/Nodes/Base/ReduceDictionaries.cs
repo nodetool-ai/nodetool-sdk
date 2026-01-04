@@ -8,13 +8,13 @@ namespace Nodetool.Nodes.Base;
 public class ReduceDictionaries
 {
     [Key(0)]
-    public object dictionaries { get; set; } = new List<object>();
+    public object conflict_resolution { get; set; } = @"first";
     [Key(1)]
-    public string key_field { get; set; } = "";
+    public object dictionaries { get; set; } = new();
     [Key(2)]
-    public object value_field { get; set; } = null;
+    public string key_field { get; set; } = @"";
     [Key(3)]
-    public object conflict_resolution { get; set; } = "ConflictResolution.FIRST";
+    public string value_field { get; set; } = null;
 
     public object Process()
     {

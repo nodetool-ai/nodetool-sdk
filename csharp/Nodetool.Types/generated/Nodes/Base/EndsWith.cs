@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class EndsWith
 {
     [Key(0)]
-    public string text { get; set; } = "";
+    public string suffix { get; set; } = @"";
     [Key(1)]
-    public string suffix { get; set; } = "";
+    public string text { get; set; } = @"";
 
     public bool Process()
     {

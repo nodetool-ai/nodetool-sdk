@@ -8,20 +8,20 @@ namespace Nodetool.Nodes.Fal;
 public class AuraFlowV03
 {
     [Key(0)]
-    public string prompt { get; set; } = "";
+    public bool expand_prompt { get; set; } = true;
     [Key(1)]
-    public int num_images { get; set; } = 1;
-    [Key(2)]
     public double guidance_scale { get; set; } = 3.5;
+    [Key(2)]
+    public int num_images { get; set; } = 1;
     [Key(3)]
     public int num_inference_steps { get; set; } = 50;
     [Key(4)]
-    public bool expand_prompt { get; set; } = true;
+    public string prompt { get; set; } = @"";
     [Key(5)]
     public int seed { get; set; } = -1;
 
-    public Nodetool.Types.ImageRef Process()
+    public Nodetool.Types.Core.ImageRef Process()
     {
-        return default(Nodetool.Types.ImageRef);
+        return default(Nodetool.Types.Core.ImageRef);
     }
 }

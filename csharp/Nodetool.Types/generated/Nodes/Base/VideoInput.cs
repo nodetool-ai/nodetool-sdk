@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class VideoInput
 {
     [Key(0)]
-    public Nodetool.Types.VideoRef value { get; set; } = new Nodetool.Types.VideoRef();
+    public string description { get; set; } = @"";
     [Key(1)]
-    public string name { get; set; } = "";
+    public string name { get; set; } = @"";
     [Key(2)]
-    public string description { get; set; } = "";
+    public Nodetool.Types.Core.VideoRef value { get; set; } = new Nodetool.Types.Core.VideoRef();
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

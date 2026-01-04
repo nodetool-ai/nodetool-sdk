@@ -8,27 +8,13 @@ namespace Nodetool.Nodes.Huggingface;
 public class Whisper
 {
     [Key(0)]
-    public Nodetool.Types.HFAutomaticSpeechRecognition model { get; set; } = new Nodetool.Types.HFAutomaticSpeechRecognition();
+    public Nodetool.Types.Core.AudioRef audio { get; set; } = new Nodetool.Types.Core.AudioRef();
     [Key(1)]
-    public Nodetool.Types.AudioRef audio { get; set; } = new Nodetool.Types.AudioRef();
+    public object language { get; set; } = @"auto_detect";
     [Key(2)]
-    public object task { get; set; } = "Task.TRANSCRIBE";
+    public Nodetool.Types.Core.HFAutomaticSpeechRecognition model { get; set; } = new Nodetool.Types.Core.HFAutomaticSpeechRecognition();
     [Key(3)]
-    public object language { get; set; } = "WhisperLanguage.NONE";
+    public object task { get; set; } = @"transcribe";
     [Key(4)]
-    public object timestamps { get; set; } = "Timestamps.NONE";
-
-    [MessagePackObject]
-    public class WhisperOutput
-    {
-        [Key(0)]
-        public string text { get; set; }
-        [Key(1)]
-        public object chunks { get; set; }
-    }
-
-    public WhisperOutput Process()
-    {
-        return new WhisperOutput();
-    }
+    public object timestamps { get; set; } = @"none";
 }

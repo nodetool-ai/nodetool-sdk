@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class QueryImage
 {
     [Key(0)]
-    public Nodetool.Types.Collection collection { get; set; } = new Nodetool.Types.Collection();
+    public Nodetool.Types.Core.Collection collection { get; set; } = new Nodetool.Types.Core.Collection();
     [Key(1)]
-    public Nodetool.Types.ImageRef image { get; set; } = new Nodetool.Types.ImageRef();
+    public Nodetool.Types.Core.ImageRef image { get; set; } = new Nodetool.Types.Core.ImageRef();
     [Key(2)]
     public int n_results { get; set; } = 1;
 
@@ -18,13 +18,13 @@ public class QueryImage
     public class QueryImageOutput
     {
         [Key(0)]
-        public object ids { get; set; }
+        public object distances { get; set; }
         [Key(1)]
         public object documents { get; set; }
         [Key(2)]
-        public object metadatas { get; set; }
+        public object ids { get; set; }
         [Key(3)]
-        public object distances { get; set; }
+        public object metadatas { get; set; }
     }
 
     public QueryImageOutput Process()

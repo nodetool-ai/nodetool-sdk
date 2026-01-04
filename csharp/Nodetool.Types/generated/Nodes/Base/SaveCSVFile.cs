@@ -8,11 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class SaveCSVFile
 {
     [Key(0)]
-    public object data { get; set; } = new List<object>();
+    public object data { get; set; } = new();
     [Key(1)]
-    public Nodetool.Types.FolderPath folder { get; set; } = new Nodetool.Types.FolderPath();
+    public string filename { get; set; } = @"";
     [Key(2)]
-    public string filename { get; set; } = "";
+    public string folder { get; set; } = @"";
 
     public void Process()
     {

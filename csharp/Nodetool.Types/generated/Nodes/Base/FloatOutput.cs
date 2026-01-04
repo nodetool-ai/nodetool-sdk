@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class FloatOutput
 {
     [Key(0)]
-    public double value { get; set; } = 0;
+    public string description { get; set; } = @"";
     [Key(1)]
-    public string name { get; set; } = "";
+    public string name { get; set; } = @"";
     [Key(2)]
-    public string description { get; set; } = "";
+    public double value { get; set; } = 0;
 
-    public double Process()
+    public object Process()
     {
-        return default(double);
+        return default(object);
     }
 }

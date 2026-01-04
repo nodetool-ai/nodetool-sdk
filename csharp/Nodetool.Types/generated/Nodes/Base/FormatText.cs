@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class FormatText
 {
     [Key(0)]
-    public string template { get; set; } = "";
+    public string template { get; set; } = @"";
 
     public string Process()
     {

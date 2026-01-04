@@ -8,15 +8,15 @@ namespace Nodetool.Nodes.Base;
 public class ExtractRegex
 {
     [Key(0)]
-    public string text { get; set; } = "";
-    [Key(1)]
-    public string regex { get; set; } = "";
-    [Key(2)]
     public bool dotall { get; set; } = false;
-    [Key(3)]
+    [Key(1)]
     public bool ignorecase { get; set; } = false;
-    [Key(4)]
+    [Key(2)]
     public bool multiline { get; set; } = false;
+    [Key(3)]
+    public string regex { get; set; } = @"";
+    [Key(4)]
+    public string text { get; set; } = @"";
 
     public object Process()
     {

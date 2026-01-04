@@ -8,8 +8,8 @@ namespace Nodetool.Nodes.Base;
 public class Now
 {
 
-    public Nodetool.Types.Datetime Process()
+    public Nodetool.Types.Core.Datetime Process()
     {
-        return default(Nodetool.Types.Datetime);
+        return default(Nodetool.Types.Core.Datetime);
     }
 }

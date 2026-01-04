@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class ExtractAudio
 {
     [Key(0)]
-    public Nodetool.Types.VideoRef video { get; set; } = new Nodetool.Types.VideoRef();
+    public Nodetool.Types.Core.VideoRef video { get; set; } = new Nodetool.Types.Core.VideoRef();
 
-    public Nodetool.Types.AudioRef Process()
+    public Nodetool.Types.Core.AudioRef Process()
     {
-        return default(Nodetool.Types.AudioRef);
+        return default(Nodetool.Types.Core.AudioRef);
     }
 }

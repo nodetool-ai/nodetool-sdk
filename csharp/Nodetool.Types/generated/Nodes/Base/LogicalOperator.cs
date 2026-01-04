@@ -12,7 +12,7 @@ public class LogicalOperator
     [Key(1)]
     public bool b { get; set; } = false;
     [Key(2)]
-    public object operation { get; set; } = "BooleanOperation.AND";
+    public object operation { get; set; } = @"and";
 
     public bool Process()
     {

@@ -8,13 +8,13 @@ namespace Nodetool.Nodes.Base;
 public class FilterDictsByNumber
 {
     [Key(0)]
-    public object values { get; set; } = new List<object>();
+    public object filter_type { get; set; } = @"greater_than";
     [Key(1)]
-    public string key { get; set; } = "";
+    public string key { get; set; } = @"";
     [Key(2)]
-    public object filter_type { get; set; } = "FilterDictNumberType.GREATER_THAN";
+    public double? value { get; set; } = null;
     [Key(3)]
-    public object value { get; set; } = null;
+    public object values { get; set; } = new();
 
     public object Process()
     {

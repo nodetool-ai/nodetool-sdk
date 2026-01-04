@@ -8,18 +8,18 @@ namespace Nodetool.Nodes.Fal;
 public class Recraft20B
 {
     [Key(0)]
-    public string prompt { get; set; } = "";
+    public object colors { get; set; } = new();
     [Key(1)]
-    public object image_size { get; set; } = "ImageSizePreset.SQUARE_HD";
+    public object image_size { get; set; } = @"square_hd";
     [Key(2)]
-    public object style { get; set; } = "StylePreset.REALISTIC_IMAGE";
+    public string prompt { get; set; } = @"";
     [Key(3)]
-    public object colors { get; set; } = new List<object>();
+    public object style { get; set; } = @"realistic_image";
     [Key(4)]
-    public string style_id { get; set; } = "";
+    public string style_id { get; set; } = @"";
 
-    public Nodetool.Types.ImageRef Process()
+    public Nodetool.Types.Core.ImageRef Process()
     {
-        return default(Nodetool.Types.ImageRef);
+        return default(Nodetool.Types.Core.ImageRef);
     }
 }

@@ -8,12 +8,25 @@ namespace Nodetool.Nodes.Base;
 public class ExecutePython
 {
     [Key(0)]
-    public string code { get; set; } = "";
+    public string code { get; set; } = @"";
     [Key(1)]
-    public object inputs { get; set; } = new Dictionary<string, object>();
+    public object execution_mode { get; set; }
+    [Key(2)]
+    public object image { get; set; }
+    [Key(3)]
+    public string stdin { get; set; } = @"";
 
-    public object Process()
+    [MessagePackObject]
+    public class ExecutePythonOutput
     {
-        return default(object);
+        [Key(0)]
+        public string stderr { get; set; }
+        [Key(1)]
+        public string stdout { get; set; }
+    }
+
+    public ExecutePythonOutput Process()
+    {
+        return new ExecutePythonOutput();
     }
 }

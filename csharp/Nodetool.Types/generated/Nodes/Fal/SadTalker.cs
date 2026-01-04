@@ -8,20 +8,20 @@ namespace Nodetool.Nodes.Fal;
 public class SadTalker
 {
     [Key(0)]
-    public Nodetool.Types.ImageRef image { get; set; } = new Nodetool.Types.ImageRef();
+    public string audio { get; set; } = @"";
     [Key(1)]
-    public string audio { get; set; } = "";
+    public double expression_scale { get; set; } = 1.0;
     [Key(2)]
     public object face_model_resolution { get; set; }
     [Key(3)]
-    public double expression_scale { get; set; } = 1.0;
+    public Nodetool.Types.Core.ImageRef image { get; set; } = new Nodetool.Types.Core.ImageRef();
     [Key(4)]
-    public bool still_mode { get; set; } = false;
-    [Key(5)]
     public object preprocess { get; set; }
+    [Key(5)]
+    public bool still_mode { get; set; } = false;
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

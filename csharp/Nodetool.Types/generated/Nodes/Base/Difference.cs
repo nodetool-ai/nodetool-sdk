@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class Difference
 {
     [Key(0)]
-    public object list1 { get; set; } = new List<object>();
+    public object list1 { get; set; } = new();
     [Key(1)]
-    public object list2 { get; set; } = new List<object>();
+    public object list2 { get; set; } = new();
 
     public object Process()
     {

@@ -1,4 +1,4 @@
-﻿using MessagePack;
+using MessagePack;
 using System.Collections.Generic;
 
 namespace Nodetool.Types.Core;
@@ -7,8 +7,7 @@ namespace Nodetool.Types.Core;
 public class RecordType
 {
     [Key(0)]
-    public object type { get; set; } = "record_type";
-    [Key(1)]
     public List<object> columns { get; set; } = new();
+    [Key(1)]
+    public object type { get; set; } = @"record_type";
 }
-

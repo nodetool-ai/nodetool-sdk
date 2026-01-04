@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class RegexValidate
 {
     [Key(0)]
-    public string text { get; set; } = "";
+    public string pattern { get; set; } = @"";
     [Key(1)]
-    public string pattern { get; set; } = "";
+    public string text { get; set; } = @"";
 
     public bool Process()
     {

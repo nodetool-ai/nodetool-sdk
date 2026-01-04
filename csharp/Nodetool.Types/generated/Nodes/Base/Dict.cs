@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class Dict
 {
     [Key(0)]
-    public object value { get; set; } = new Dictionary<string, object>();
+    public object value { get; set; } = new();
 
     public object Process()
     {

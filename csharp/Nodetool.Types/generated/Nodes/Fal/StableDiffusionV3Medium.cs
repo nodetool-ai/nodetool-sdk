@@ -8,26 +8,26 @@ namespace Nodetool.Nodes.Fal;
 public class StableDiffusionV3Medium
 {
     [Key(0)]
-    public string prompt { get; set; } = "";
-    [Key(1)]
-    public string negative_prompt { get; set; } = "";
-    [Key(2)]
-    public bool prompt_expansion { get; set; } = false;
-    [Key(3)]
-    public object image_size { get; set; } = "ImageSizePreset.SQUARE_HD";
-    [Key(4)]
-    public int num_inference_steps { get; set; } = 28;
-    [Key(5)]
-    public double guidance_scale { get; set; } = 5.0;
-    [Key(6)]
-    public int num_images { get; set; } = 1;
-    [Key(7)]
-    public int seed { get; set; } = -1;
-    [Key(8)]
     public bool enable_safety_checker { get; set; } = true;
+    [Key(1)]
+    public double guidance_scale { get; set; } = 5.0;
+    [Key(2)]
+    public object image_size { get; set; } = @"square_hd";
+    [Key(3)]
+    public string negative_prompt { get; set; } = @"";
+    [Key(4)]
+    public int num_images { get; set; } = 1;
+    [Key(5)]
+    public int num_inference_steps { get; set; } = 28;
+    [Key(6)]
+    public string prompt { get; set; } = @"";
+    [Key(7)]
+    public bool prompt_expansion { get; set; } = false;
+    [Key(8)]
+    public int seed { get; set; } = -1;
 
-    public Nodetool.Types.ImageRef Process()
+    public Nodetool.Types.Core.ImageRef Process()
     {
-        return default(Nodetool.Types.ImageRef);
+        return default(Nodetool.Types.Core.ImageRef);
     }
 }

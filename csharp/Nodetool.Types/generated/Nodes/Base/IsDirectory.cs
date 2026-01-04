@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class IsDirectory
 {
     [Key(0)]
-    public Nodetool.Types.FilePath path { get; set; } = new Nodetool.Types.FilePath();
+    public string path { get; set; } = @"";
 
     public bool Process()
     {

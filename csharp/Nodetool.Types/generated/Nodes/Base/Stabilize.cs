@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class Stabilize
 {
     [Key(0)]
-    public Nodetool.Types.VideoRef video { get; set; } = new Nodetool.Types.VideoRef();
+    public bool crop_black { get; set; } = true;
     [Key(1)]
     public double smoothing { get; set; } = 10.0;
     [Key(2)]
-    public bool crop_black { get; set; } = true;
+    public Nodetool.Types.Core.VideoRef video { get; set; } = new Nodetool.Types.Core.VideoRef();
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

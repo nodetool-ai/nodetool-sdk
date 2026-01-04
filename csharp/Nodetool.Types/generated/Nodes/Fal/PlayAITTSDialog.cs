@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Fal;
 public class PlayAITTSDialog
 {
     [Key(0)]
-    public string text { get; set; } = "";
-    [Key(1)]
-    public string voice { get; set; } = "nova";
-    [Key(2)]
     public double speed { get; set; } = 1.0;
+    [Key(1)]
+    public string text { get; set; } = @"";
+    [Key(2)]
+    public string voice { get; set; } = @"nova";
 
-    public Nodetool.Types.AudioRef Process()
+    public Nodetool.Types.Core.AudioRef Process()
     {
-        return default(Nodetool.Types.AudioRef);
+        return default(Nodetool.Types.Core.AudioRef);
     }
 }

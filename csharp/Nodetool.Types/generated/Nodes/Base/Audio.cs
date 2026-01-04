@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class Audio
 {
     [Key(0)]
-    public Nodetool.Types.AudioRef value { get; set; } = new Nodetool.Types.AudioRef();
+    public Nodetool.Types.Core.AudioRef value { get; set; } = new Nodetool.Types.Core.AudioRef();
 
-    public Nodetool.Types.AudioRef Process()
+    public Nodetool.Types.Core.AudioRef Process()
     {
-        return default(Nodetool.Types.AudioRef);
+        return default(Nodetool.Types.Core.AudioRef);
     }
 }

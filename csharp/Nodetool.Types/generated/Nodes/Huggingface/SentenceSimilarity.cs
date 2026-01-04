@@ -8,12 +8,12 @@ namespace Nodetool.Nodes.Huggingface;
 public class SentenceSimilarity
 {
     [Key(0)]
-    public Nodetool.Types.HFSentenceSimilarity model { get; set; } = new Nodetool.Types.HFSentenceSimilarity();
+    public string inputs { get; set; } = @"";
     [Key(1)]
-    public string inputs { get; set; } = "";
+    public Nodetool.Types.Core.HFSentenceSimilarity model { get; set; } = new Nodetool.Types.Core.HFSentenceSimilarity();
 
-    public Nodetool.Types.NPArray Process()
+    public Nodetool.Types.Core.NPArray Process()
     {
-        return default(Nodetool.Types.NPArray);
+        return default(Nodetool.Types.Core.NPArray);
     }
 }

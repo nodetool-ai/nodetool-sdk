@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class IsIn
 {
     [Key(0)]
-    public object value { get; set; } = null;
+    public object options { get; set; } = new();
     [Key(1)]
-    public object options { get; set; } = new List<object>();
+    public object value { get; set; } = null;
 
     public bool Process()
     {

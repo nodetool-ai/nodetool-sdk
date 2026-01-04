@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class ExtractHeaders
 {
     [Key(0)]
-    public string markdown { get; set; } = "";
+    public string markdown { get; set; } = @"";
     [Key(1)]
     public int max_level { get; set; } = 6;
 

@@ -8,12 +8,12 @@ namespace Nodetool.Nodes.Fal;
 public class PixverseTextToVideoFast
 {
     [Key(0)]
-    public string prompt { get; set; } = "";
+    public string prompt { get; set; } = @"";
     [Key(1)]
     public int seed { get; set; } = -1;
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

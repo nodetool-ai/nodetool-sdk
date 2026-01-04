@@ -8,22 +8,22 @@ namespace Nodetool.Nodes.Fal;
 public class Veo3
 {
     [Key(0)]
-    public string prompt { get; set; } = "";
-    [Key(1)]
     public object aspect_ratio { get; set; }
-    [Key(2)]
+    [Key(1)]
     public object duration { get; set; }
+    [Key(2)]
+    public bool enhance_prompt { get; set; } = true;
     [Key(3)]
     public bool generate_audio { get; set; } = true;
     [Key(4)]
-    public int seed { get; set; } = -1;
+    public string negative_prompt { get; set; } = @"";
     [Key(5)]
-    public string negative_prompt { get; set; } = "";
+    public string prompt { get; set; } = @"";
     [Key(6)]
-    public bool enhance_prompt { get; set; } = true;
+    public int seed { get; set; } = -1;
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

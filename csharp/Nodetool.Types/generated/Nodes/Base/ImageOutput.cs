@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class ImageOutput
 {
     [Key(0)]
-    public Nodetool.Types.ImageRef value { get; set; } = new Nodetool.Types.ImageRef();
+    public string description { get; set; } = @"";
     [Key(1)]
-    public string name { get; set; } = "";
+    public string name { get; set; } = @"";
     [Key(2)]
-    public string description { get; set; } = "";
+    public Nodetool.Types.Core.ImageRef value { get; set; } = new Nodetool.Types.Core.ImageRef();
 
-    public Nodetool.Types.ImageRef Process()
+    public object Process()
     {
-        return default(Nodetool.Types.ImageRef);
+        return default(object);
     }
 }

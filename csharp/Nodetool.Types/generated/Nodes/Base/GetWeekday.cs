@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class GetWeekday
 {
     [Key(0)]
-    public Nodetool.Types.Datetime input_datetime { get; set; } = new Nodetool.Types.Datetime();
-    [Key(1)]
     public bool as_name { get; set; } = true;
+    [Key(1)]
+    public Nodetool.Types.Core.Datetime input_datetime { get; set; } = new Nodetool.Types.Core.Datetime();
 
     public object Process()
     {

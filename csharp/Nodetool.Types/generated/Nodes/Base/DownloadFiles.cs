@@ -8,19 +8,19 @@ namespace Nodetool.Nodes.Base;
 public class DownloadFiles
 {
     [Key(0)]
-    public object urls { get; set; } = new List<object>();
-    [Key(1)]
-    public Nodetool.Types.FilePath output_folder { get; set; } = new Nodetool.Types.FilePath();
-    [Key(2)]
     public int max_concurrent_downloads { get; set; } = 5;
+    [Key(1)]
+    public string output_folder { get; set; } = @"downloads";
+    [Key(2)]
+    public object urls { get; set; } = new();
 
     [MessagePackObject]
     public class DownloadFilesOutput
     {
         [Key(0)]
-        public object success { get; set; }
-        [Key(1)]
         public object failed { get; set; }
+        [Key(1)]
+        public object success { get; set; }
     }
 
     public DownloadFilesOutput Process()

@@ -10,9 +10,9 @@ public class GetJSONPathList
     [Key(0)]
     public object data { get; set; } = null;
     [Key(1)]
-    public string path { get; set; } = "";
+    public object default_ { get; set; } = new();
     [Key(2)]
-    public object default { get; set; } = new List<object>();
+    public string path { get; set; } = @"";
 
     public object Process()
     {

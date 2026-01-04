@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class Update
 {
     [Key(0)]
-    public object dictionary { get; set; } = new Dictionary<string, object>();
+    public object dictionary { get; set; } = new();
     [Key(1)]
-    public object new_pairs { get; set; } = new Dictionary<string, object>();
+    public object new_pairs { get; set; } = new();
 
     public object Process()
     {

@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class ParseJSON
 {
     [Key(0)]
-    public string text { get; set; } = "";
+    public string text { get; set; } = @"";
 
     public object Process()
     {

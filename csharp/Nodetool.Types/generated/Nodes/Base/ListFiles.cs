@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class ListFiles
 {
     [Key(0)]
-    public Nodetool.Types.FilePath directory { get; set; } = new Nodetool.Types.FilePath();
+    public string folder { get; set; } = @"~";
     [Key(1)]
-    public string pattern { get; set; } = "*";
+    public bool include_subdirectories { get; set; } = false;
     [Key(2)]
-    public bool recursive { get; set; } = false;
+    public string pattern { get; set; } = @"*";
 
-    public object Process()
+    public string Process()
     {
-        return default(object);
+        return default(string);
     }
 }

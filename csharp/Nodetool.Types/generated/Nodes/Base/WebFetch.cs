@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class WebFetch
 {
     [Key(0)]
-    public string url { get; set; } = "";
+    public string selector { get; set; } = @"body";
     [Key(1)]
-    public string selector { get; set; } = "body";
+    public string url { get; set; } = @"";
 
     public string Process()
     {

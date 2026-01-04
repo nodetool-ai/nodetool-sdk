@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Huggingface;
 public class TokenClassification
 {
     [Key(0)]
-    public Nodetool.Types.HFTokenClassification model { get; set; } = new Nodetool.Types.HFTokenClassification();
+    public object aggregation_strategy { get; set; } = @"simple";
     [Key(1)]
-    public string inputs { get; set; } = "";
+    public string inputs { get; set; } = @"";
     [Key(2)]
-    public object aggregation_strategy { get; set; } = "AggregationStrategy.SIMPLE";
+    public Nodetool.Types.Core.HFTokenClassification model { get; set; } = new Nodetool.Types.Core.HFTokenClassification();
 
-    public Nodetool.Types.DataframeRef Process()
+    public Nodetool.Types.Core.DataframeRef Process()
     {
-        return default(Nodetool.Types.DataframeRef);
+        return default(Nodetool.Types.Core.DataframeRef);
     }
 }

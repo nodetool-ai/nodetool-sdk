@@ -8,11 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class FilterNumbers
 {
     [Key(0)]
-    public object values { get; set; } = new List<object>();
+    public object filter_type { get; set; } = @"greater_than";
     [Key(1)]
-    public object filter_type { get; set; } = "FilterNumberType.GREATER_THAN";
+    public double? value { get; set; } = null;
     [Key(2)]
-    public object value { get; set; } = null;
+    public object values { get; set; } = new();
 
     public object Process()
     {

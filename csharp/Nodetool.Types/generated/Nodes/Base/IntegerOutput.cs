@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class IntegerOutput
 {
     [Key(0)]
-    public int value { get; set; } = 0;
+    public string description { get; set; } = @"";
     [Key(1)]
-    public string name { get; set; } = "";
+    public string name { get; set; } = @"";
     [Key(2)]
-    public string description { get; set; } = "";
+    public int value { get; set; } = 0;
 
-    public int Process()
+    public object Process()
     {
-        return default(int);
+        return default(object);
     }
 }

@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class StartsWith
 {
     [Key(0)]
-    public string text { get; set; } = "";
+    public string prefix { get; set; } = @"";
     [Key(1)]
-    public string prefix { get; set; } = "";
+    public string text { get; set; } = @"";
 
     public bool Process()
     {

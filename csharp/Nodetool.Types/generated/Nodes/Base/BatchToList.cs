@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class BatchToList
 {
     [Key(0)]
-    public Nodetool.Types.ImageRef batch { get; set; } = new Nodetool.Types.ImageRef();
+    public Nodetool.Types.Core.ImageRef batch { get; set; } = new Nodetool.Types.Core.ImageRef();
 
     public object Process()
     {

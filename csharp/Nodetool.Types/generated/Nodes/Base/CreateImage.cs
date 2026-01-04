@@ -8,18 +8,18 @@ namespace Nodetool.Nodes.Base;
 public class CreateImage
 {
     [Key(0)]
-    public string prompt { get; set; } = "";
+    public object background { get; set; } = @"auto";
     [Key(1)]
-    public object model { get; set; } = "Model.GPT_IMAGE_1";
+    public object model { get; set; } = @"gpt-image-1";
     [Key(2)]
-    public object size { get; set; } = "Size._1024x1024";
+    public string prompt { get; set; } = @"";
     [Key(3)]
-    public object background { get; set; } = "Background.auto";
+    public object quality { get; set; } = @"high";
     [Key(4)]
-    public object quality { get; set; } = "Quality.high";
+    public object size { get; set; } = @"1024x1024";
 
-    public Nodetool.Types.ImageRef Process()
+    public Nodetool.Types.Core.ImageRef Process()
     {
-        return default(Nodetool.Types.ImageRef);
+        return default(Nodetool.Types.Core.ImageRef);
     }
 }

@@ -12,7 +12,7 @@ public class Compare
     [Key(1)]
     public object b { get; set; } = null;
     [Key(2)]
-    public object comparison { get; set; } = "Comparison.EQUAL";
+    public object comparison { get; set; } = @"==";
 
     public bool Process()
     {

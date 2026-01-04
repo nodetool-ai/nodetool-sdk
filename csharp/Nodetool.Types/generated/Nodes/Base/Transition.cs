@@ -8,16 +8,16 @@ namespace Nodetool.Nodes.Base;
 public class Transition
 {
     [Key(0)]
-    public Nodetool.Types.VideoRef video_a { get; set; } = new Nodetool.Types.VideoRef();
-    [Key(1)]
-    public Nodetool.Types.VideoRef video_b { get; set; } = new Nodetool.Types.VideoRef();
-    [Key(2)]
-    public object transition_type { get; set; } = "TransitionType.fade";
-    [Key(3)]
     public double duration { get; set; } = 1.0;
+    [Key(1)]
+    public object transition_type { get; set; } = @"fade";
+    [Key(2)]
+    public Nodetool.Types.Core.VideoRef video_a { get; set; } = new Nodetool.Types.Core.VideoRef();
+    [Key(3)]
+    public Nodetool.Types.Core.VideoRef video_b { get; set; } = new Nodetool.Types.Core.VideoRef();
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

@@ -8,11 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class GoogleJobs
 {
     [Key(0)]
-    public string query { get; set; } = "";
+    public string location { get; set; } = @"";
     [Key(1)]
-    public string location { get; set; } = "";
-    [Key(2)]
     public int num_results { get; set; } = 10;
+    [Key(2)]
+    public string query { get; set; } = @"";
 
     public object Process()
     {

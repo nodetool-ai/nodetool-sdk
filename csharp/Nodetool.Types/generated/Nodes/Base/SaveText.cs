@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class SaveText
 {
     [Key(0)]
-    public string text { get; set; } = "";
+    public Nodetool.Types.Core.FolderRef folder { get; set; } = new Nodetool.Types.Core.FolderRef();
     [Key(1)]
-    public Nodetool.Types.FolderRef folder { get; set; } = new Nodetool.Types.FolderRef();
+    public string name { get; set; } = @"%Y-%m-%d-%H-%M-%S.txt";
     [Key(2)]
-    public string name { get; set; } = "%Y-%m-%d-%H-%M-%S.txt";
+    public string text { get; set; } = @"";
 
-    public Nodetool.Types.TextRef Process()
+    public Nodetool.Types.Core.TextRef Process()
     {
-        return default(Nodetool.Types.TextRef);
+        return default(Nodetool.Types.Core.TextRef);
     }
 }

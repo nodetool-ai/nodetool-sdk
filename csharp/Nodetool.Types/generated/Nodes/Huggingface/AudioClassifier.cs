@@ -8,14 +8,9 @@ namespace Nodetool.Nodes.Huggingface;
 public class AudioClassifier
 {
     [Key(0)]
-    public Nodetool.Types.HFAudioClassification model { get; set; } = new Nodetool.Types.HFAudioClassification();
+    public Nodetool.Types.Core.AudioRef audio { get; set; } = new Nodetool.Types.Core.AudioRef();
     [Key(1)]
-    public Nodetool.Types.AudioRef audio { get; set; } = new Nodetool.Types.AudioRef();
+    public Nodetool.Types.Core.HFAudioClassification model { get; set; } = new Nodetool.Types.Core.HFAudioClassification();
     [Key(2)]
     public int top_k { get; set; } = 10;
-
-    public object Process()
-    {
-        return default(object);
-    }
 }

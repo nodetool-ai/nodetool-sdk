@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class LoadAudioFile
 {
     [Key(0)]
-    public Nodetool.Types.FilePath path { get; set; } = new Nodetool.Types.FilePath();
+    public string path { get; set; } = @"";
 
-    public Nodetool.Types.AudioRef Process()
+    public Nodetool.Types.Core.AudioRef Process()
     {
-        return default(Nodetool.Types.AudioRef);
+        return default(Nodetool.Types.Core.AudioRef);
     }
 }

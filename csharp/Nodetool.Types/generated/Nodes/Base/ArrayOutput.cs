@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class ArrayOutput
 {
     [Key(0)]
-    public Nodetool.Types.NPArray value { get; set; } = new Nodetool.Types.NPArray();
+    public string description { get; set; } = @"";
     [Key(1)]
-    public string name { get; set; } = "";
+    public string name { get; set; } = @"";
     [Key(2)]
-    public string description { get; set; } = "";
+    public Nodetool.Types.Core.NPArray value { get; set; } = new Nodetool.Types.Core.NPArray();
 
-    public Nodetool.Types.NPArray Process()
+    public object Process()
     {
-        return default(Nodetool.Types.NPArray);
+        return default(object);
     }
 }

@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class Power
 {
     [Key(0)]
-    public object base { get; set; } = 1.0;
+    public object base_ { get; set; } = 0.0;
     [Key(1)]
-    public object exponent { get; set; } = 2.0;
+    public object exponent { get; set; } = 1.0;
 
     public object Process()
     {

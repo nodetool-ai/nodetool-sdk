@@ -8,14 +8,9 @@ namespace Nodetool.Nodes.Huggingface;
 public class ZeroShotImageClassifier
 {
     [Key(0)]
-    public Nodetool.Types.HFZeroShotImageClassification model { get; set; } = new Nodetool.Types.HFZeroShotImageClassification();
+    public string candidate_labels { get; set; } = @"";
     [Key(1)]
-    public Nodetool.Types.ImageRef image { get; set; } = new Nodetool.Types.ImageRef();
+    public Nodetool.Types.Core.ImageRef image { get; set; } = new Nodetool.Types.Core.ImageRef();
     [Key(2)]
-    public string candidate_labels { get; set; } = "";
-
-    public object Process()
-    {
-        return default(object);
-    }
+    public Nodetool.Types.Core.HFZeroShotImageClassification model { get; set; } = new Nodetool.Types.Core.HFZeroShotImageClassification();
 }

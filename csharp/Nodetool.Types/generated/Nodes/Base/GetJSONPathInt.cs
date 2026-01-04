@@ -10,9 +10,9 @@ public class GetJSONPathInt
     [Key(0)]
     public object data { get; set; } = null;
     [Key(1)]
-    public string path { get; set; } = "";
+    public int default_ { get; set; } = 0;
     [Key(2)]
-    public int default { get; set; } = 0;
+    public string path { get; set; } = @"";
 
     public int Process()
     {

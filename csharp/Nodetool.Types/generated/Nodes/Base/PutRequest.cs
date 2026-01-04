@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class PutRequest
 {
     [Key(0)]
-    public string url { get; set; } = "";
+    public string data { get; set; } = @"";
     [Key(1)]
-    public string data { get; set; } = "";
+    public string url { get; set; } = @"";
 
     public string Process()
     {

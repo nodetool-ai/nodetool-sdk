@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class ToList
 {
     [Key(0)]
-    public Nodetool.Types.DataframeRef dataframe { get; set; } = new Nodetool.Types.DataframeRef();
+    public Nodetool.Types.Core.DataframeRef dataframe { get; set; } = new Nodetool.Types.Core.DataframeRef();
 
     public object Process()
     {

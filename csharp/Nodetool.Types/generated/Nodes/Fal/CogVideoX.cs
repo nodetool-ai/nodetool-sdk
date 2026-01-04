@@ -8,26 +8,26 @@ namespace Nodetool.Nodes.Fal;
 public class CogVideoX
 {
     [Key(0)]
-    public Nodetool.Types.ImageRef image { get; set; } = new Nodetool.Types.ImageRef();
+    public int export_fps { get; set; } = 16;
     [Key(1)]
-    public string prompt { get; set; } = "";
+    public double guidance_scale { get; set; } = 7.0;
     [Key(2)]
-    public object video_size { get; set; }
+    public Nodetool.Types.Core.ImageRef image { get; set; } = new Nodetool.Types.Core.ImageRef();
     [Key(3)]
-    public string negative_prompt { get; set; } = "Distorted, discontinuous, Ugly, blurry, low resolution, motionless, static, disfigured, disconnected limbs, Ugly faces, incomplete arms";
+    public string negative_prompt { get; set; } = @"Distorted, discontinuous, Ugly, blurry, low resolution, motionless, static, disfigured, disconnected limbs, Ugly faces, incomplete arms";
     [Key(4)]
     public int num_inference_steps { get; set; } = 50;
     [Key(5)]
-    public double guidance_scale { get; set; } = 7.0;
+    public string prompt { get; set; } = @"";
     [Key(6)]
-    public bool use_rife { get; set; } = true;
-    [Key(7)]
-    public int export_fps { get; set; } = 16;
-    [Key(8)]
     public int seed { get; set; } = -1;
+    [Key(7)]
+    public bool use_rife { get; set; } = true;
+    [Key(8)]
+    public object video_size { get; set; }
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

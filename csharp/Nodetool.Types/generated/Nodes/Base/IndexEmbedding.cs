@@ -8,13 +8,13 @@ namespace Nodetool.Nodes.Base;
 public class IndexEmbedding
 {
     [Key(0)]
-    public Nodetool.Types.Collection collection { get; set; } = new Nodetool.Types.Collection();
+    public Nodetool.Types.Core.Collection collection { get; set; } = new Nodetool.Types.Core.Collection();
     [Key(1)]
-    public Nodetool.Types.NPArray embedding { get; set; } = new Nodetool.Types.NPArray();
+    public Nodetool.Types.Core.NPArray embedding { get; set; } = new Nodetool.Types.Core.NPArray();
     [Key(2)]
-    public string index_id { get; set; } = "";
+    public string index_id { get; set; } = @"";
     [Key(3)]
-    public object metadata { get; set; } = new Dictionary<string, object>();
+    public object metadata { get; set; } = new();
 
     public void Process()
     {

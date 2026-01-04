@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class CreatedTime
 {
     [Key(0)]
-    public Nodetool.Types.FilePath path { get; set; } = new Nodetool.Types.FilePath();
+    public string path { get; set; } = @"";
 
-    public Nodetool.Types.Datetime Process()
+    public Nodetool.Types.Core.Datetime Process()
     {
-        return default(Nodetool.Types.Datetime);
+        return default(Nodetool.Types.Core.Datetime);
     }
 }

@@ -8,12 +8,12 @@ namespace Nodetool.Nodes.Base;
 public class Concat
 {
     [Key(0)]
-    public Nodetool.Types.VideoRef video_a { get; set; } = new Nodetool.Types.VideoRef();
+    public Nodetool.Types.Core.VideoRef video_a { get; set; } = new Nodetool.Types.Core.VideoRef();
     [Key(1)]
-    public Nodetool.Types.VideoRef video_b { get; set; } = new Nodetool.Types.VideoRef();
+    public Nodetool.Types.Core.VideoRef video_b { get; set; } = new Nodetool.Types.Core.VideoRef();
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

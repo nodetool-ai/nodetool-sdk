@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class ArgMax
 {
     [Key(0)]
-    public object scores { get; set; } = new Dictionary<string, object>();
+    public object scores { get; set; } = new();
 
     public string Process()
     {

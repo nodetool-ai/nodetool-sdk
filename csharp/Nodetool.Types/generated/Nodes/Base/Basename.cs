@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class Basename
 {
     [Key(0)]
-    public string path { get; set; } = "";
+    public string path { get; set; } = @"";
     [Key(1)]
     public bool remove_extension { get; set; } = false;
 

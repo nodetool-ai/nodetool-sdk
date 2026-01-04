@@ -10,12 +10,12 @@ public class GenerateSequence
     [Key(0)]
     public int start { get; set; } = 0;
     [Key(1)]
-    public int stop { get; set; } = 0;
-    [Key(2)]
     public int step { get; set; } = 1;
+    [Key(2)]
+    public int stop { get; set; } = 0;
 
-    public object Process()
+    public int Process()
     {
-        return default(object);
+        return default(int);
     }
 }

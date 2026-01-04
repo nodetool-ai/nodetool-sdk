@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class String
 {
     [Key(0)]
-    public string value { get; set; } = "";
+    public string value { get; set; } = @"";
 
     public string Process()
     {

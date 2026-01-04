@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class Template
 {
     [Key(0)]
-    public string string { get; set; } = "";
+    public string string_ { get; set; } = @"";
     [Key(1)]
-    public object values { get; set; } = new Dictionary<string, object>();
+    public object values { get; set; } = new();
 
     public string Process()
     {

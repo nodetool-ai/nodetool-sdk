@@ -8,23 +8,23 @@ namespace Nodetool.Nodes.Base;
 public class QueryText
 {
     [Key(0)]
-    public Nodetool.Types.Collection collection { get; set; } = new Nodetool.Types.Collection();
+    public Nodetool.Types.Core.Collection collection { get; set; } = new Nodetool.Types.Core.Collection();
     [Key(1)]
-    public string text { get; set; } = "";
-    [Key(2)]
     public int n_results { get; set; } = 1;
+    [Key(2)]
+    public string text { get; set; } = @"";
 
     [MessagePackObject]
     public class QueryTextOutput
     {
         [Key(0)]
-        public object ids { get; set; }
+        public object distances { get; set; }
         [Key(1)]
         public object documents { get; set; }
         [Key(2)]
-        public object metadatas { get; set; }
+        public object ids { get; set; }
         [Key(3)]
-        public object distances { get; set; }
+        public object metadatas { get; set; }
     }
 
     public QueryTextOutput Process()

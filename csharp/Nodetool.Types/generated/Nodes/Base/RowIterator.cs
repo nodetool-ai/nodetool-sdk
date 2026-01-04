@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class RowIterator
 {
     [Key(0)]
-    public Nodetool.Types.DataframeRef dataframe { get; set; } = new Nodetool.Types.DataframeRef();
+    public Nodetool.Types.Core.DataframeRef dataframe { get; set; } = new Nodetool.Types.Core.DataframeRef();
 
     [MessagePackObject]
     public class RowIteratorOutput
@@ -16,7 +16,7 @@ public class RowIterator
         [Key(0)]
         public object dict { get; set; }
         [Key(1)]
-        public int index { get; set; }
+        public object index { get; set; }
     }
 
     public RowIteratorOutput Process()

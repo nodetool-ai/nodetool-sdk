@@ -8,14 +8,9 @@ namespace Nodetool.Nodes.Huggingface;
 public class Reranker
 {
     [Key(0)]
-    public Nodetool.Types.HFReranker model { get; set; } = new Nodetool.Types.HFReranker();
+    public List<string> candidates { get; set; } = new();
     [Key(1)]
-    public string query { get; set; } = "";
+    public Nodetool.Types.Core.HFReranker model { get; set; } = new Nodetool.Types.Core.HFReranker();
     [Key(2)]
-    public object candidates { get; set; } = new List<object>();
-
-    public object Process()
-    {
-        return default(object);
-    }
+    public string query { get; set; } = @"";
 }

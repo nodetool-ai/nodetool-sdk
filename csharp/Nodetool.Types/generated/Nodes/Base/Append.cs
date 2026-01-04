@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class Append
 {
     [Key(0)]
-    public object values { get; set; } = new List<object>();
-    [Key(1)]
     public object value { get; set; } = null;
+    [Key(1)]
+    public object values { get; set; } = new();
 
     public object Process()
     {

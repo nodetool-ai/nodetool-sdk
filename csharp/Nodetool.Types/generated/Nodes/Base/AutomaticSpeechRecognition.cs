@@ -8,21 +8,12 @@ namespace Nodetool.Nodes.Base;
 public class AutomaticSpeechRecognition
 {
     [Key(0)]
-    public Nodetool.Types.InferenceProviderAutomaticSpeechRecognitionModel model { get; set; } = new Nodetool.Types.InferenceProviderAutomaticSpeechRecognitionModel();
+    public Nodetool.Types.Core.AudioRef audio { get; set; } = new Nodetool.Types.Core.AudioRef();
     [Key(1)]
-    public Nodetool.Types.AudioRef audio { get; set; } = new Nodetool.Types.AudioRef();
+    public Nodetool.Types.Core.ASRModel model { get; set; } = new Nodetool.Types.Core.ASRModel();
 
-    [MessagePackObject]
-    public class AutomaticSpeechRecognitionOutput
+    public string Process()
     {
-        [Key(0)]
-        public string text { get; set; }
-        [Key(1)]
-        public object chunks { get; set; }
-    }
-
-    public AutomaticSpeechRecognitionOutput Process()
-    {
-        return new AutomaticSpeechRecognitionOutput();
+        return default(string);
     }
 }

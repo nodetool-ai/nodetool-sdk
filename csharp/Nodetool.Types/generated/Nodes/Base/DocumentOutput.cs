@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class DocumentOutput
 {
     [Key(0)]
-    public Nodetool.Types.DocumentRef value { get; set; } = new Nodetool.Types.DocumentRef();
+    public string description { get; set; } = @"";
     [Key(1)]
-    public string name { get; set; } = "";
+    public string name { get; set; } = @"";
     [Key(2)]
-    public string description { get; set; } = "";
+    public Nodetool.Types.Core.DocumentRef value { get; set; } = new Nodetool.Types.Core.DocumentRef();
 
-    public Nodetool.Types.DocumentRef Process()
+    public object Process()
     {
-        return default(Nodetool.Types.DocumentRef);
+        return default(object);
     }
 }

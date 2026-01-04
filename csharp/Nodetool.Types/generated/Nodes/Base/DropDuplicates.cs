@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class DropDuplicates
 {
     [Key(0)]
-    public Nodetool.Types.DataframeRef df { get; set; } = new Nodetool.Types.DataframeRef();
+    public Nodetool.Types.Core.DataframeRef df { get; set; } = new Nodetool.Types.Core.DataframeRef();
 
-    public Nodetool.Types.DataframeRef Process()
+    public Nodetool.Types.Core.DataframeRef Process()
     {
-        return default(Nodetool.Types.DataframeRef);
+        return default(Nodetool.Types.Core.DataframeRef);
     }
 }

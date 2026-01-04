@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class LoadVideoFile
 {
     [Key(0)]
-    public string path { get; set; } = "";
+    public string path { get; set; } = @"";
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

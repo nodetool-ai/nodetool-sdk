@@ -8,20 +8,29 @@ namespace Nodetool.Nodes.Huggingface;
 public class TextGeneration
 {
     [Key(0)]
-    public Nodetool.Types.HFTextGeneration model { get; set; } = new Nodetool.Types.HFTextGeneration();
-    [Key(1)]
-    public string prompt { get; set; } = "";
-    [Key(2)]
-    public int max_new_tokens { get; set; } = 50;
-    [Key(3)]
-    public double temperature { get; set; } = 1.0;
-    [Key(4)]
-    public double top_p { get; set; } = 1.0;
-    [Key(5)]
     public bool do_sample { get; set; } = true;
+    [Key(1)]
+    public int max_new_tokens { get; set; } = 50;
+    [Key(2)]
+    public Nodetool.Types.Core.HFTextGeneration model { get; set; } = new Nodetool.Types.Core.HFTextGeneration();
+    [Key(3)]
+    public string prompt { get; set; } = @"";
+    [Key(4)]
+    public double temperature { get; set; } = 1.0;
+    [Key(5)]
+    public double top_p { get; set; } = 1.0;
 
-    public string Process()
+    [MessagePackObject]
+    public class TextGenerationOutput
     {
-        return default(string);
+        [Key(0)]
+        public Nodetool.Types.Core.Chunk chunk { get; set; }
+        [Key(1)]
+        public string text { get; set; }
+    }
+
+    public TextGenerationOutput Process()
+    {
+        return new TextGenerationOutput();
     }
 }

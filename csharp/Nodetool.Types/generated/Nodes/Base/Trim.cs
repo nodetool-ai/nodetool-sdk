@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class Trim
 {
     [Key(0)]
-    public Nodetool.Types.VideoRef video { get; set; } = new Nodetool.Types.VideoRef();
+    public double end_time { get; set; } = -1.0;
     [Key(1)]
     public double start_time { get; set; } = 0.0;
     [Key(2)]
-    public double end_time { get; set; } = -1.0;
+    public Nodetool.Types.Core.VideoRef video { get; set; } = new Nodetool.Types.Core.VideoRef();
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

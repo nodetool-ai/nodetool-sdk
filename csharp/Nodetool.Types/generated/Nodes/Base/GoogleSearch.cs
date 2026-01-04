@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class GoogleSearch
 {
     [Key(0)]
-    public string keyword { get; set; } = "";
+    public string keyword { get; set; } = @"";
     [Key(1)]
     public int num_results { get; set; } = 10;
 

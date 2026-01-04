@@ -8,11 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class RegexMatch
 {
     [Key(0)]
-    public string text { get; set; } = "";
+    public int? group { get; set; } = null;
     [Key(1)]
-    public string pattern { get; set; } = "";
+    public string pattern { get; set; } = @"";
     [Key(2)]
-    public object group { get; set; } = null;
+    public string text { get; set; } = @"";
 
     public object Process()
     {

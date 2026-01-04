@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class Zip
 {
     [Key(0)]
-    public object keys { get; set; } = new List<object>();
+    public object keys { get; set; } = new();
     [Key(1)]
-    public object values { get; set; } = new List<object>();
+    public object values { get; set; } = new();
 
     public object Process()
     {

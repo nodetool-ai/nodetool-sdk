@@ -8,13 +8,13 @@ namespace Nodetool.Nodes.Base;
 public class LoadCSVAssets
 {
     [Key(0)]
-    public Nodetool.Types.FolderRef folder { get; set; } = new Nodetool.Types.FolderRef();
+    public Nodetool.Types.Core.FolderRef folder { get; set; } = new Nodetool.Types.Core.FolderRef();
 
     [MessagePackObject]
     public class LoadCSVAssetsOutput
     {
         [Key(0)]
-        public Nodetool.Types.DataframeRef dataframe { get; set; }
+        public Nodetool.Types.Core.DataframeRef dataframe { get; set; }
         [Key(1)]
         public string name { get; set; }
     }

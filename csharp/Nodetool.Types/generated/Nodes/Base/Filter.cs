@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class Filter
 {
     [Key(0)]
-    public object dictionary { get; set; } = new Dictionary<string, object>();
+    public object dictionary { get; set; } = new();
     [Key(1)]
-    public object keys { get; set; } = new List<object>();
+    public object keys { get; set; } = new();
 
     public object Process()
     {

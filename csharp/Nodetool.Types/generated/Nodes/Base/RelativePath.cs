@@ -8,12 +8,12 @@ namespace Nodetool.Nodes.Base;
 public class RelativePath
 {
     [Key(0)]
-    public string target_path { get; set; } = "";
+    public string start_path { get; set; } = @".";
     [Key(1)]
-    public string start_path { get; set; } = ".";
+    public string target_path { get; set; } = @"";
 
-    public Nodetool.Types.FilePath Process()
+    public string Process()
     {
-        return default(Nodetool.Types.FilePath);
+        return default(string);
     }
 }

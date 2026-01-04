@@ -8,23 +8,21 @@ namespace Nodetool.Nodes.Base;
 public class FrameIterator
 {
     [Key(0)]
-    public Nodetool.Types.VideoRef video { get; set; } = new Nodetool.Types.VideoRef();
+    public int end { get; set; } = -1;
     [Key(1)]
     public int start { get; set; } = 0;
     [Key(2)]
-    public int end { get; set; } = -1;
+    public Nodetool.Types.Core.VideoRef video { get; set; } = new Nodetool.Types.Core.VideoRef();
 
     [MessagePackObject]
     public class FrameIteratorOutput
     {
         [Key(0)]
-        public Nodetool.Types.ImageRef frame { get; set; }
-        [Key(1)]
-        public int index { get; set; }
-        [Key(2)]
         public double fps { get; set; }
-        [Key(3)]
-        public Nodetool.Types.Event event { get; set; }
+        [Key(1)]
+        public Nodetool.Types.Core.ImageRef frame { get; set; }
+        [Key(2)]
+        public int index { get; set; }
     }
 
     public FrameIteratorOutput Process()

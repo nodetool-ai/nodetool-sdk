@@ -4,198 +4,18 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-using MessagePack;
 using System;
-using System.Collections.Generic;
 
 namespace Nodetool.Types;
 
 /// <summary>
-/// Types from Core package.
+/// Types from Core package (registration helpers).
 /// </summary>
 public static class Core
 {
-    // Type definitions
-    [MessagePackObject] public class AssetRef { ... }
-    [MessagePackObject] public class AudioChunk { ... }
-    [MessagePackObject] public class AudioRef { ... }
-    [MessagePackObject] public class BoundingBox { ... }
-    [MessagePackObject] public class CLIP { ... }
-    [MessagePackObject] public class CLIPFile { ... }
-    [MessagePackObject] public class CLIPVision { ... }
-    [MessagePackObject] public class CLIPVisionFile { ... }
-    [MessagePackObject] public class CLIPVisionOutput { ... }
-    [MessagePackObject] public class CalendarEvent { ... }
-    [MessagePackObject] public class ChartConfig { ... }
-    [MessagePackObject] public class ChartData { ... }
-    [MessagePackObject] public class CheckpointFile { ... }
-    [MessagePackObject] public class Collection { ... }
-    [MessagePackObject] public class ColorRef { ... }
-    [MessagePackObject] public class ComfyData { ... }
-    [MessagePackObject] public class ComfyModel { ... }
-    [MessagePackObject] public class Conditioning { ... }
-    [MessagePackObject] public class ControlNet { ... }
-    [MessagePackObject] public class ControlNetFile { ... }
-    [MessagePackObject] public class DataSeries { ... }
-    [MessagePackObject] public class DataframeRef { ... }
-    [MessagePackObject] public class Date { ... }
-    [MessagePackObject] public class DateSearchCondition { ... }
-    [MessagePackObject] public class Datetime { ... }
-    [MessagePackObject] public class DocumentRef { ... }
-    [MessagePackObject] public class Email { ... }
-    [MessagePackObject] public class EmailSearchCriteria { ... }
-    [MessagePackObject] public class Embeds { ... }
-    [MessagePackObject] public class Event { ... }
-    [MessagePackObject] public class ExcelRef { ... }
-    [MessagePackObject] public class FaceAnalysis { ... }
-    [MessagePackObject] public class FaceEmbeds { ... }
-    [MessagePackObject] public class FilePath { ... }
-    [MessagePackObject] public class FolderPath { ... }
-    [MessagePackObject] public class FolderRef { ... }
-    [MessagePackObject] public class FontRef { ... }
-    [MessagePackObject] public class GLIGEN { ... }
-    [MessagePackObject] public class GLIGENFile { ... }
-    [MessagePackObject] public class Guider { ... }
-    [MessagePackObject] public class HFAudioClassification { ... }
-    [MessagePackObject] public class HFAudioToAudio { ... }
-    [MessagePackObject] public class HFAutomaticSpeechRecognition { ... }
-    [MessagePackObject] public class HFCLIP { ... }
-    [MessagePackObject] public class HFCLIPVision { ... }
-    [MessagePackObject] public class HFCheckpointModel { ... }
-    [MessagePackObject] public class HFComputerVision { ... }
-    [MessagePackObject] public class HFControlNet { ... }
-    [MessagePackObject] public class HFControlNetSDXL { ... }
-    [MessagePackObject] public class HFDepthEstimation { ... }
-    [MessagePackObject] public class HFDocumentQuestionAnswering { ... }
-    [MessagePackObject] public class HFFeatureExtraction { ... }
-    [MessagePackObject] public class HFFillMask { ... }
-    [MessagePackObject] public class HFFlux { ... }
-    [MessagePackObject] public class HFGOTOCR { ... }
-    [MessagePackObject] public class HFIPAdapter { ... }
-    [MessagePackObject] public class HFImageClassification { ... }
-    [MessagePackObject] public class HFImageFeatureExtraction { ... }
-    [MessagePackObject] public class HFImageSegmentation { ... }
-    [MessagePackObject] public class HFImageTextToText { ... }
-    [MessagePackObject] public class HFImageTo3D { ... }
-    [MessagePackObject] public class HFImageToImage { ... }
-    [MessagePackObject] public class HFImageToText { ... }
-    [MessagePackObject] public class HFImageToVideo { ... }
-    [MessagePackObject] public class HFLTXV { ... }
-    [MessagePackObject] public class HFLoraSD { ... }
-    [MessagePackObject] public class HFLoraSDConfig { ... }
-    [MessagePackObject] public class HFLoraSDXL { ... }
-    [MessagePackObject] public class HFLoraSDXLConfig { ... }
-    [MessagePackObject] public class HFMaskGeneration { ... }
-    [MessagePackObject] public class HFMiniCPM { ... }
-    [MessagePackObject] public class HFNaturalLanguageProcessing { ... }
-    [MessagePackObject] public class HFObjectDetection { ... }
-    [MessagePackObject] public class HFQuestionAnswering { ... }
-    [MessagePackObject] public class HFRealESRGAN { ... }
-    [MessagePackObject] public class HFReranker { ... }
-    [MessagePackObject] public class HFSentenceSimilarity { ... }
-    [MessagePackObject] public class HFStableDiffusion { ... }
-    [MessagePackObject] public class HFStableDiffusion3 { ... }
-    [MessagePackObject] public class HFStableDiffusionUpscale { ... }
-    [MessagePackObject] public class HFStableDiffusionXL { ... }
-    [MessagePackObject] public class HFStableDiffusionXLTurbo { ... }
-    [MessagePackObject] public class HFStyleModel { ... }
-    [MessagePackObject] public class HFSummarization { ... }
-    [MessagePackObject] public class HFTableQuestionAnswering { ... }
-    [MessagePackObject] public class HFText2TextGeneration { ... }
-    [MessagePackObject] public class HFTextClassification { ... }
-    [MessagePackObject] public class HFTextGeneration { ... }
-    [MessagePackObject] public class HFTextTo3D { ... }
-    [MessagePackObject] public class HFTextToAudio { ... }
-    [MessagePackObject] public class HFTextToImage { ... }
-    [MessagePackObject] public class HFTextToSpeech { ... }
-    [MessagePackObject] public class HFTextToVideo { ... }
-    [MessagePackObject] public class HFTokenClassification { ... }
-    [MessagePackObject] public class HFTranslation { ... }
-    [MessagePackObject] public class HFUnconditionalImageGeneration { ... }
-    [MessagePackObject] public class HFUnet { ... }
-    [MessagePackObject] public class HFVAE { ... }
-    [MessagePackObject] public class HFVideoClassification { ... }
-    [MessagePackObject] public class HFVideoTextToText { ... }
-    [MessagePackObject] public class HFVisualQuestionAnswering { ... }
-    [MessagePackObject] public class HFVoiceActivityDetection { ... }
-    [MessagePackObject] public class HFZeroShotAudioClassification { ... }
-    [MessagePackObject] public class HFZeroShotClassification { ... }
-    [MessagePackObject] public class HFZeroShotImageClassification { ... }
-    [MessagePackObject] public class HFZeroShotObjectDetection { ... }
-    [MessagePackObject] public class HuggingFaceModel { ... }
-    [MessagePackObject] public class IMAPConnection { ... }
-    [MessagePackObject] public class IPAdapter { ... }
-    [MessagePackObject] public class IPAdapterFile { ... }
-    [MessagePackObject] public class ImageRef { ... }
-    [MessagePackObject] public class ImageSegmentationResult { ... }
-    [MessagePackObject] public class ImageTensor { ... }
-    [MessagePackObject] public class InferenceProviderAudioClassificationModel { ... }
-    [MessagePackObject] public class InferenceProviderAutomaticSpeechRecognitionModel { ... }
-    [MessagePackObject] public class InferenceProviderImageClassificationModel { ... }
-    [MessagePackObject] public class InferenceProviderImageSegmentationModel { ... }
-    [MessagePackObject] public class InferenceProviderImageToImageModel { ... }
-    [MessagePackObject] public class InferenceProviderSummarizationModel { ... }
-    [MessagePackObject] public class InferenceProviderTextClassificationModel { ... }
-    [MessagePackObject] public class InferenceProviderTextGenerationModel { ... }
-    [MessagePackObject] public class InferenceProviderTextToAudioModel { ... }
-    [MessagePackObject] public class InferenceProviderTextToImageModel { ... }
-    [MessagePackObject] public class InferenceProviderTextToSpeechModel { ... }
-    [MessagePackObject] public class InferenceProviderTextToTextModel { ... }
-    [MessagePackObject] public class InferenceProviderTranslationModel { ... }
-    [MessagePackObject] public class InstantID { ... }
-    [MessagePackObject] public class InstantIDFile { ... }
-    [MessagePackObject] public class JSONRef { ... }
-    [MessagePackObject] public class LORA { ... }
-    [MessagePackObject] public class LORAFile { ... }
-    [MessagePackObject] public class LanguageModel { ... }
-    [MessagePackObject] public class Latent { ... }
-    [MessagePackObject] public class LlamaModel { ... }
-    [MessagePackObject] public class LoRAConfig { ... }
-    [MessagePackObject] public class LogEntry { ... }
-    [MessagePackObject] public class LoraWeight { ... }
-    [MessagePackObject] public class Mask { ... }
-    [MessagePackObject] public class Message { ... }
-    [MessagePackObject] public class ModelFile { ... }
-    [MessagePackObject] public class ModelRef { ... }
-    [MessagePackObject] public class NPArray { ... }
-    [MessagePackObject] public class NodeRef { ... }
-    [MessagePackObject] public class Noise { ... }
-    [MessagePackObject] public class OCRResult { ... }
-    [MessagePackObject] public class ObjectDetectionResult { ... }
-    [MessagePackObject] public class OpenAIModel { ... }
-    [MessagePackObject] public class PlotlyConfig { ... }
-    [MessagePackObject] public class PlotlySeries { ... }
-    [MessagePackObject] public class REMBGSession { ... }
-    [MessagePackObject] public class RSSEntry { ... }
-    [MessagePackObject] public class RankingResult { ... }
-    [MessagePackObject] public class RecordType { ... }
-    [MessagePackObject] public class SKLearnModel { ... }
-    [MessagePackObject] public class SVGElement { ... }
-    [MessagePackObject] public class SVGRef { ... }
-    [MessagePackObject] public class Sampler { ... }
-    [MessagePackObject] public class Sigmas { ... }
-    [MessagePackObject] public class StatsModelsModel { ... }
-    [MessagePackObject] public class StyleModel { ... }
-    [MessagePackObject] public class StyleModelFile { ... }
-    [MessagePackObject] public class SubTask { ... }
-    [MessagePackObject] public class Task { ... }
-    [MessagePackObject] public class TaskPlan { ... }
-    [MessagePackObject] public class TextChunk { ... }
-    [MessagePackObject] public class TextRef { ... }
-    [MessagePackObject] public class ToolName { ... }
-    [MessagePackObject] public class UNet { ... }
-    [MessagePackObject] public class UNetFile { ... }
-    [MessagePackObject] public class UpscaleModel { ... }
-    [MessagePackObject] public class UpscaleModelFile { ... }
-    [MessagePackObject] public class VAE { ... }
-    [MessagePackObject] public class VAEFile { ... }
-    [MessagePackObject] public class VideoRef { ... }
-    [MessagePackObject] public class WorkflowRef { ... }
-    [MessagePackObject] public class unCLIPFile { ... }
-
-    // Register types with MessagePack
     internal static void RegisterTypes()
     {
+        NodeToolTypes.KnownTypes.Add(typeof(ASRModel));
         NodeToolTypes.KnownTypes.Add(typeof(AssetRef));
         NodeToolTypes.KnownTypes.Add(typeof(AudioChunk));
         NodeToolTypes.KnownTypes.Add(typeof(AudioRef));
@@ -209,6 +29,7 @@ public static class Core
         NodeToolTypes.KnownTypes.Add(typeof(ChartConfig));
         NodeToolTypes.KnownTypes.Add(typeof(ChartData));
         NodeToolTypes.KnownTypes.Add(typeof(CheckpointFile));
+        NodeToolTypes.KnownTypes.Add(typeof(Chunk));
         NodeToolTypes.KnownTypes.Add(typeof(Collection));
         NodeToolTypes.KnownTypes.Add(typeof(ColorRef));
         NodeToolTypes.KnownTypes.Add(typeof(ComfyData));
@@ -225,10 +46,10 @@ public static class Core
         NodeToolTypes.KnownTypes.Add(typeof(Email));
         NodeToolTypes.KnownTypes.Add(typeof(EmailSearchCriteria));
         NodeToolTypes.KnownTypes.Add(typeof(Embeds));
-        NodeToolTypes.KnownTypes.Add(typeof(Event));
         NodeToolTypes.KnownTypes.Add(typeof(ExcelRef));
         NodeToolTypes.KnownTypes.Add(typeof(FaceAnalysis));
         NodeToolTypes.KnownTypes.Add(typeof(FaceEmbeds));
+        NodeToolTypes.KnownTypes.Add(typeof(FaissIndex));
         NodeToolTypes.KnownTypes.Add(typeof(FilePath));
         NodeToolTypes.KnownTypes.Add(typeof(FolderPath));
         NodeToolTypes.KnownTypes.Add(typeof(FolderRef));
@@ -241,15 +62,26 @@ public static class Core
         NodeToolTypes.KnownTypes.Add(typeof(HFAutomaticSpeechRecognition));
         NodeToolTypes.KnownTypes.Add(typeof(HFCLIP));
         NodeToolTypes.KnownTypes.Add(typeof(HFCLIPVision));
-        NodeToolTypes.KnownTypes.Add(typeof(HFCheckpointModel));
         NodeToolTypes.KnownTypes.Add(typeof(HFComputerVision));
         NodeToolTypes.KnownTypes.Add(typeof(HFControlNet));
+        NodeToolTypes.KnownTypes.Add(typeof(HFControlNetFlux));
         NodeToolTypes.KnownTypes.Add(typeof(HFControlNetSDXL));
         NodeToolTypes.KnownTypes.Add(typeof(HFDepthEstimation));
         NodeToolTypes.KnownTypes.Add(typeof(HFDocumentQuestionAnswering));
         NodeToolTypes.KnownTypes.Add(typeof(HFFeatureExtraction));
         NodeToolTypes.KnownTypes.Add(typeof(HFFillMask));
         NodeToolTypes.KnownTypes.Add(typeof(HFFlux));
+        NodeToolTypes.KnownTypes.Add(typeof(HFFluxCheckpoint));
+        NodeToolTypes.KnownTypes.Add(typeof(HFFluxDepth));
+        NodeToolTypes.KnownTypes.Add(typeof(HFFluxDepthCheckpoint));
+        NodeToolTypes.KnownTypes.Add(typeof(HFFluxFP8));
+        NodeToolTypes.KnownTypes.Add(typeof(HFFluxFP8Checkpoint));
+        NodeToolTypes.KnownTypes.Add(typeof(HFFluxFill));
+        NodeToolTypes.KnownTypes.Add(typeof(HFFluxFillCheckpoint));
+        NodeToolTypes.KnownTypes.Add(typeof(HFFluxKontext));
+        NodeToolTypes.KnownTypes.Add(typeof(HFFluxKontextCheckpoint));
+        NodeToolTypes.KnownTypes.Add(typeof(HFFluxRedux));
+        NodeToolTypes.KnownTypes.Add(typeof(HFFluxReduxCheckpoint));
         NodeToolTypes.KnownTypes.Add(typeof(HFGOTOCR));
         NodeToolTypes.KnownTypes.Add(typeof(HFIPAdapter));
         NodeToolTypes.KnownTypes.Add(typeof(HFImageClassification));
@@ -260,7 +92,7 @@ public static class Core
         NodeToolTypes.KnownTypes.Add(typeof(HFImageToImage));
         NodeToolTypes.KnownTypes.Add(typeof(HFImageToText));
         NodeToolTypes.KnownTypes.Add(typeof(HFImageToVideo));
-        NodeToolTypes.KnownTypes.Add(typeof(HFLTXV));
+        NodeToolTypes.KnownTypes.Add(typeof(HFLoraQwenImage));
         NodeToolTypes.KnownTypes.Add(typeof(HFLoraSD));
         NodeToolTypes.KnownTypes.Add(typeof(HFLoraSDConfig));
         NodeToolTypes.KnownTypes.Add(typeof(HFLoraSDXL));
@@ -270,16 +102,25 @@ public static class Core
         NodeToolTypes.KnownTypes.Add(typeof(HFNaturalLanguageProcessing));
         NodeToolTypes.KnownTypes.Add(typeof(HFObjectDetection));
         NodeToolTypes.KnownTypes.Add(typeof(HFQuestionAnswering));
+        NodeToolTypes.KnownTypes.Add(typeof(HFQwenImage));
+        NodeToolTypes.KnownTypes.Add(typeof(HFQwenImageCheckpoint));
+        NodeToolTypes.KnownTypes.Add(typeof(HFQwenImageEdit));
+        NodeToolTypes.KnownTypes.Add(typeof(HFQwenImageEditCheckpoint));
+        NodeToolTypes.KnownTypes.Add(typeof(HFQwenVL));
         NodeToolTypes.KnownTypes.Add(typeof(HFRealESRGAN));
         NodeToolTypes.KnownTypes.Add(typeof(HFReranker));
         NodeToolTypes.KnownTypes.Add(typeof(HFSentenceSimilarity));
         NodeToolTypes.KnownTypes.Add(typeof(HFStableDiffusion));
         NodeToolTypes.KnownTypes.Add(typeof(HFStableDiffusion3));
-        NodeToolTypes.KnownTypes.Add(typeof(HFStableDiffusionUpscale));
+        NodeToolTypes.KnownTypes.Add(typeof(HFStableDiffusion3Checkpoint));
+        NodeToolTypes.KnownTypes.Add(typeof(HFStableDiffusionCheckpoint));
         NodeToolTypes.KnownTypes.Add(typeof(HFStableDiffusionXL));
-        NodeToolTypes.KnownTypes.Add(typeof(HFStableDiffusionXLTurbo));
+        NodeToolTypes.KnownTypes.Add(typeof(HFStableDiffusionXLCheckpoint));
+        NodeToolTypes.KnownTypes.Add(typeof(HFStableDiffusionXLRefiner));
+        NodeToolTypes.KnownTypes.Add(typeof(HFStableDiffusionXLRefinerCheckpoint));
         NodeToolTypes.KnownTypes.Add(typeof(HFStyleModel));
         NodeToolTypes.KnownTypes.Add(typeof(HFSummarization));
+        NodeToolTypes.KnownTypes.Add(typeof(HFT5));
         NodeToolTypes.KnownTypes.Add(typeof(HFTableQuestionAnswering));
         NodeToolTypes.KnownTypes.Add(typeof(HFText2TextGeneration));
         NodeToolTypes.KnownTypes.Add(typeof(HFTextClassification));
@@ -306,7 +147,9 @@ public static class Core
         NodeToolTypes.KnownTypes.Add(typeof(IMAPConnection));
         NodeToolTypes.KnownTypes.Add(typeof(IPAdapter));
         NodeToolTypes.KnownTypes.Add(typeof(IPAdapterFile));
+        NodeToolTypes.KnownTypes.Add(typeof(ImageModel));
         NodeToolTypes.KnownTypes.Add(typeof(ImageRef));
+        NodeToolTypes.KnownTypes.Add(typeof(ImageResult));
         NodeToolTypes.KnownTypes.Add(typeof(ImageSegmentationResult));
         NodeToolTypes.KnownTypes.Add(typeof(ImageTensor));
         NodeToolTypes.KnownTypes.Add(typeof(InferenceProviderAudioClassificationModel));
@@ -325,12 +168,14 @@ public static class Core
         NodeToolTypes.KnownTypes.Add(typeof(InstantID));
         NodeToolTypes.KnownTypes.Add(typeof(InstantIDFile));
         NodeToolTypes.KnownTypes.Add(typeof(JSONRef));
+        NodeToolTypes.KnownTypes.Add(typeof(JobResult));
         NodeToolTypes.KnownTypes.Add(typeof(LORA));
         NodeToolTypes.KnownTypes.Add(typeof(LORAFile));
         NodeToolTypes.KnownTypes.Add(typeof(LanguageModel));
         NodeToolTypes.KnownTypes.Add(typeof(Latent));
         NodeToolTypes.KnownTypes.Add(typeof(LlamaModel));
         NodeToolTypes.KnownTypes.Add(typeof(LoRAConfig));
+        NodeToolTypes.KnownTypes.Add(typeof(LocalResult));
         NodeToolTypes.KnownTypes.Add(typeof(LogEntry));
         NodeToolTypes.KnownTypes.Add(typeof(LoraWeight));
         NodeToolTypes.KnownTypes.Add(typeof(Mask));
@@ -338,11 +183,13 @@ public static class Core
         NodeToolTypes.KnownTypes.Add(typeof(ModelFile));
         NodeToolTypes.KnownTypes.Add(typeof(ModelRef));
         NodeToolTypes.KnownTypes.Add(typeof(NPArray));
+        NodeToolTypes.KnownTypes.Add(typeof(NewsResult));
         NodeToolTypes.KnownTypes.Add(typeof(NodeRef));
         NodeToolTypes.KnownTypes.Add(typeof(Noise));
         NodeToolTypes.KnownTypes.Add(typeof(OCRResult));
         NodeToolTypes.KnownTypes.Add(typeof(ObjectDetectionResult));
         NodeToolTypes.KnownTypes.Add(typeof(OpenAIModel));
+        NodeToolTypes.KnownTypes.Add(typeof(OrganicResult));
         NodeToolTypes.KnownTypes.Add(typeof(PlotlyConfig));
         NodeToolTypes.KnownTypes.Add(typeof(PlotlySeries));
         NodeToolTypes.KnownTypes.Add(typeof(REMBGSession));
@@ -353,23 +200,31 @@ public static class Core
         NodeToolTypes.KnownTypes.Add(typeof(SVGElement));
         NodeToolTypes.KnownTypes.Add(typeof(SVGRef));
         NodeToolTypes.KnownTypes.Add(typeof(Sampler));
+        NodeToolTypes.KnownTypes.Add(typeof(ShoppingResult));
         NodeToolTypes.KnownTypes.Add(typeof(Sigmas));
+        NodeToolTypes.KnownTypes.Add(typeof(Source));
         NodeToolTypes.KnownTypes.Add(typeof(StatsModelsModel));
         NodeToolTypes.KnownTypes.Add(typeof(StyleModel));
         NodeToolTypes.KnownTypes.Add(typeof(StyleModelFile));
         NodeToolTypes.KnownTypes.Add(typeof(SubTask));
+        NodeToolTypes.KnownTypes.Add(typeof(TTSModel));
         NodeToolTypes.KnownTypes.Add(typeof(Task));
         NodeToolTypes.KnownTypes.Add(typeof(TaskPlan));
         NodeToolTypes.KnownTypes.Add(typeof(TextChunk));
         NodeToolTypes.KnownTypes.Add(typeof(TextRef));
+        NodeToolTypes.KnownTypes.Add(typeof(ToolCallEvent));
         NodeToolTypes.KnownTypes.Add(typeof(ToolName));
+        NodeToolTypes.KnownTypes.Add(typeof(ToolResultEvent));
+        NodeToolTypes.KnownTypes.Add(typeof(TorchTensor));
         NodeToolTypes.KnownTypes.Add(typeof(UNet));
         NodeToolTypes.KnownTypes.Add(typeof(UNetFile));
         NodeToolTypes.KnownTypes.Add(typeof(UpscaleModel));
         NodeToolTypes.KnownTypes.Add(typeof(UpscaleModelFile));
         NodeToolTypes.KnownTypes.Add(typeof(VAE));
         NodeToolTypes.KnownTypes.Add(typeof(VAEFile));
+        NodeToolTypes.KnownTypes.Add(typeof(VideoModel));
         NodeToolTypes.KnownTypes.Add(typeof(VideoRef));
+        NodeToolTypes.KnownTypes.Add(typeof(VisualMatchResult));
         NodeToolTypes.KnownTypes.Add(typeof(WorkflowRef));
         NodeToolTypes.KnownTypes.Add(typeof(unCLIPFile));
     }

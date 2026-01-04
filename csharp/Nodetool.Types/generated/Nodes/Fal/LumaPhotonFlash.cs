@@ -8,12 +8,12 @@ namespace Nodetool.Nodes.Fal;
 public class LumaPhotonFlash
 {
     [Key(0)]
-    public string prompt { get; set; } = "";
+    public object aspect_ratio { get; set; } = @"1:1";
     [Key(1)]
-    public object aspect_ratio { get; set; } = "AspectRatioLuma.RATIO_1_1";
+    public string prompt { get; set; } = @"";
 
-    public Nodetool.Types.ImageRef Process()
+    public Nodetool.Types.Core.ImageRef Process()
     {
-        return default(Nodetool.Types.ImageRef);
+        return default(Nodetool.Types.Core.ImageRef);
     }
 }

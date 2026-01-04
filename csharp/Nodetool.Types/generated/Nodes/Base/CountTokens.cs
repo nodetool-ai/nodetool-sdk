@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class CountTokens
 {
     [Key(0)]
-    public string text { get; set; } = "";
+    public object encoding { get; set; } = @"cl100k_base";
     [Key(1)]
-    public object encoding { get; set; } = "TiktokenEncoding.CL100K_BASE";
+    public string text { get; set; } = @"";
 
     public int Process()
     {

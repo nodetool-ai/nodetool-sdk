@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class Join
 {
     [Key(0)]
-    public object strings { get; set; } = new List<object>();
+    public string separator { get; set; } = @"";
     [Key(1)]
-    public string separator { get; set; } = "";
+    public object strings { get; set; } = new();
 
     public string Process()
     {

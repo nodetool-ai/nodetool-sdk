@@ -8,33 +8,33 @@ namespace Nodetool.Nodes.Fal;
 public class Whisper
 {
     [Key(0)]
-    public Nodetool.Types.AudioRef audio { get; set; } = new Nodetool.Types.AudioRef();
+    public Nodetool.Types.Core.AudioRef audio { get; set; } = new Nodetool.Types.Core.AudioRef();
     [Key(1)]
-    public object task { get; set; } = "TaskEnum.TRANSCRIBE";
+    public int batch_size { get; set; } = 64;
     [Key(2)]
-    public object language { get; set; } = "LanguageEnum.EN";
+    public object chunk_level { get; set; } = @"segment";
     [Key(3)]
     public bool diarize { get; set; } = false;
     [Key(4)]
-    public object chunk_level { get; set; } = "ChunkLevelEnum.SEGMENT";
+    public object language { get; set; } = @"en";
     [Key(5)]
     public int num_speakers { get; set; } = 1;
     [Key(6)]
-    public int batch_size { get; set; } = 64;
+    public string prompt { get; set; } = @"";
     [Key(7)]
-    public string prompt { get; set; } = "";
+    public object task { get; set; } = @"transcribe";
 
     [MessagePackObject]
     public class WhisperOutput
     {
         [Key(0)]
-        public string text { get; set; }
-        [Key(1)]
         public object chunks { get; set; }
+        [Key(1)]
+        public object diarization_segments { get; set; }
         [Key(2)]
         public object inferred_languages { get; set; }
         [Key(3)]
-        public object diarization_segments { get; set; }
+        public string text { get; set; }
     }
 
     public WhisperOutput Process()

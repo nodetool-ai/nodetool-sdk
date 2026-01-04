@@ -8,12 +8,12 @@ namespace Nodetool.Nodes.Base;
 public class OverlayAudio
 {
     [Key(0)]
-    public Nodetool.Types.AudioRef a { get; set; } = new Nodetool.Types.AudioRef();
+    public Nodetool.Types.Core.AudioRef a { get; set; } = new Nodetool.Types.Core.AudioRef();
     [Key(1)]
-    public Nodetool.Types.AudioRef b { get; set; } = new Nodetool.Types.AudioRef();
+    public Nodetool.Types.Core.AudioRef b { get; set; } = new Nodetool.Types.Core.AudioRef();
 
-    public Nodetool.Types.AudioRef Process()
+    public Nodetool.Types.Core.AudioRef Process()
     {
-        return default(Nodetool.Types.AudioRef);
+        return default(Nodetool.Types.Core.AudioRef);
     }
 }
