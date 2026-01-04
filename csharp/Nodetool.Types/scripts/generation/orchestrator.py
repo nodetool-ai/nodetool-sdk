@@ -416,7 +416,7 @@ def generate_all_types_and_nodes(output_dir: str, namespace: str = "Nodetool.Typ
     # Clean up output directory first
     cleanup_directory(output_dir)
     
-    # Discover all packages first
+    # Discover all packages first (installed + workspace)
     print(">>> Discovering packages...")
     try:
         # First get packages from discover_node_packages
@@ -427,11 +427,11 @@ def generate_all_types_and_nodes(output_dir: str, namespace: str = "Nodetool.Typ
         for p in packages:
             discovered_packages.add(get_package_name(p.name))
             
-        nodes_dir = os.path.join(output_dir, "Nodes")
-        if os.path.exists(nodes_dir):
-            for item in os.listdir(nodes_dir):
-                if os.path.isdir(os.path.join(nodes_dir, item)):
-                    discovered_packages.add(get_package_name(item))
+        # Also scan workspace repos so local (non-installed) packages are included.
+        workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".."))
+        for item in os.listdir(workspace_root):
+            if item.startswith("nodetool-") and os.path.isdir(os.path.join(workspace_root, item)):
+                discovered_packages.add(get_package_name(item))
         
         discovered_packages = sorted(list(discovered_packages))
         print(f"Found packages: {', '.join(discovered_packages)}")

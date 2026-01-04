@@ -23,6 +23,7 @@ namespace Nodetool;
 ///    
     var audio = new Core.AudioRef();
     var classifier = new Huggingface.AudioClassifier();
+    var noise = new Lib.Audio.WhiteNoise();
 ///    
 /// 3. MessagePack Serialization:
 ///    var data = MessagePackSerializer.Serialize(obj);
@@ -45,6 +46,7 @@ public static class NodeToolTypes
             // Register types from all packages
             Nodes.Base.RegisterTypes();
             Types.Core.RegisterTypes();
+            Nodes.Fal.RegisterTypes();
             Nodes.Huggingface.RegisterTypes();
 
             // Configure MessagePack
