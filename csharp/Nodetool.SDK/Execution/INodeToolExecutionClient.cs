@@ -46,6 +46,19 @@ public interface INodeToolExecutionClient : IDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Execute a workflow by name (HTTP discovery + WebSocket execution).
+    /// Requires <see cref="Configuration.NodeToolClientOptions.ApiBaseUrl"/> to be set.
+    /// </summary>
+    /// <param name="workflowName">Workflow name (case-insensitive).</param>
+    /// <param name="inputs">Input parameters keyed by input name.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Execution session for tracking progress and results.</returns>
+    Task<IExecutionSession> ExecuteWorkflowByNameAsync(
+        string workflowName,
+        Dictionary<string, object>? inputs = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Execute a workflow with a graph definition.
     /// </summary>
     /// <param name="graph">Graph definition containing nodes and edges.</param>

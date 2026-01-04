@@ -25,18 +25,13 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
-    - name: Restore dependencies
+    - name: Regen + verify + build (C#)
+      shell: pwsh
       run: |
-        dotnet restore csharp/Nodetool.SDK/Nodetool.SDK.csproj
-
-    - name: Build SDK
-      run: |
-        dotnet build csharp/Nodetool.SDK/Nodetool.SDK.csproj --configuration Release --no-restore
-      continue-on-error: true
-
-    # Note: Generated types have known issues - skip for now
-    # - name: Build Types
-    #   run: dotnet build csharp/Nodetool.Types/Nodetool.Types.csproj --configuration Release
+        # Regenerates C# types/nodes when Python nodetool is available,
+        # verifies generated output is committed (git diff),
+        # then builds Nodetool.Types + Nodetool.SDK + TestConsole.
+        .\csharp\regen-and-verify.ps1
 
     # Note: VL.SDK requires VL.Core which needs special setup
     # - name: Build VL SDK

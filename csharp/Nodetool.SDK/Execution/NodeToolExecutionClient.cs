@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using Nodetool.SDK.Api;
 using Nodetool.SDK.Configuration;
 using Nodetool.SDK.Types;
 using Nodetool.SDK.WebSocket;
@@ -168,6 +169,40 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         }
 
         return session;
+    }
+
+    /// <inheritdoc/>
+    public async Task<IExecutionSession> ExecuteWorkflowByNameAsync(
+        string workflowName,
+        Dictionary<string, object>? inputs = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(workflowName))
+        {
+            throw new ArgumentException("Workflow name must not be empty.", nameof(workflowName));
+        }
+
+        if (_options.ApiBaseUrl == null)
+        {
+            throw new InvalidOperationException(
+                "ExecuteWorkflowByNameAsync requires NodeToolClientOptions.ApiBaseUrl to be set (HTTP discovery).");
+        }
+
+        using var api = new NodetoolClient();
+        var apiKey = _apiKey ?? _options.AuthToken;
+        api.Configure(_options.ApiBaseUrl.ToString().TrimEnd('/'), apiKey: apiKey);
+
+        var workflows = await api.GetWorkflowsAsync(cancellationToken);
+        var workflow = workflows.FirstOrDefault(w =>
+            string.Equals(w.Name, workflowName, StringComparison.OrdinalIgnoreCase));
+
+        if (workflow == null)
+        {
+            var available = string.Join(", ", workflows.Select(w => w.Name));
+            throw new InvalidOperationException($"Workflow not found: '{workflowName}'. Available: {available}");
+        }
+
+        return await ExecuteWorkflowAsync(workflow.Id, inputs, cancellationToken);
     }
 
     /// <inheritdoc/>

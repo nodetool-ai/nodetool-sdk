@@ -84,6 +84,29 @@ else
 }
 ```
 
+### Convenience: execute by workflow name
+
+If you have HTTP access to the server API, you can execute by **workflow name** (case-insensitive).
+This requires `NodeToolClientOptions.ApiBaseUrl`.
+
+```csharp
+var options = new NodeToolClientOptions
+{
+    WorkerWebSocketUrl = new Uri("ws://localhost:7777/ws"),
+    ApiBaseUrl = new Uri("http://localhost:7777"),
+};
+
+using var client = new NodeToolExecutionClient(options);
+await client.ConnectAsync();
+
+var session = await client.ExecuteWorkflowByNameAsync("TEST_SDK_01", new Dictionary<string, object>
+{
+    ["string_input_1"] = "hello from c#"
+});
+
+await session.WaitForCompletionAsync();
+```
+
 ### HTTP API (Synchronous)
 
 ```csharp
@@ -133,22 +156,26 @@ assetManager.ClearCache();
 ### Core Components
 
 #### Execution System
+
 - **`INodeToolExecutionClient`**: Main interface for workflow/node execution
 - **`NodeToolExecutionClient`**: WebSocket-based implementation
 - **`IExecutionSession`**: Track job progress and results
 - **`ExecutionSession`**: Session implementation with events
 
 #### Asset System
+
 - **`IAssetManager`**: Asset download/upload with caching
 - **`AssetManager`**: Implementation with local file cache
 
 #### HTTP API
+
 - **`INodetoolClient`**: HTTP API interface
 - **`NodetoolClient`**: HTTP client implementation
 
 ### Message Types
 
 The SDK handles these WebSocket message types:
+
 - `JobUpdate`: Job lifecycle changes (running, completed, failed)
 - `NodeUpdate`: Individual node execution status
 - `NodeProgress`: Progress for long-running nodes
@@ -158,23 +185,24 @@ The SDK handles these WebSocket message types:
 ## VL/VVVV Integration
 
 For VL/VVVV Gamma integration, use the `Nodetool.SDK.VL` package which provides:
+
 - **Connect** node: Establish connection to NodeTool server
 - **ConnectionStatus** node: Monitor connection state
 - Node factory for dynamically created nodes from API metadata
 
 ## Type System
 
-| Nodetool Type | C# Type           | Description          |
-| ------------- | ----------------- | -------------------- |
-| `str`         | `string`          | Text strings         |
-| `int`         | `int`             | Integers             |
-| `float`       | `float`           | Floating point       |
-| `bool`        | `bool`            | Booleans             |
-| `list`        | `List<object>`    | Lists                |
-| `dict`        | `Dictionary<string, object>` | Dictionaries |
-| `image`       | `ImageRef`        | Image references     |
-| `audio`       | `AudioRef`        | Audio references     |
-| `video`       | `VideoRef`        | Video references     |
+| Nodetool Type | C# Type                      | Description      |
+| ------------- | ---------------------------- | ---------------- |
+| `str`         | `string`                     | Text strings     |
+| `int`         | `int`                        | Integers         |
+| `float`       | `float`                      | Floating point   |
+| `bool`        | `bool`                       | Booleans         |
+| `list`        | `List<object>`               | Lists            |
+| `dict`        | `Dictionary<string, object>` | Dictionaries     |
+| `image`       | `ImageRef`                   | Image references |
+| `audio`       | `AudioRef`                   | Audio references |
+| `video`       | `VideoRef`                   | Video references |
 
 ## Configuration
 
@@ -183,6 +211,7 @@ For VL/VVVV Gamma integration, use the `Nodetool.SDK.VL` package which provides:
 There are **no hardcoded defaults** in library code. Provide explicit endpoints via `NodeToolClientOptions`.
 
 Override via constructor or configuration:
+
 ```csharp
 var options = new NodeToolClientOptions { WorkerWebSocketUrl = new Uri("wss://api.nodetool.ai/ws") };
 var client = new NodeToolExecutionClient(options, apiKey: "your-api-key");
@@ -193,6 +222,7 @@ var client = new NodeToolExecutionClient(options, apiKey: "your-api-key");
 Default cache location: `~/.nodetool/cache/assets/`
 
 Override via constructor:
+
 ```csharp
 var assetManager = new AssetManager("/custom/cache/path");
 ```

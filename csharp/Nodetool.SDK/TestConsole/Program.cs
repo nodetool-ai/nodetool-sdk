@@ -248,43 +248,14 @@ class Program
             ApiBaseUrl = new Uri(http),
         };
 
-        // Discover workflow id + input schema via HTTP
-        using var api = new NodetoolClient(logger: loggerFactory.CreateLogger<NodetoolClient>());
-        api.Configure(options.ApiBaseUrl!.ToString().TrimEnd('/'));
-
-        var workflows = await api.GetWorkflowsAsync();
-        var wf = workflows.FirstOrDefault(w => string.Equals(w.Name, workflowName, StringComparison.OrdinalIgnoreCase));
-        if (wf == null)
-        {
-            logger.LogError("Workflow not found: {Workflow}. Available workflows: {Names}", workflowName, string.Join(", ", workflows.Select(w => w.Name)));
-            return;
-        }
-
         // Build inputs. Prefer command-line key=value pairs; otherwise seed required inputs with a demo value.
         var inputs = ParseInputs(args);
         if (inputs.Count == 0)
         {
-            var schema = wf.InputSchema;
-            if (schema?.Properties != null && schema.Properties.Count > 0)
-            {
-                var required = schema.Required ?? new List<string>();
-                if (required.Count == 0)
-                {
-                    // If required list isn't present, at least set the first property for convenience.
-                    var first = schema.Properties.Keys.OrderBy(k => k, StringComparer.Ordinal).First();
-                    inputs[first] = "hello from c#";
-                }
-                else
-                {
-                    foreach (var key in required)
-                    {
-                        inputs[key] = "hello from c#";
-                    }
-                }
-            }
+            // Seed a helpful default for simple workflows.
+            inputs["string_input_1"] = "hello from c#";
         }
 
-        logger.LogInformation("Resolved workflow id: {WorkflowId}", wf.Id);
         logger.LogInformation("Sending inputs: {Inputs}", string.Join(", ", inputs.Select(kvp => $"{kvp.Key}={kvp.Value}")));
 
         using var exec = new NodeToolExecutionClient(options, logger: loggerFactory.CreateLogger<NodeToolExecutionClient>());
@@ -294,7 +265,7 @@ class Program
             return;
         }
 
-        var session = await exec.ExecuteWorkflowAsync(wf.Id, inputs);
+        var session = await exec.ExecuteWorkflowByNameAsync(workflowName, inputs);
         session.OutputReceived += update =>
         {
             var renderedValue = update.Value.Kind == NodeToolValueKind.String
