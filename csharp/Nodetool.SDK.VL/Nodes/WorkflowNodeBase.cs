@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Reflection;
+using SkiaSharp;
 using VL.Core;
 using Nodetool.SDK.Execution;
 using Nodetool.SDK.Values;
@@ -31,6 +32,7 @@ namespace Nodetool.SDK.VL.Nodes
         private bool _isDisposed = false;
         private bool _isRunning = false;
         private readonly Dictionary<string, StringBuilder> _chunkBuffers = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, SKImage> _latestImages = new(StringComparer.Ordinal);
 
         public WorkflowNodeBase(NodeContext nodeContext, WorkflowNodeDescription description, WorkflowDetail workflow)
         {
@@ -182,8 +184,12 @@ namespace Nodetool.SDK.VL.Nodes
 
                 session.OutputReceived += update =>
                 {
-                    // Best-effort mapping: match output pin by output name
-                    if (_outputPins.TryGetValue(update.OutputName, out var pin))
+                    // Canonical mapping: for Output nodes, the backend sets output_name=node.name (e.g. "inverted").
+                    var hasPin = _outputPins.TryGetValue(update.OutputName, out var pin);
+                    Console.WriteLine(
+                        $"WorkflowNodeBase: output_update received: output_name='{update.OutputName}' node_name='{update.NodeName}' output_type='{update.OutputType}' hasPin={hasPin}");
+
+                    if (pin != null)
                     {
                         // IVLPin doesn't expose Type; our InternalPin does.
                         var expectedType = (pin as InternalPin)?.Type ?? typeof(string);
@@ -215,6 +221,30 @@ namespace Nodetool.SDK.VL.Nodes
                             }
                         }
 
+                        // Special handling for image outputs:
+                        // Avoid JSON and avoid writing temp files. Prefer returning the encoded image bytes.
+                        if (string.Equals(update.OutputType, "image", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (TryExtractImageBytes(update.Value, out var bytes) && bytes.Length > 0)
+                            {
+                                // Decode to SKImage (no temp files, no JSON)
+                                var img = SKImage.FromEncodedData(bytes);
+                                if (img != null)
+                                {
+                                    if (_latestImages.TryGetValue(update.OutputName, out var prev))
+                                    {
+                                        prev.Dispose();
+                                    }
+                                    _latestImages[update.OutputName] = img;
+                                    pin.Value = img;
+                                    return;
+                                }
+
+                                SetError($"Failed to decode image bytes for output '{update.OutputName}'.");
+                                return;
+                            }
+                        }
+
                         pin.Value = ConvertNodeToolValueToExpectedType(update.Value, expectedType);
                     }
                 };
@@ -224,6 +254,10 @@ namespace Nodetool.SDK.VL.Nodes
                 {
                     throw new InvalidOperationException(session.ErrorMessage ?? "Workflow execution failed.");
                 }
+
+                // Canonical final outputs are delivered via job_update.result (keys match output_schema, e.g. "inverted").
+                // This ensures we don't miss fast output_update events and still populate pins deterministically.
+                ApplyFinalOutputsFromSession(session);
 
                 Console.WriteLine($"WorkflowNodeBase: Workflow '{_workflow.Name}' execution completed");
                 SetIsRunning(false);
@@ -238,6 +272,112 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 _isRunning = false;
             }
+        }
+
+        private void ApplyFinalOutputsFromSession(IExecutionSession session)
+        {
+            try
+            {
+                var outputs = session.GetLatestOutputs();
+                foreach (var kvp in outputs)
+                {
+                    var key = kvp.Key;
+                    if (!key.StartsWith("job_result:", StringComparison.Ordinal))
+                        continue;
+
+                    var outputName = key.Substring("job_result:".Length);
+                    if (_outputPins.TryGetValue(outputName, out var pin))
+                    {
+                        var expectedType = (pin as InternalPin)?.Type ?? typeof(string);
+
+                        // Final outputs: for images, prefer returning a decoded SKImage.
+                        // IMPORTANT: do not overwrite an already-received SKImage with null/default if the final
+                        // job_update.result omits inline bytes (this happens in some server modes).
+                        if (expectedType == typeof(SKImage))
+                        {
+                            if (TryExtractImageBytes(kvp.Value, out var bytes) && bytes.Length > 0)
+                            {
+                                var img = SKImage.FromEncodedData(bytes);
+                                if (img != null)
+                                {
+                                    if (_latestImages.TryGetValue(outputName, out var prev))
+                                    {
+                                        prev.Dispose();
+                                    }
+                                    _latestImages[outputName] = img;
+                                    pin.Value = img;
+                                    continue;
+                                }
+                                SetError($"Failed to decode image bytes for output '{outputName}'.");
+                            }
+
+                            // Keep existing pin.Value (likely set during output_update) if we can't decode a final image.
+                            continue;
+                        }
+
+                        pin.Value = ConvertNodeToolValueToExpectedType(kvp.Value, expectedType);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"WorkflowNodeBase: Failed to apply final outputs: {ex.Message}");
+            }
+        }
+
+        private static IReadOnlyDictionary<string, NodeToolValue>? ExtractFirstMap(NodeToolValue value)
+        {
+            if (value.Kind == NodeToolValueKind.Map)
+                return value.AsMapOrEmpty();
+
+            if (value.Kind == NodeToolValueKind.List)
+            {
+                var firstMap = value.AsListOrEmpty().FirstOrDefault(v => v.Kind == NodeToolValueKind.Map);
+                if (firstMap != null && firstMap.Kind == NodeToolValueKind.Map)
+                    return firstMap.AsMapOrEmpty();
+            }
+
+            return null;
+        }
+
+        private static bool TryExtractImageBytes(NodeToolValue value, out byte[] bytes)
+        {
+            bytes = Array.Empty<byte>();
+
+            var map = ExtractFirstMap(value);
+            if (map == null)
+                return false;
+
+            if (map.TryGetValue("type", out var typeVal) && typeVal.AsString() is string typeStr &&
+                !string.Equals(typeStr, "image", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (!map.TryGetValue("data", out var dataVal))
+                return false;
+
+            if (dataVal.TryGetBytes(out var direct))
+            {
+                bytes = direct;
+                return true;
+            }
+
+            if (dataVal.Kind == NodeToolValueKind.List)
+            {
+                // data may come through as [137,80,78,71,...]
+                var list = dataVal.AsListOrEmpty();
+                var tmp = new byte[list.Count];
+                for (var i = 0; i < list.Count; i++)
+                {
+                    if (!list[i].TryGetLong(out var l))
+                        return false;
+                    tmp[i] = (byte)l;
+                }
+
+                bytes = tmp;
+                return true;
+            }
+
+            return false;
         }
 
         private void SetIsRunning(bool isRunning)
@@ -268,6 +408,8 @@ namespace Nodetool.SDK.VL.Nodes
                 "float" or "number" => (typeof(float), 0.0f),
                 "bool" or "boolean" => (typeof(bool), false),
                 "list" or "array" => (typeof(string[]), new string[0]),
+                "any" => (typeof(object), null!),
+                "image" => (typeof(SKImage), null!),
                 _ => (typeof(string), "")
             };
         }
@@ -282,6 +424,7 @@ namespace Nodetool.SDK.VL.Nodes
             if (vlType == typeof(float)) return 0.0f;
             if (vlType == typeof(bool)) return false;
             if (vlType == typeof(string[])) return new string[0];
+            if (vlType == typeof(SKImage)) return null!;
             
             try
             {
@@ -394,7 +537,7 @@ namespace Nodetool.SDK.VL.Nodes
                 }
                 if (value.Kind == NodeToolValueKind.List)
                     return value.ToJsonString();
-                return value.Raw;
+                return value.Raw ?? "";
             }
 
             if (expectedType == typeof(int) && value.TryGetLong(out var l))
@@ -654,7 +797,13 @@ namespace Nodetool.SDK.VL.Nodes
             if (!_isDisposed)
             {
                 Console.WriteLine($"WorkflowNodeBase: Disposing workflow node '{_workflow.Name}'");
-                
+
+                foreach (var img in _latestImages.Values)
+                {
+                    try { img.Dispose(); } catch { /* ignore */ }
+                }
+                _latestImages.Clear();
+
                 _isDisposed = true;
             }
         }

@@ -82,7 +82,8 @@ public class WorkflowMetadataService : IDisposable
                         CreatedAt = detailedWorkflow.CreatedAt,
                         UpdatedAt = detailedWorkflow.UpdatedAt,
                         InputSchema = ConvertToWorkflowSchema(detailedWorkflow.InputSchema),
-                        OutputSchema = ConvertToWorkflowSchema(detailedWorkflow.OutputSchema)
+                        OutputSchema = ConvertToWorkflowSchema(detailedWorkflow.OutputSchema),
+                        Graph = detailedWorkflow.Graph
                     };
 
                     workflowDetails.Add(workflowDetail);

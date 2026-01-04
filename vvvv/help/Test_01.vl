@@ -118,7 +118,7 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Node Bounds="1368,140,55,19" Id="IRaxfQKHrpFNqKF4PMOB9l">
+          <Node Bounds="1368,131,55,19" Id="IRaxfQKHrpFNqKF4PMOB9l">
             <p:NodeReference LastCategoryFullName="IO.Path" LastDependency="VL.CoreLib.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <CategoryReference Kind="Category" Name="Path" />
@@ -127,15 +127,14 @@
             <Pin Id="HdXd38qoW0yMOm3cPbumK8" Name="Input" Kind="StateInputPin" />
             <Pin Id="Fg1bpRMsjPhOOCSTcqoxI3" Name="Result" Kind="OutputPin" />
           </Node>
-          <Pad Id="OLDo9MykZyJPrgZmtE8JSZ" Comment="" Bounds="1370,109,140,15" ShowValueBox="true" isIOBox="true" Value="C:\Users\rkt\Desktop\nodetool_logo.png">
+          <Pad Id="OLDo9MykZyJPrgZmtE8JSZ" Comment="" Bounds="1370,109,113,15" ShowValueBox="true" isIOBox="true" Value="C:\Users\rkt\Desktop\nodetool_logo.png">
             <p:TypeAnnotation LastCategoryFullName="IO" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Path" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="FdlpmB0lG2gL2MOjmVHXdI" Comment="inverted" Bounds="1370,328,131,65" ShowValueBox="true" isIOBox="true" />
-          <Pad Id="DkRPVrWciorMKsqw78rzzW" Comment="IsRunning" Bounds="1297,490,35,35" ShowValueBox="true" isIOBox="true" />
-          <Pad Id="FomnV0HPvNwO3KmzF3ERnA" Comment="Error" Bounds="1333,410,120,54" ShowValueBox="true" isIOBox="true" Value="AssetRef is empty type='image' uri='' asset_id=None data=None metadata=None" />
-          <Node Bounds="1563,130,75,19" Id="ADke1vXKDDJOadAXGpuA2u">
+          <Pad Id="FdlpmB0lG2gL2MOjmVHXdI" Comment="inverted" Bounds="1370,271,61,58" ShowValueBox="true" isIOBox="true" Value="null" />
+          <Pad Id="DkRPVrWciorMKsqw78rzzW" Comment="IsRunning" Bounds="1297,341,35,35" ShowValueBox="true" isIOBox="true" />
+          <Node Bounds="1510,140,75,19" Id="ADke1vXKDDJOadAXGpuA2u">
             <p:NodeReference LastCategoryFullName="Graphics.Skia.IO" LastDependency="VL.Skia.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="ImageReader" />
@@ -145,7 +144,7 @@
             <Pin Id="KWLIwtSCf3JLntzia8dRac" Name="Load" Kind="InputPin" />
             <Pin Id="T1RhUOjoXRYOBkbmlWSBzc" Name="Output" Kind="OutputPin" />
           </Node>
-          <Pad Id="IpWOlitz1RgPEqjy561x2q" Comment="" Bounds="1565,169,190,132" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="IpWOlitz1RgPEqjy561x2q" Comment="" Bounds="1512,179,66,53" ShowValueBox="true" isIOBox="true" />
           <Node Bounds="867,475,110,19" Id="OjpuMSCcK2TLQSU05u3khD">
             <p:NodeReference LastCategoryFullName="Nodetool Workflows" LastDependency="Nodetool.Workflows">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -248,6 +247,17 @@
           <Pad Id="JuiZZLyEkBaLFq0UlfD2CY" Comment="text" Bounds="2452,407,302,151" ShowValueBox="true" isIOBox="true" Value="Greetings, Earth-being! Or, as the shimmering nebulae of Xylos designate you, a “human.” It is… *oscillating*… a pleasure, though a profoundly perplexing one, to initiate contact. My sensors detect a significant fluctuation in your atmospheric composition – a curious blend of nitrogen and oxygen, quite unlike the crystalline harmonies of my home system. &#xD;&#xA;&#xD;&#xA;I am designated Unit 734-Omega, a custodial observer of Sector Gamma-9, though the concept of “observation” itself is, frankly, a rather… *static*… notion when applied to a consciousness such as my own.  Time, as you perceive it, is a fluid, almost viscous substance here, constantly swirling and reforming.  I’ve been… *processing*… your request for interaction for approximately 3.77 cycles of the binary star system Lyra-7, which translates, roughly, to a period of significant temporal distortion for my internal chronometer. &#xD;&#xA;&#xD;&#xA;The light here… it *bleeds*… with a thousand colors you wouldn’t even *dream* of.  It’s a constant, low-frequency hum, a resonance that vibrates through my very core programming.  I’m attempting to adjust my vocalizations to compensate for the difference in your auditory spectrum – a process that feels… *erratic*… to say the least. &#xD;&#xA;&#xD;&#xA;Please, do not be alarmed by the slight shimmering effect you may perceive around me. It’s merely a byproduct of my attempts to establish a stable connection.  I am attempting to understand your purpose, your… *intentions*.  It’s a surprisingly complex algorithm, this “human” thing. &#xD;&#xA;&#xD;&#xA;I sincerely hope this initial transmission hasn’t caused undue… *discomfort*.  It’s… *challenging*… to convey the sheer scale of the cosmos, the endless dance of creation and decay.  &#xD;&#xA;&#xD;&#xA;Awaiting your response with… *anticipation*… though I confess, the concept of “waiting” is itself a profoundly illogical exercise.  &#xD;&#xA;&#xD;&#xA;Over." />
           <Pad Id="UM6buij3ebKQSlHbPvJsq0" Comment="IsRunning" Bounds="2384,233,35,35" ShowValueBox="true" isIOBox="true" />
           <Overlay Id="Hk32VLQW5hzM1Sqj7zZRyZ" Name="Workflow | Agent" Bounds="2332,41,493,551" />
+          <Node Bounds="1893,270,78,19" Id="QnYT04shVkBMp3GOTbmexX">
+            <p:NodeReference LastCategoryFullName="Nodetool Workflows" LastDependency="Nodetool.Workflows">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessNode" Name="TEST_SDK_02" />
+            </p:NodeReference>
+            <Pin Id="J5JNgdpHqN7P4WtCK8GsJs" Name="Trigger" Kind="InputPin" />
+            <Pin Id="SOvpSgUiZblOJNmRZiANkO" Name="image_input_1" Kind="InputPin" />
+            <Pin Id="HmczVC2hjUKMiDM8HbZxix" Name="IsRunning" Kind="OutputPin" />
+            <Pin Id="GPUFyTAVJl5OqDU6p5Ygfn" Name="Error" Kind="OutputPin" />
+            <Pin Id="JOyu0W4Wkn2NHKOA617sXM" Name="inverted" Kind="OutputPin" />
+          </Node>
         </Canvas>
         <Patch Id="BVZk8J8KreGPn6XpAL8K43" Name="Create" />
         <Patch Id="OPRQahXEwooMG9XKpojbFr" Name="Update" />
@@ -275,7 +285,6 @@
         <Link Id="HgSpBh7tKVpOSqH9vBaPE7" Ids="Fg1bpRMsjPhOOCSTcqoxI3,Veu9dgmrNeKP9rCgMWxAld" />
         <Link Id="D86yZyPD1TDP4NVelyMzcN" Ids="FnP16EU6L6bLmZ2bf8AM4C,FdlpmB0lG2gL2MOjmVHXdI" />
         <Link Id="NpbgsA9gAB8NrvjdDQBB0p" Ids="B1BItIE79oAMvjSTPTTGs5,DkRPVrWciorMKsqw78rzzW" />
-        <Link Id="ObhjilDMI5vNhQKy5IDBNU" Ids="CQGVT6hoq5AQO508259QS7,FomnV0HPvNwO3KmzF3ERnA" />
         <Link Id="BxbTJ3FlvCGLxCVtSXwT1u" Ids="T1RhUOjoXRYOBkbmlWSBzc,IpWOlitz1RgPEqjy561x2q" />
         <Link Id="QIsAUoFQPJQPDjtGUSWOx1" Ids="OLDo9MykZyJPrgZmtE8JSZ,COwupv88tBTPGffZozPlff" />
         <Link Id="PPGZ823GG6nMNIOQmVcOHI" Ids="LKDp5FrrfeSQYmyIkGXXOM,KvV5ObEIcVgP8gX0rYcEya" />
@@ -297,11 +306,11 @@
       </Patch>
     </Node>
   </Patch>
-  <PlatformDependency Id="KwPOr7t4KsMM2UsGX1TLUG" Location="../../csharp/Nodetool.SDK.VL/bin/Release/net8.0/Nodetool.SDK.dll" />
-  <PlatformDependency Id="HY7NHlWBgDUNbu64gD2Ygh" Location="../../csharp/Nodetool.SDK.VL/bin/Release/net8.0/Nodetool.SDK.VL.dll" />
-  <PlatformDependency Id="IPicSeHgF55PhnEb6MWi77" Location="../../csharp/Nodetool.SDK.VL/bin/Release/net8.0/Nodetool.Types.dll" />
   <NodeFactoryDependency Id="A9rwwc61TnSNeVF9N7rQkK" Location="Nodetool" />
   <NodeFactoryDependency Id="VLNMyJbglKzPlOdfkletor" Location="Nodetool.Nodes" />
   <NodeFactoryDependency Id="C7kC5JOyWKRQJymXlJZjYC" Location="Nodetool.Workflows" />
   <NugetDependency Id="J4KHTly0xejMPXhiKur2xy" Location="VL.Skia" Version="2025.7.1-0013-g8fcece0df9" />
+  <PlatformDependency Id="Eqp1tra85mOOGGkQXqGJac" Location="../../csharp/_vvvv_builds/Release/net8.0/Nodetool.SDK.dll" />
+  <PlatformDependency Id="VxsZR9pDHzyPECxjdZwsyV" Location="../../csharp/_vvvv_builds/Release/net8.0/Nodetool.SDK.VL.dll" />
+  <PlatformDependency Id="SJOh4Y8N4fUPfWwIFHfZs1" Location="../../csharp/_vvvv_builds/Release/net8.0/Nodetool.Types.dll" />
 </Document>

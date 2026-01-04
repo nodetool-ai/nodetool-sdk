@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using System.Text.Json;
+using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.Types;
 
 namespace Nodetool.SDK.VL.Models;
@@ -155,6 +157,10 @@ public class WorkflowDetail
     [JsonPropertyName("output_schema")]
     public WorkflowSchemaDefinition? OutputSchema { get; set; }
 
+    // Optional full graph (used for output type inference when output_schema is "any")
+    [JsonPropertyName("graph")]
+    public WorkflowGraph? Graph { get; set; }
+
     [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; set; }
 
@@ -200,12 +206,96 @@ public class WorkflowDetail
         {
             var metadata = prop.Value.ToTypeMetadata();
 
+            // If output schema is too generic ("any"), try to infer type from workflow graph edges.
+            if (string.Equals(metadata.Type, "any", StringComparison.OrdinalIgnoreCase) &&
+                TryInferOutputTypeFromGraph(prop.Key, out var inferred))
+            {
+                metadata.Type = inferred;
+            }
+
             yield return (
                 Name: prop.Key,
                 Type: metadata,
                 Description: prop.Value.Description ?? prop.Value.Title ?? ""
             );
         }
+    }
+
+    private bool TryInferOutputTypeFromGraph(string outputName, out string inferredType)
+    {
+        inferredType = "";
+        if (Graph?.Nodes == null || Graph.Edges == null)
+            return false;
+
+        // Find nodetool.output.Output nodes with data.name == outputName
+        var outputNodeIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var node in Graph.Nodes)
+        {
+            if (!string.Equals(node.Type, "nodetool.output.Output", StringComparison.Ordinal))
+                continue;
+
+            if (TryGetNodeName(node.Data, out var name) && string.Equals(name, outputName, StringComparison.Ordinal))
+                outputNodeIds.Add(node.Id);
+        }
+
+        if (outputNodeIds.Count == 0)
+            return false;
+
+        // Find an incoming edge and use its ui_properties.className as a type hint (e.g. "image").
+        foreach (var edge in Graph.Edges)
+        {
+            if (!outputNodeIds.Contains(edge.Target))
+                continue;
+
+            var cls = edge.UiProperties?.ClassName;
+            if (string.IsNullOrWhiteSpace(cls))
+                continue;
+
+            // Normalize a few common classNames to our type strings.
+            var c = cls.Trim().ToLowerInvariant();
+            if (c == "image")
+            {
+                inferredType = "image";
+                return true;
+            }
+            if (c == "audio")
+            {
+                inferredType = "audio";
+                return true;
+            }
+            if (c == "video")
+            {
+                inferredType = "video";
+                return true;
+            }
+            if (c == "text")
+            {
+                inferredType = "string";
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryGetNodeName(JsonElement data, out string? name)
+    {
+        name = null;
+        try
+        {
+            if (data.ValueKind == JsonValueKind.Object &&
+                data.TryGetProperty("name", out var n) &&
+                n.ValueKind == JsonValueKind.String)
+            {
+                name = n.GetString();
+                return !string.IsNullOrWhiteSpace(name);
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+        return false;
     }
 
     /// <summary>

@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using VL.Core;
 using VL.Core.CompilerServices;
 using Nodetool.SDK.VL.Services;
+using Nodetool.SDK.VL.Factories;
 
 namespace Nodetool.SDK.VL.Factories;
 
@@ -191,6 +192,14 @@ internal static class DiagnosticsNodeFactory
         {
             nodeDescriptions.Add(statusNode);
             Console.WriteLine("DiagnosticsNodeFactory: Created ConnectionStatus node");
+        }
+
+        // Image helper nodes (decode ImageRef JSON to bytes/path)
+        var decodeImageRefNode = ImageNodeFactory.CreateDecodeImageRefNode(vlSelfFactory);
+        if (decodeImageRefNode != null)
+        {
+            nodeDescriptions.Add(decodeImageRefNode);
+            Console.WriteLine("DiagnosticsNodeFactory: Created DecodeImageRef node");
         }
     }
 }

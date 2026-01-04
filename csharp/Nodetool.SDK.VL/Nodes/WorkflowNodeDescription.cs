@@ -6,6 +6,7 @@ using VL.Core;
 using VL.Core.CompilerServices;
 using VL.Core.Diagnostics;
 using Nodetool.SDK.VL.Models;
+using SkiaSharp;
 
 namespace Nodetool.SDK.VL.Nodes
 {
@@ -194,6 +195,8 @@ namespace Nodetool.SDK.VL.Nodes
                 "float" or "number" => (typeof(float), 0.0f),
                 "bool" or "boolean" => (typeof(bool), false),
                 "list" or "array" => (typeof(string[]), new string[0]),
+                "any" => (typeof(object), null!),
+                "image" => (typeof(SKImage), null!),
                 _ => (typeof(string), "")
             };
         }
@@ -205,8 +208,9 @@ namespace Nodetool.SDK.VL.Nodes
         {
             if (value == null)
             {
-                var (_, defaultValue) = GetVLTypeAndDefault(targetType.Name);
-                return defaultValue;
+                // Return a type-correct default for the VL pin.
+                // Important: for reference types like SKImage, this must be null (not "").
+                return GetDefaultValueForVLType(targetType);
             }
 
             if (targetType.IsAssignableFrom(value.GetType()))
@@ -254,8 +258,26 @@ namespace Nodetool.SDK.VL.Nodes
             catch
             {
                 // If conversion fails, return default value for the target type
-                var (_, defaultValue) = GetVLTypeAndDefault(targetType.Name);
-                return defaultValue;
+                return GetDefaultValueForVLType(targetType);
+            }
+        }
+
+        private static object GetDefaultValueForVLType(Type vlType)
+        {
+            if (vlType == typeof(string)) return "";
+            if (vlType == typeof(int)) return 0;
+            if (vlType == typeof(float)) return 0.0f;
+            if (vlType == typeof(bool)) return false;
+            if (vlType == typeof(string[])) return Array.Empty<string>();
+            if (vlType == typeof(SKImage)) return null!;
+
+            try
+            {
+                return Activator.CreateInstance(vlType) ?? null!;
+            }
+            catch
+            {
+                return null!;
             }
         }
 
