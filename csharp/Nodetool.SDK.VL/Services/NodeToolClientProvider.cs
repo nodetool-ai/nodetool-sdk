@@ -1,5 +1,5 @@
+using Nodetool.SDK.Configuration;
 using Nodetool.SDK.Execution;
-using Nodetool.SDK.Types;
 
 namespace Nodetool.SDK.VL.Services;
 
@@ -54,17 +54,19 @@ public static class NodeToolClientProvider
                 
                 _currentUrl = url;
                 _currentApiKey = key;
-                
-                // Create type services
-                var typeRegistry = new NodeToolTypeRegistry(
-                    Microsoft.Extensions.Logging.Abstractions.NullLogger<NodeToolTypeRegistry>.Instance);
-                var enumRegistry = new EnumRegistry(
-                    Microsoft.Extensions.Logging.Abstractions.NullLogger<EnumRegistry>.Instance);
-                var typeLookup = new TypeLookupService(typeRegistry, enumRegistry,
-                    Microsoft.Extensions.Logging.Abstractions.NullLogger<TypeLookupService>.Instance);
-                typeLookup.Initialize();
 
-                _client = new NodeToolExecutionClient(url, key, typeLookup);
+                var workerUri = new Uri(url);
+                var apiBaseUrl = TryDeriveApiBaseUrl(workerUri);
+
+                var options = new NodeToolClientOptions
+                {
+                    WorkerWebSocketUrl = workerUri,
+                    ApiBaseUrl = apiBaseUrl,
+                    AuthToken = key,
+                };
+
+                // Pass apiKey separately too (some deployments expect Bearer on HTTP; WS payload uses AuthToken).
+                _client = new NodeToolExecutionClient(options, apiKey: key);
                 _client.ConnectionStatusChanged += OnClientStatusChanged;
                 
                 Status = "disconnected";
@@ -148,5 +150,28 @@ public static class NodeToolClientProvider
             LastError = _client.LastError;
         }
         StatusChanged?.Invoke(status);
+    }
+
+    private static Uri? TryDeriveApiBaseUrl(Uri workerUrl)
+    {
+        // Convert ws/wss to http/https and strip path/query/fragment.
+        var scheme = workerUrl.Scheme switch
+        {
+            "ws" => "http",
+            "wss" => "https",
+            "http" => "http",
+            "https" => "https",
+            _ => "http"
+        };
+
+        var builder = new UriBuilder(workerUrl)
+        {
+            Scheme = scheme,
+            Path = "",
+            Query = "",
+            Fragment = ""
+        };
+
+        return builder.Uri;
     }
 }

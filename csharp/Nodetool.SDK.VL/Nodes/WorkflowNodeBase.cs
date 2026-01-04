@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using VL.Core;
+using Nodetool.SDK.Execution;
+using Nodetool.SDK.Values;
 using Nodetool.SDK.VL.Models;
+using Nodetool.SDK.VL.Services;
 
 namespace Nodetool.SDK.VL.Nodes
 {
@@ -19,6 +22,7 @@ namespace Nodetool.SDK.VL.Nodes
 
         private bool _lastTriggerState = false;
         private bool _isDisposed = false;
+        private bool _isRunning = false;
 
         public WorkflowNodeBase(NodeContext nodeContext, WorkflowNodeDescription description, WorkflowDetail workflow)
         {
@@ -103,22 +107,55 @@ namespace Nodetool.SDK.VL.Nodes
 
         private async void ExecuteWorkflowAsync()
         {
+            if (_isRunning) return;
+            _isRunning = true;
             try
             {
                 Console.WriteLine($"WorkflowNodeBase: Starting execution of workflow '{_workflow.Name}'");
                 SetIsRunning(true);
                 SetError("");
 
-                // Simulate workflow execution for now
-                await System.Threading.Tasks.Task.Delay(100);
+                // Ensure connection
+                if (!NodeToolClientProvider.IsConnected)
+                {
+                    var connected = await NodeToolClientProvider.ConnectAsync();
+                    if (!connected)
+                    {
+                        throw new InvalidOperationException(NodeToolClientProvider.LastError ?? "Failed to connect to NodeTool server.");
+                    }
+                }
 
-                // TODO: Implement real workflow execution here
-                // This would involve:
-                // 1. Collect input values from pins
-                // 2. Call Nodetool API to execute workflow
-                // 3. Parse results and set output pins
+                var client = NodeToolClientProvider.GetClient();
 
-                Console.WriteLine($"WorkflowNodeBase: Workflow '{_workflow.Name}' execution completed (simulated)");
+                // Collect inputs from pins (excluding Trigger)
+                var parameters = new Dictionary<string, object>(StringComparer.Ordinal);
+                foreach (var kvp in _inputPins)
+                {
+                    if (kvp.Key == "Trigger") continue;
+                    parameters[kvp.Key] = kvp.Value.Value ?? "";
+                }
+
+                // Execute by name (requires ApiBaseUrl on the shared client options)
+                var session = await client.ExecuteWorkflowByNameAsync(_workflow.Name, parameters);
+
+                session.OutputReceived += update =>
+                {
+                    // Best-effort mapping: match output pin by output name
+                    if (_outputPins.TryGetValue(update.OutputName, out var pin))
+                    {
+                        // IVLPin doesn't expose Type; our InternalPin does.
+                        var expectedType = (pin as InternalPin)?.Type ?? typeof(string);
+                        pin.Value = ConvertNodeToolValueToExpectedType(update.Value, expectedType);
+                    }
+                };
+
+                var ok = await session.WaitForCompletionAsync();
+                if (!ok)
+                {
+                    throw new InvalidOperationException(session.ErrorMessage ?? "Workflow execution failed.");
+                }
+
+                Console.WriteLine($"WorkflowNodeBase: Workflow '{_workflow.Name}' execution completed");
                 SetIsRunning(false);
             }
             catch (Exception ex)
@@ -126,6 +163,10 @@ namespace Nodetool.SDK.VL.Nodes
                 Console.WriteLine($"WorkflowNodeBase: Error executing workflow '{_workflow.Name}': {ex.Message}");
                 SetError($"Execution failed: {ex.Message}");
                 SetIsRunning(false);
+            }
+            finally
+            {
+                _isRunning = false;
             }
         }
 
@@ -226,6 +267,42 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 return GetDefaultValueForVLType(expectedType);
             }
+        }
+
+        private static object ConvertNodeToolValueToExpectedType(NodeToolValue value, Type expectedType)
+        {
+            // Prefer primitives when possible; fall back to JSON string for complex values.
+            if (expectedType == typeof(string))
+            {
+                return value.AsString() ?? value.ToJsonString();
+            }
+
+            if (expectedType == typeof(int) && value.TryGetLong(out var l))
+            {
+                return (int)l;
+            }
+
+            if (expectedType == typeof(float) && value.TryGetDouble(out var d))
+            {
+                return (float)d;
+            }
+
+            if (expectedType == typeof(bool) && value.TryGetBool(out var b))
+            {
+                return b;
+            }
+
+            // Array outputs: render as JSON string array when possible.
+            if (expectedType == typeof(string[]))
+            {
+                if (value.Kind == NodeToolValueKind.List)
+                {
+                    return value.AsListOrEmpty().Select(v => v.AsString() ?? v.ToJsonString()).ToArray();
+                }
+                return new[] { value.AsString() ?? value.ToJsonString() };
+            }
+
+            return ConvertToExpectedType(value.Raw ?? value.AsString() ?? value.ToJsonString(), expectedType);
         }
 
         public void Dispose()

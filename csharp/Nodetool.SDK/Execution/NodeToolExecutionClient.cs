@@ -193,16 +193,57 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         api.Configure(_options.ApiBaseUrl.ToString().TrimEnd('/'), apiKey: apiKey);
 
         var workflows = await api.GetWorkflowsAsync(cancellationToken);
-        var workflow = workflows.FirstOrDefault(w =>
-            string.Equals(w.Name, workflowName, StringComparison.OrdinalIgnoreCase));
+        var matches = workflows
+            .Where(w => string.Equals(w.Name, workflowName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
 
-        if (workflow == null)
+        if (matches.Count == 0)
         {
             var available = string.Join(", ", workflows.Select(w => w.Name));
             throw new InvalidOperationException($"Workflow not found: '{workflowName}'. Available: {available}");
         }
 
-        return await ExecuteWorkflowAsync(workflow.Id, inputs, cancellationToken);
+        if (matches.Count > 1)
+        {
+            // Avoid silently picking a random one when names collide.
+            var ids = string.Join(", ", matches.Select(w => $"{w.Id} ({w.Name})"));
+            throw new InvalidOperationException(
+                $"Multiple workflows named '{workflowName}' found: {ids}. Use ExecuteWorkflowAsync(workflowId, ...) to disambiguate.");
+        }
+
+        return await ExecuteWorkflowAsync(matches[0].Id, inputs, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<IExecutionSession> ExecuteWorkflowByNameAsync(
+        string workflowName,
+        string inputName,
+        object? inputValue,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(inputName))
+        {
+            throw new ArgumentException("Input name must not be empty.", nameof(inputName));
+        }
+
+        var inputs = new Dictionary<string, object> { [inputName] = inputValue! };
+        return ExecuteWorkflowByNameAsync(workflowName, inputs, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<IExecutionSession> ExecuteWorkflowByNameAsync(
+        string workflowName,
+        CancellationToken cancellationToken = default,
+        params (string Name, object? Value)[] inputs)
+    {
+        var dict = new Dictionary<string, object>(StringComparer.Ordinal);
+        foreach (var (name, value) in inputs)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                continue;
+            dict[name] = value!;
+        }
+        return ExecuteWorkflowByNameAsync(workflowName, dict, cancellationToken);
     }
 
     /// <inheritdoc/>

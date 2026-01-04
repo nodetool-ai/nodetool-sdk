@@ -88,7 +88,7 @@ class Program
         }
     }
 
-    static async Task TestTypeLookups(TypeLookupService typeLookup, ILogger logger)
+    static Task TestTypeLookups(TypeLookupService typeLookup, ILogger logger)
     {
         // Test common asset types
         var testTypes = new[] { "image", "audio", "video", "hf.stable_diffusion", "comfy.conditioning" };
@@ -108,9 +108,11 @@ class Program
                 logger.LogWarning("   ⚠️  Type not found: {TypeName}", typeName);
             }
         }
+
+        return Task.CompletedTask;
     }
 
-    static async Task TestWebSocketMessages(TypeLookupService typeLookup, ILogger logger)
+    static Task TestWebSocketMessages(TypeLookupService typeLookup, ILogger logger)
     {
         try
         {
@@ -164,9 +166,11 @@ class Program
         {
             logger.LogError(ex, "   ❌ WebSocket message test failed");
         }
+
+        return Task.CompletedTask;
     }
 
-    static async Task TestMessagePackSerialization(TypeLookupService typeLookup, ILogger logger)
+    static Task TestMessagePackSerialization(TypeLookupService typeLookup, ILogger logger)
     {
         try
         {
@@ -219,6 +223,8 @@ class Program
         {
             logger.LogError(ex, "   ❌ MessagePack serialization test failed");
         }
+
+        return Task.CompletedTask;
     }
 
     private static async Task RunWorkflowMode(string[] args, ILoggerFactory loggerFactory, ILogger logger)
@@ -250,7 +256,8 @@ class Program
 
         // Build inputs. Prefer command-line key=value pairs; otherwise seed required inputs with a demo value.
         var inputs = ParseInputs(args);
-        if (inputs.Count == 0)
+        var seededDefault = inputs.Count == 0;
+        if (seededDefault)
         {
             // Seed a helpful default for simple workflows.
             inputs["string_input_1"] = "hello from c#";
@@ -265,7 +272,16 @@ class Program
             return;
         }
 
-        var session = await exec.ExecuteWorkflowByNameAsync(workflowName, inputs);
+        IExecutionSession session;
+        if (seededDefault)
+        {
+            // Demonstrate the convenience overload.
+            session = await exec.ExecuteWorkflowByNameAsync(workflowName, "string_input_1", "hello from c#");
+        }
+        else
+        {
+            session = await exec.ExecuteWorkflowByNameAsync(workflowName, inputs);
+        }
         session.OutputReceived += update =>
         {
             var renderedValue = update.Value.Kind == NodeToolValueKind.String

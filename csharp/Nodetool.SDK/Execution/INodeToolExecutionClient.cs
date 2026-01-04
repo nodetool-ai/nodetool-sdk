@@ -59,6 +59,25 @@ public interface INodeToolExecutionClient : IDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Execute a workflow by name with a single input value (common case).
+    /// Requires <see cref="Configuration.NodeToolClientOptions.ApiBaseUrl"/> to be set.
+    /// </summary>
+    Task<IExecutionSession> ExecuteWorkflowByNameAsync(
+        string workflowName,
+        string inputName,
+        object? inputValue,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Execute a workflow by name with tuple inputs (convenient for small input sets).
+    /// Requires <see cref="Configuration.NodeToolClientOptions.ApiBaseUrl"/> to be set.
+    /// </summary>
+    Task<IExecutionSession> ExecuteWorkflowByNameAsync(
+        string workflowName,
+        CancellationToken cancellationToken = default,
+        params (string Name, object? Value)[] inputs);
+
+    /// <summary>
     /// Execute a workflow with a graph definition.
     /// </summary>
     /// <param name="graph">Graph definition containing nodes and edges.</param>

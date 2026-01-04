@@ -352,7 +352,7 @@ public class MessagePackWebSocketClient : IDisposable
     /// <summary>
     /// Try to deserialize MessagePack data by detecting message type.
     /// </summary>
-    private async Task<object?> TryDeserializeMessagePack(byte[] data)
+    private Task<object?> TryDeserializeMessagePack(byte[] data)
     {
         try
         {
@@ -361,26 +361,46 @@ public class MessagePackWebSocketClient : IDisposable
 
             if (tempDict.TryGetValue("type", out var typeObj) && typeObj is string typeStr)
             {
-                return typeStr switch
+                object? message;
+                switch (typeStr)
                 {
-                    "job_update" => MessagePackSerializer.Deserialize<JobUpdate>(data, _options),
-                    "node_update" => MessagePackSerializer.Deserialize<NodeUpdate>(data, _options),
-                    "output_update" => MessagePackSerializer.Deserialize<OutputUpdate>(data, _options),
-                    "preview_update" => MessagePackSerializer.Deserialize<PreviewUpdate>(data, _options),
-                    "progress_update" => MessagePackSerializer.Deserialize<ProgressUpdate>(data, _options),
-                    "node_progress" => MessagePackSerializer.Deserialize<NodeProgress>(data, _options),
-                    "connection_status" => MessagePackSerializer.Deserialize<ConnectionStatus>(data, _options),
-                    "error" => MessagePackSerializer.Deserialize<ErrorMessage>(data, _options),
-                    _ => tempDict
-                };
+                    case "job_update":
+                        message = MessagePackSerializer.Deserialize<JobUpdate>(data, _options);
+                        break;
+                    case "node_update":
+                        message = MessagePackSerializer.Deserialize<NodeUpdate>(data, _options);
+                        break;
+                    case "output_update":
+                        message = MessagePackSerializer.Deserialize<OutputUpdate>(data, _options);
+                        break;
+                    case "preview_update":
+                        message = MessagePackSerializer.Deserialize<PreviewUpdate>(data, _options);
+                        break;
+                    case "progress_update":
+                        message = MessagePackSerializer.Deserialize<ProgressUpdate>(data, _options);
+                        break;
+                    case "node_progress":
+                        message = MessagePackSerializer.Deserialize<NodeProgress>(data, _options);
+                        break;
+                    case "connection_status":
+                        message = MessagePackSerializer.Deserialize<ConnectionStatus>(data, _options);
+                        break;
+                    case "error":
+                        message = MessagePackSerializer.Deserialize<ErrorMessage>(data, _options);
+                        break;
+                    default:
+                        message = tempDict;
+                        break;
+                }
+                return Task.FromResult<object?>(message);
             }
 
-            return tempDict;
+            return Task.FromResult<object?>(tempDict);
         }
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "Failed to deserialize MessagePack data");
-            return null;
+            return Task.FromResult<object?>(null);
         }
     }
 

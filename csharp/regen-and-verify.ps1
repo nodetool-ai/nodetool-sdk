@@ -1,5 +1,7 @@
 param(
-    [switch]$SkipGitDiff
+    [switch]$SkipGitDiff,
+    [switch]$SkipGeneration,
+    [switch]$IncludeVL
 )
 
 Set-StrictMode -Version Latest
@@ -20,13 +22,18 @@ if (-not (Test-Path $sdkDir)) { throw "Missing: $sdkDir" }
 Write-Host ""
 Write-Host ">>> Regenerating C# types/nodes..." -ForegroundColor Cyan
 
-$hasNodeTool = $true
-try {
-    python -c "import nodetool" | Out-Null
-} catch {
-    $hasNodeTool = $false
-    Write-Host "Skipping generation: Python module 'nodetool' is not available in this environment." -ForegroundColor Yellow
-    Write-Host "Install nodetool-core (+ packages) in your Python env, then re-run this script." -ForegroundColor Yellow
+$hasNodeTool = $false
+if ($SkipGeneration) {
+    Write-Host "Skipping generation: -SkipGeneration was provided." -ForegroundColor Yellow
+} else {
+    $hasNodeTool = $true
+    try {
+        python -c "import nodetool" | Out-Null
+    } catch {
+        $hasNodeTool = $false
+        Write-Host "Skipping generation: Python module 'nodetool' is not available in this environment." -ForegroundColor Yellow
+        Write-Host "Install nodetool-core (+ packages) in your Python env, then re-run this script." -ForegroundColor Yellow
+    }
 }
 
 if ($hasNodeTool) {
@@ -65,6 +72,13 @@ Write-Host ">>> Building C# projects..." -ForegroundColor Cyan
 dotnet build (Join-Path $typesDir "Nodetool.Types.csproj") -c Release
 dotnet build (Join-Path $sdkDir "Nodetool.SDK.csproj") -c Release
 dotnet build (Join-Path $sdkDir "TestConsole\Nodetool.SDK.TestConsole.csproj") -c Release
+
+if ($IncludeVL) {
+    Write-Host ""
+    Write-Host ">>> Building VL project..." -ForegroundColor Cyan
+    $vlDir = Join-Path $csharpDir "Nodetool.SDK.VL"
+    dotnet build (Join-Path $vlDir "Nodetool.SDK.VL.csproj") -c Release
+}
 
 Write-Host ""
 Write-Host "✅ Done" -ForegroundColor Green

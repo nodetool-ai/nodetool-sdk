@@ -68,6 +68,12 @@ internal static class DiagnosticsNodeFactory
                                     if (val != lastApiKey)
                                     {
                                         lastApiKey = val ?? "";
+
+                                        // Recreate client when API key changes too (not only when URL changes)
+                                        if (!string.IsNullOrEmpty(lastUrl))
+                                        {
+                                            _ = NodeToolClientProvider.GetClient(lastUrl, lastApiKey);
+                                        }
                                     }
                                 }),
                                 ibc.Input<bool>(val =>
