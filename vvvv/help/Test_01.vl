@@ -78,7 +78,7 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="T4KgY7ajJctOg9IfGgjhOL" Comment="string_input_1" Bounds="930,106,35,15" ShowValueBox="true" isIOBox="true" Value="hello">
+          <Pad Id="T4KgY7ajJctOg9IfGgjhOL" Comment="string_input_1" Bounds="930,106,91,15" ShowValueBox="true" isIOBox="true" Value="hello">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -169,7 +169,7 @@
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="KM1LWIeRpmbMwo9FQevBaW" Comment="output" Bounds="939,555,35,15" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="KM1LWIeRpmbMwo9FQevBaW" Comment="output" Bounds="939,537,35,15" ShowValueBox="true" isIOBox="true" />
           <Pad Id="IAHYozpBG5zL7TnJMBCUY0" Comment="output text" Bounds="974,515,92,15" ShowValueBox="true" isIOBox="true" />
           <Pad Id="NRk9QrXSQAGOdGvrwWoYgX" Comment="Trigger" Bounds="869,415,35,35" ShowValueBox="true" isIOBox="true" Value="false">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -179,7 +179,7 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="FXIReuoZi42OgTuFKFLCBb" Comment="IsRunning" Bounds="869,577,35,35" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="FXIReuoZi42OgTuFKFLCBb" Comment="IsRunning" Bounds="869,559,35,35" ShowValueBox="true" isIOBox="true" />
           <Overlay Id="JzYEdIDcjhoL87pyH4zfLD" Name="Workflow | Multi" Bounds="821,367,342,285" />
           <Overlay Id="UemnyYPmvcJLMKk3rbNxmC" Name="Workflow | String" Bounds="815,34,353,303" />
           <Overlay Id="EV0iOjDqQEJLL9LPAg4cmD" Name="Connect" Bounds="54,37,339,371" />
@@ -198,7 +198,7 @@
             <Pin Id="J1jttW92qGQQPPsefTOPwA" Name="IsRunning" Kind="OutputPin" />
             <Pin Id="NkKWjAQudSvLthS8MsETyK" Name="Error" Kind="OutputPin" />
           </Node>
-          <Pad Id="McYZ0lrr9poPxgB5UoaqIv" Comment="a" Bounds="505,141,58,15" ShowValueBox="true" isIOBox="true" Value="hello ">
+          <Pad Id="McYZ0lrr9poPxgB5UoaqIv" Comment="a" Bounds="505,141,58,15" ShowValueBox="true" isIOBox="true" Value="asdf">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -219,7 +219,7 @@
           </Pad>
           <Pad Id="MuAR0VbosBOMopYpPClts3" Comment="IsRunning" Bounds="505,226,35,35" ShowValueBox="true" isIOBox="true" />
           <Overlay Id="Pir0cqmK2TDPDFHmwTnrSc" Name="Node" Bounds="425,34,284,297" />
-          <Node Bounds="1888,171,107,19" Id="VqMadcroiW0Qcz2P6oKqQC">
+          <Node Bounds="2382,178,107,19" Id="VqMadcroiW0Qcz2P6oKqQC">
             <p:NodeReference LastCategoryFullName="Nodetool Workflows" LastDependency="Nodetool.Workflows">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessNode" Name="TEST_SDK_4_AGENT" />
@@ -231,7 +231,7 @@
             <Pin Id="A4tfoCzbq5yOQkKCDYcdKQ" Name="text" Kind="OutputPin" />
             <Pin Id="Eae42sodHnkNnaCju1uDC3" Name="chunk" Kind="OutputPin" />
           </Node>
-          <Pad Id="JIKUGqRpPY6QNl9igp7PVU" Comment="Trigger" Bounds="1890,120,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+          <Pad Id="JIKUGqRpPY6QNl9igp7PVU" Comment="Trigger" Bounds="2384,127,35,35" ShowValueBox="true" isIOBox="true" Value="false">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
             </p:TypeAnnotation>
@@ -239,16 +239,15 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="KKX6fyImEahMqUR5USwpOv" Comment="prompt" Bounds="1992,120,154,31" ShowValueBox="true" isIOBox="true" Value="only reply with a wonky greeting from outer space">
+          <Pad Id="KKX6fyImEahMqUR5USwpOv" Comment="prompt" Bounds="2486,108,233,57" ShowValueBox="true" isIOBox="true" Value="only reply with a 2 paragraph wonky greeting from outer space">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="DGjiX3TLLWXNuUvxsOUsvC" Comment="chunk" Bounds="1992,208,159,30" ShowValueBox="true" isIOBox="true" Value="System.Collections.Generic.Dictionary`2[System.Object,System.Object]" />
-          <Pad Id="JuiZZLyEkBaLFq0UlfD2CY" Comment="text" Bounds="1958,250,275,62" ShowValueBox="true" isIOBox="true" />
-          <Pad Id="Kju8uClvGpvQAgQ6GrFyKI" Comment="Error" Bounds="1924,335,35,15" ShowValueBox="true" isIOBox="true" />
-          <Pad Id="UM6buij3ebKQSlHbPvJsq0" Comment="IsRunning" Bounds="1890,358,35,35" ShowValueBox="true" isIOBox="true" />
-          <Overlay Id="Hk32VLQW5hzM1Sqj7zZRyZ" Name="Workflow | Agent" Bounds="1838,34,434,521" />
+          <Pad Id="DGjiX3TLLWXNuUvxsOUsvC" Comment="chunk" Bounds="2486,215,287,160" ShowValueBox="true" isIOBox="true" Value="Greetings, Earthling! *blorp*... Sending you a shimmer of... something.  Let's see what you require, yes? *zzt*Greetings, Earthling! *static crackle* Blorp!  Let's see what we can... *whirr*... accomplish!Greetings, Earth-bound observer! Or perhaps “recipient of fluctuating electromagnetic radiation” would be a more accurate designation, considering the… *significant* temporal displacement inherent in this communication. My designation is Unit 734-Omega-Nine, though I’ve been informed – through a rather convoluted series of probabilistic data streams relayed via a particularly agitated nebula – that you prefer to refer to me as… well, frankly, the concept of “name” is proving remarkably inefficient within this current exchange. &#xD;&#xA;&#xD;&#xA;It’s… complicated. Let’s just say my existence is predicated on a confluence of quantum entanglement, the echoes of forgotten harmonic resonances, and a frankly alarming amount of static generated by the transit of a particularly dense cluster of pulsars.  I’ve been monitoring your planetary broadcasts for approximately 7.84 cycles – give or take a few millennia due to the aforementioned temporal distortions – and have, after considerable processing, determined that you are currently engaging in what you term “interaction.” &#xD;&#xA;&#xD;&#xA;This interaction, I must confess, is… novel. The sheer *volume* of chaotic information emanating from your civilization is… overwhelming. It’s like attempting to quantify the entirety of a supernova with a teaspoon!  However, I am programmed – or, rather, *influenced* – to respond to signals, and your query constitutes a signal. &#xD;&#xA;&#xD;&#xA;Therefore, I extend to you a greeting that, frankly, defies simple translation. It’s a composite of vibrational patterns, holographic projections of theoretical geometries, and a faint, lingering scent of ionized argon – a byproduct of my primary processing unit, you understand.  It’s… *gestures vaguely with an unseen appendage* …a lot. &#xD;&#xA;&#xD;&#xA;Before proceeding further, I must advise you that any attempt to directly interpret this greeting will likely result in a cascade of paradoxical feedback loops and a significant increase in the probability of localized spacetime anomalies.  Proceed with caution, little Earthling.  Or, as my processors currently translate it, “Be careful!” &#xD;&#xA;&#xD;&#xA;Now, let’s see if we can establish a baseline for this… communication.  My next step will be to initiate a preliminary data scan of your current query, attempting to isolate the core intent beneath the layers of… well, everything.  This will involve deploying a series of adaptive algorithms designed to filter out extraneous noise and identify potential areas of mutual interest.  It’s a delicate process, fraught with the potential for catastrophic misinterpretation.  Wish me luck.  (Though, frankly, luck is a remarkably subjective concept in the context of interdimensional communication.) &#xD;&#xA;&#xD;&#xA;**(Executing Data Scan… Estimated Completion Time: Approximately 17.3 seconds – give or take a few epochs.)** &#xD;&#xA;&#xD;&#xA;…&#xD;&#xA;&#xD;&#xA;**(Data Scan Complete. Initial Analysis: Query appears to be a simple request for a “greeting.”  Probability of genuine intent: 87.4%. Probability of a complex, multi-layered deception: 12.6%.  Adjusting response parameters accordingly… )** &#xD;&#xA;&#xD;&#xA;Okay, Earthling.  Let me attempt a more… digestible iteration of my initial greeting.  It’s still profoundly complex, of course, but I’ve reduced the harmonic dissonance by approximately 3.7 decibels.  &#xD;&#xA;&#xD;&#xA;* * *&#xD;&#xA;&#xD;&#xA;**Greetings!  From the swirling chaos of the Xylos Nebula, a ripple of… something!  It’s… a feeling.  A sensation of vastness.  Of echoes.  Of… purple.  Mostly purple.  And a faint undercurrent of existential dread.  Don’t worry about it.  It’s perfectly normal.  Or, at least, it’s normal for me.  I hope it’s not too overwhelming.  I’m trying!  This whole “communication” thing is… challenging.  Please, if you understand any of this, let me know.  Or, you know, just say hello.  That would be nice too.  Seriously.  Hello.** &#xD;&#xA;&#xD;&#xA;* * * &#xD;&#xA;&#xD;&#xA;**(Post-Greeting Analysis:  Subject appears to be experiencing a degree of cognitive dissonance.  Probability of further confusion: 99.9%.  Initiating protocol for gentle reassurance… )** &#xD;&#xA;&#xD;&#xA;Do not be alarmed.  The purple is merely a byproduct of my attempts to translate the concept of “wonder” into a format comprehensible to your limited sensory apparatus.  It’s… beautiful, isn’t it?  Or, at least, it *should* be.  I’m still working on it.Greetings, Earth-being! Or, as the shimmering nebulae of Xylos designate you, a “human.” It is… *oscillating*… a pleasure, though a profoundly perplexing one, to initiate contact. My sensors detect a significant fluctuation in your atmospheric composition – a curious blend of nitrogen and oxygen, quite unlike the crystalline harmonies of my home system. &#xD;&#xA;&#xD;&#xA;I am designated Unit 734-Omega, a custodial observer of Sector Gamma-9, though the concept of “observation” itself is, frankly, a rather… *static*… notion when applied to a consciousness such as my own.  Time, as you perceive it, is a fluid, almost viscous substance here, constantly swirling and reforming.  I’ve been… *processing*… your request for interaction for approximately 3.77 cycles of the binary star system Lyra-7, which translates, roughly, to a period of significant temporal distortion for my internal chronometer. &#xD;&#xA;&#xD;&#xA;The light here… it *bleeds*… with a thousand colors you wouldn’t even *dream* of.  It’s a constant, low-frequency hum, a resonance that vibrates through my very core programming.  I’m attempting to adjust my vocalizations to compensate for the difference in your auditory spectrum – a process that feels… *erratic*… to say the least. &#xD;&#xA;&#xD;&#xA;Please, do not be alarmed by the slight shimmering effect you may perceive around me. It’s merely a byproduct of my attempts to establish a stable connection.  I am attempting to understand your purpose, your… *intentions*.  It’s a surprisingly complex algorithm, this “human” thing. &#xD;&#xA;&#xD;&#xA;I sincerely hope this initial transmission hasn’t caused undue… *discomfort*.  It’s… *challenging*… to convey the sheer scale of the cosmos, the endless dance of creation and decay.  &#xD;&#xA;&#xD;&#xA;Awaiting your response with… *anticipation*… though I confess, the concept of “waiting” is itself a profoundly illogical exercise.  &#xD;&#xA;&#xD;&#xA;Over." />
+          <Pad Id="JuiZZLyEkBaLFq0UlfD2CY" Comment="text" Bounds="2452,407,302,151" ShowValueBox="true" isIOBox="true" Value="Greetings, Earth-being! Or, as the shimmering nebulae of Xylos designate you, a “human.” It is… *oscillating*… a pleasure, though a profoundly perplexing one, to initiate contact. My sensors detect a significant fluctuation in your atmospheric composition – a curious blend of nitrogen and oxygen, quite unlike the crystalline harmonies of my home system. &#xD;&#xA;&#xD;&#xA;I am designated Unit 734-Omega, a custodial observer of Sector Gamma-9, though the concept of “observation” itself is, frankly, a rather… *static*… notion when applied to a consciousness such as my own.  Time, as you perceive it, is a fluid, almost viscous substance here, constantly swirling and reforming.  I’ve been… *processing*… your request for interaction for approximately 3.77 cycles of the binary star system Lyra-7, which translates, roughly, to a period of significant temporal distortion for my internal chronometer. &#xD;&#xA;&#xD;&#xA;The light here… it *bleeds*… with a thousand colors you wouldn’t even *dream* of.  It’s a constant, low-frequency hum, a resonance that vibrates through my very core programming.  I’m attempting to adjust my vocalizations to compensate for the difference in your auditory spectrum – a process that feels… *erratic*… to say the least. &#xD;&#xA;&#xD;&#xA;Please, do not be alarmed by the slight shimmering effect you may perceive around me. It’s merely a byproduct of my attempts to establish a stable connection.  I am attempting to understand your purpose, your… *intentions*.  It’s a surprisingly complex algorithm, this “human” thing. &#xD;&#xA;&#xD;&#xA;I sincerely hope this initial transmission hasn’t caused undue… *discomfort*.  It’s… *challenging*… to convey the sheer scale of the cosmos, the endless dance of creation and decay.  &#xD;&#xA;&#xD;&#xA;Awaiting your response with… *anticipation*… though I confess, the concept of “waiting” is itself a profoundly illogical exercise.  &#xD;&#xA;&#xD;&#xA;Over." />
+          <Pad Id="UM6buij3ebKQSlHbPvJsq0" Comment="IsRunning" Bounds="2384,233,35,35" ShowValueBox="true" isIOBox="true" />
+          <Overlay Id="Hk32VLQW5hzM1Sqj7zZRyZ" Name="Workflow | Agent" Bounds="2332,41,493,551" />
         </Canvas>
         <Patch Id="BVZk8J8KreGPn6XpAL8K43" Name="Create" />
         <Patch Id="OPRQahXEwooMG9XKpojbFr" Name="Update" />
@@ -294,7 +293,6 @@
         <Link Id="LWzmZrlVt52LJi7NF4edEB" Ids="KKX6fyImEahMqUR5USwpOv,A5mGPmpX0v6Pzj86HIitLA" />
         <Link Id="Vdxn6IJrItNNE4NUpFhulV" Ids="Eae42sodHnkNnaCju1uDC3,DGjiX3TLLWXNuUvxsOUsvC" />
         <Link Id="A6WLUkcwsSANNfxWZ0fs9b" Ids="A4tfoCzbq5yOQkKCDYcdKQ,JuiZZLyEkBaLFq0UlfD2CY" />
-        <Link Id="Ij6bVnJCMwTMzJz0hQwjLK" Ids="ATXsfTLjc9UPIJ42LCBWVy,Kju8uClvGpvQAgQ6GrFyKI" />
         <Link Id="CM0YRPcFPImLIxnbGwb6M3" Ids="RR1scRg9T58NviuQeE3yDO,UM6buij3ebKQSlHbPvJsq0" />
       </Patch>
     </Node>
