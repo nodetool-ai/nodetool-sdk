@@ -252,7 +252,9 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         Dictionary<string, object>? inputs = null,
         CancellationToken cancellationToken = default)
     {
-        var session = CreatePendingSession(workflowId: ""); // graph jobs have no workflow_id
+        // Use a non-empty pending key so we can bind the first job_update even if the server doesn't echo workflow_id.
+        var pendingKey = Guid.NewGuid().ToString();
+        var session = CreatePendingSession(workflowId: pendingKey);
 
         var command = new WebSocketCommand
         {
@@ -260,7 +262,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             type = "run_job",
             data = new RunJobRequest
             {
-                WorkflowId = "",
+                WorkflowId = pendingKey,
                 Graph = graph,
                 Params = inputs,
                 JobType = "workflow",
@@ -291,10 +293,10 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         Dictionary<string, object>? inputs = null,
         CancellationToken cancellationToken = default)
     {
-        var session = CreatePendingSession(workflowId: "");
-
         // Create a simple graph with just this node
         var nodeId = Guid.NewGuid().ToString();
+        // Use nodeId as the pending key for binding job updates.
+        var session = CreatePendingSession(workflowId: nodeId);
         var graph = new Graph
         {
             nodes = new List<GraphNode>
@@ -315,7 +317,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             type = "run_job",
             data = new RunJobRequest
             {
-                WorkflowId = "",
+                WorkflowId = nodeId,
                 Graph = graph,
                 JobType = "workflow",
                 ExecutionStrategy = _options.ExecutionStrategy,
@@ -425,10 +427,18 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
                     break;
 
                 case NodeUpdate nodeUpdate:
-                    // Route to all sessions (node updates might not have job_id)
-                    foreach (var session in _sessions.Values)
+                    // Prefer routing by job_id when available to avoid cross-talk between sessions.
+                    if (nodeUpdate.job_id != null && _sessions.TryGetValue(nodeUpdate.job_id, out var sessionNode))
                     {
-                        session.ProcessNodeUpdate(nodeUpdate);
+                        sessionNode.ProcessNodeUpdate(nodeUpdate);
+                    }
+                    else
+                    {
+                        // Fallback: broadcast when the server doesn't include job_id.
+                        foreach (var session in _sessions.Values)
+                        {
+                            session.ProcessNodeUpdate(nodeUpdate);
+                        }
                     }
                     break;
 

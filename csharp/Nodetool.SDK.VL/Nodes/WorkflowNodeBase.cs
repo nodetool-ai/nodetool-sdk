@@ -119,6 +119,12 @@ namespace Nodetool.SDK.VL.Nodes
                 SetIsRunning(true);
                 SetError("");
 
+                if (_workflow.InputSchema?.Properties != null && _workflow.InputSchema.Properties.Count > 0)
+                {
+                    var keys = string.Join(", ", _workflow.InputSchema.Properties.Keys);
+                    Console.WriteLine($"WorkflowNodeBase: Input schema keys: {keys}");
+                }
+
                 using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(DefaultWorkflowTimeoutSeconds));
 
                 // Ensure connection
@@ -299,7 +305,8 @@ namespace Nodetool.SDK.VL.Nodes
             // Prefer primitives when possible; fall back to JSON string for complex values.
             if (expectedType == typeof(string))
             {
-                // Common refs (ImageRef/AudioRef/etc) are maps with a 'uri' field.
+                // Avoid ToString() on dictionaries/lists (it yields "System.Collections.Generic.Dictionary`2[...]").
+                // Prefer common fields first; otherwise fall back to JSON.
                 if (value.Kind == NodeToolValueKind.Map)
                 {
                     var map = value.AsMapOrEmpty();
@@ -307,7 +314,28 @@ namespace Nodetool.SDK.VL.Nodes
                         return uriVal.AsString() ?? uriVal.ToJsonString();
                     if (map.TryGetValue("asset_id", out var assetIdVal))
                         return assetIdVal.AsString() ?? assetIdVal.ToJsonString();
+
+                    // Common chunk/text payload shapes
+                    if (map.TryGetValue("text", out var textVal) && textVal.AsString() is string textStr)
+                        return textStr;
+
+                    if (map.TryGetValue("delta", out var deltaVal))
+                        return deltaVal.AsString() ?? deltaVal.ToJsonString();
+
+                    if (map.TryGetValue("chunk", out var chunkVal))
+                        return chunkVal.AsString() ?? chunkVal.ToJsonString();
+
+                    if (map.TryGetValue("value", out var valueVal))
+                        return valueVal.AsString() ?? valueVal.ToJsonString();
+
+                    if (map.TryGetValue("result", out var resultVal))
+                        return resultVal.AsString() ?? resultVal.ToJsonString();
+
+                    return value.ToJsonString();
                 }
+
+                if (value.Kind == NodeToolValueKind.List)
+                    return value.ToJsonString();
 
                 return value.AsString() ?? value.ToJsonString();
             }
@@ -367,21 +395,62 @@ namespace Nodetool.SDK.VL.Nodes
             // then send an ImageRef-like dict ({type, asset_id, uri, data}) to the workflow params.
             if (IsImageSchema(propDef))
             {
-                if (rawValue is string s && !string.IsNullOrWhiteSpace(s))
+                var rawType = rawValue?.GetType().FullName ?? "<null>";
+
+                // Accept bytes directly (future: SKImage/Stride can be converted to bytes by helper nodes)
+                if (rawValue is byte[] bytesDirect)
+                {
+                    Console.WriteLine($"WorkflowNodeBase: Image input '{inputName}' received byte[] (len={bytesDirect.Length})");
+                    return new Dictionary<string, object?>
+                    {
+                        ["type"] = "image",
+                        ["asset_id"] = null,
+                        ["uri"] = "",
+                        ["data"] = bytesDirect
+                    };
+                }
+
+                // Normalize to string (VL sometimes provides non-string path types)
+                var s = rawValue switch
+                {
+                    null => null,
+                    string str => str,
+                    Uri u => u.ToString(),
+                    _ => rawValue.ToString()
+                };
+
+                s = s?.Trim();
+                if (!string.IsNullOrEmpty(s) && s.Length >= 2 && s.StartsWith("\"") && s.EndsWith("\""))
+                    s = s.Trim('"');
+
+                Console.WriteLine($"WorkflowNodeBase: Image input '{inputName}' rawType={rawType} value='{s ?? "<null>"}'");
+
+                if (string.IsNullOrWhiteSpace(s))
+                {
+                    throw new InvalidOperationException(
+                        $"Image input '{inputName}' is empty. Provide a file path/URL, or bytes.");
+                }
+
+                if (!string.IsNullOrWhiteSpace(s))
                 {
                     // Local file path → send bytes directly (no extra asset creation step).
                     if (File.Exists(s))
                     {
                         Console.WriteLine($"WorkflowNodeBase: Image input '{inputName}' using local file path: {s}");
-                        return new Dictionary<string, object?>
+                        var fullPath = Path.GetFullPath(s);
+                        var bytes = await File.ReadAllBytesAsync(fullPath, cancellationToken);
+                        var fileUri = new Uri(fullPath).AbsoluteUri;
+                        var imageRef = new Dictionary<string, object?>
                         {
                             ["type"] = "image",
                             ["asset_id"] = null,
                             // Important: also set uri to the local path so local servers can read it directly.
                             // This makes the ref non-empty even if the runtime drops binary payloads in MessagePack.
-                            ["uri"] = s,
-                            ["data"] = await File.ReadAllBytesAsync(s, cancellationToken)
+                            ["uri"] = fileUri,
+                            ["data"] = bytes
                         };
+                        Console.WriteLine($"WorkflowNodeBase: ImageRef prepared (uri='{fileUri}', dataLen={bytes.Length})");
+                        return imageRef;
                     }
 
                     // URL or already a server-side uri
@@ -395,6 +464,16 @@ namespace Nodetool.SDK.VL.Nodes
                             ["data"] = null
                         };
                     }
+
+                    // Best-effort fallback: treat as a path-like string even if File.Exists is false (e.g., path on server).
+                    Console.WriteLine($"WorkflowNodeBase: Image input '{inputName}' path does not exist locally; sending uri as-is.");
+                    return new Dictionary<string, object?>
+                    {
+                        ["type"] = "image",
+                        ["asset_id"] = null,
+                        ["uri"] = s,
+                        ["data"] = null
+                    };
                 }
             }
 
@@ -409,6 +488,24 @@ namespace Nodetool.SDK.VL.Nodes
             // JSON schema 'format' is the strongest hint
             if (string.Equals(prop.Format, "image", StringComparison.OrdinalIgnoreCase))
                 return true;
+
+            // Many NodeTool schemas represent refs as objects with a const "type" field.
+            // Example: { "type": "object", "properties": { "type": { "const": "image" }, "uri": {...}, ... } }
+            if (string.Equals(prop.Type, "object", StringComparison.OrdinalIgnoreCase) && prop.Properties != null)
+            {
+                if (prop.Properties.TryGetValue("type", out var typeProp))
+                {
+                    if (typeProp.Const is string cs && string.Equals(cs, "image", StringComparison.OrdinalIgnoreCase))
+                        return true;
+
+                    if (typeProp.Enum != null && typeProp.Enum.Any(v => string.Equals(v?.ToString(), "image", StringComparison.OrdinalIgnoreCase)))
+                        return true;
+                }
+
+                // Heuristic: looks like an AssetRef-ish object
+                if (prop.Properties.ContainsKey("uri") && prop.Properties.ContainsKey("asset_id"))
+                    return true;
+            }
 
             // Fallback hints
             if (string.Equals(prop.Type, "image", StringComparison.OrdinalIgnoreCase))

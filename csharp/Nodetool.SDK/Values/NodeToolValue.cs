@@ -131,6 +131,9 @@ public sealed class NodeToolValue
             null => null,
             string s => s,
             bool b => b ? "true" : "false",
+            // Don't stringify complex containers; callers should use ToJsonString()
+            IDictionary => null,
+            IEnumerable => null,
             _ => Convert.ToString(Raw, CultureInfo.InvariantCulture)
         };
     }

@@ -3,11 +3,15 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Subjects;
+using System.Threading;
 using System.Threading.Tasks;
 using VL.Core;
 using VL.Core.CompilerServices;
 using VL.Core.Diagnostics;
 using Nodetool.SDK.Api.Models;
+using Nodetool.SDK.Execution;
+using Nodetool.SDK.Values;
+using Nodetool.SDK.VL.Services;
 
 namespace Nodetool.SDK.VL.Nodes
 {
@@ -21,11 +25,13 @@ namespace Nodetool.SDK.VL.Nodes
         private readonly Dictionary<string, IVLPin> _inputPins;
         private readonly Dictionary<string, IVLPin> _outputPins;
         private readonly IVLNodeDescription _nodeDescription;
+
+        private readonly object _lock = new();
         
         // Execution state
         private bool _isRunning = false;
         private string _lastError = "";
-        private Dictionary<string, object?> _lastOutputs = new Dictionary<string, object?>();
+        private readonly Dictionary<string, NodeToolValue> _lastOutputs = new(StringComparer.Ordinal);
         private bool _lastExecuteState = false;
 
         public NodeBase(NodeContext nodeContext, NodeMetadataResponse nodeMetadata)
@@ -130,13 +136,30 @@ namespace Nodetool.SDK.VL.Nodes
         /// </summary>
         private async Task ExecuteNodeAsync()
         {
-            _isRunning = true;
-            _lastError = "";
+            lock (_lock)
+            {
+                _isRunning = true;
+                _lastError = "";
+                _lastOutputs.Clear();
+            }
 
             try
             {
+                if (string.IsNullOrWhiteSpace(_nodeMetadata.NodeType))
+                    throw new InvalidOperationException("NodeType is missing from node metadata.");
+
+                // Ensure we have a connected client (user can also do this explicitly via the Connect node)
+                if (!NodeToolClientProvider.IsConnected)
+                {
+                    var connected = await NodeToolClientProvider.ConnectAsync();
+                    if (!connected)
+                        throw new InvalidOperationException($"Not connected: {NodeToolClientProvider.LastError ?? "unknown error"}");
+                }
+
+                var client = NodeToolClientProvider.GetClient();
+
                 // Collect input values
-                var inputData = new Dictionary<string, object?>();
+                var inputData = new Dictionary<string, object>(StringComparer.Ordinal);
                 
                 if (_nodeMetadata.Properties != null)
                 {
@@ -144,81 +167,86 @@ namespace Nodetool.SDK.VL.Nodes
                     {
                         if (_inputPins.TryGetValue(property.Name, out var inputPin))
                         {
-                            inputData[property.Name] = inputPin.Value ?? property.Default;
+                            inputData[property.Name] = inputPin.Value ?? property.Default ?? "";
                         }
                         else
                         {
-                            inputData[property.Name] = property.Default;
+                            inputData[property.Name] = property.Default ?? "";
                         }
                     }
                 }
 
-                // TODO: Execute the actual node through Nodetool API
-                // For now, simulate execution with a delay
-                await Task.Delay(1000);
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(300));
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
 
-                // TODO: Parse and store actual results
-                // For now, simulate outputs
-                _lastOutputs.Clear();
-                if (_nodeMetadata.Outputs != null)
+                IExecutionSession? session = null;
+                try
                 {
-                    foreach (var output in _nodeMetadata.Outputs)
+                    session = await client.ExecuteNodeAsync(_nodeMetadata.NodeType, inputData, linked.Token);
+
+                    session.OutputReceived += update =>
                     {
-                        // Simulate output based on type
-                        _lastOutputs[output.Name] = GetSimulatedOutput(output);
+                        if (string.IsNullOrWhiteSpace(update.OutputName))
+                            return;
+
+                        lock (_lock)
+                        {
+                            _lastOutputs[update.OutputName] = update.Value;
+                        }
+                    };
+
+                    session.NodeUpdated += update =>
+                    {
+                        if (!string.IsNullOrWhiteSpace(update.error))
+                        {
+                            lock (_lock)
+                            {
+                                _lastError = update.error ?? "";
+                            }
+                        }
+
+                        if (update.result != null)
+                        {
+                            lock (_lock)
+                            {
+                                foreach (var kvp in update.result)
+                                {
+                                    if (string.IsNullOrWhiteSpace(kvp.Key))
+                                        continue;
+                                    _lastOutputs[kvp.Key] = NodeToolValue.From(kvp.Value);
+                                }
+                            }
+                        }
+                    };
+
+                    var ok = await session.WaitForCompletionAsync(linked.Token);
+                    if (!ok)
+                    {
+                        lock (_lock)
+                        {
+                            _lastError = session.ErrorMessage ?? _lastError;
+                        }
                     }
                 }
-
-                _lastError = "";
+                finally
+                {
+                    session?.Dispose();
+                }
             }
             catch (Exception ex)
             {
-                _lastError = $"Execution error: {ex.Message}";
-                _lastOutputs.Clear();
+                lock (_lock)
+                {
+                    _lastError = $"Execution error: {ex.Message}";
+                    _lastOutputs.Clear();
+                }
             }
             finally
             {
-                _isRunning = false;
-            }
-        }
-
-        /// <summary>
-        /// Get simulated output for testing purposes - must match VL pin type
-        /// </summary>
-        private object? GetSimulatedOutput(NodeOutput output)
-        {
-            // Get the VL type that was mapped for this output
-            var (vlType, defaultValue) = MapNodeType(output.Type);
-            
-            // Return a value that matches the VL type exactly
-            if (vlType == typeof(string))
-            {
-                return $"Output from {_nodeMetadata.NodeType}";
-            }
-            else if (vlType == typeof(int))
-            {
-                return 42;
-            }
-            else if (vlType == typeof(float))
-            {
-                return 3.14f;
-            }
-            else if (vlType == typeof(bool))
-            {
-                return true;
-            }
-            else if (vlType == typeof(string[]))
-            {
-                return new string[] { "result1", "result2" };
-            }
-            else if (vlType == typeof(object))
-            {
-                return new { simulated = true, data = "test" };
-            }
-            else
-            {
-                // Fallback to default value or string
-                return defaultValue ?? "Simulated output";
+                lock (_lock)
+                {
+                    _isRunning = false;
+                }
             }
         }
 
@@ -229,11 +257,22 @@ namespace Nodetool.SDK.VL.Nodes
         {
             try
             {
+                bool isRunning;
+                string lastError;
+                Dictionary<string, NodeToolValue> outputsSnapshot;
+
+                lock (_lock)
+                {
+                    isRunning = _isRunning;
+                    lastError = _lastError;
+                    outputsSnapshot = new Dictionary<string, NodeToolValue>(_lastOutputs, StringComparer.Ordinal);
+                }
+
                 // Set standard outputs
                 if (_outputPins.TryGetValue("IsRunning", out var isRunningPin))
-                    isRunningPin.Value = _isRunning;
+                    isRunningPin.Value = isRunning;
                 if (_outputPins.TryGetValue("Error", out var errorPin))
-                    errorPin.Value = _lastError;
+                    errorPin.Value = lastError;
 
                 // Set node-specific outputs - ensure type safety
                 if (_nodeMetadata.Outputs != null)
@@ -246,10 +285,9 @@ namespace Nodetool.SDK.VL.Nodes
                             var (expectedType, defaultValue) = MapNodeType(output.Type);
                             object? valueToSet;
                             
-                            if (_lastOutputs.TryGetValue(output.Name, out var value))
+                            if (outputsSnapshot.TryGetValue(output.Name, out var value))
                             {
-                                // Convert the value to match the expected VL type
-                                valueToSet = ConvertValueToExpectedType(value, expectedType ?? typeof(string));
+                                valueToSet = ConvertNodeToolValueToExpectedType(value, expectedType ?? typeof(string));
                             }
                             else
                             {
@@ -264,7 +302,10 @@ namespace Nodetool.SDK.VL.Nodes
             }
             catch (Exception ex)
             {
-                _lastError = $"Output update error: {ex.Message}";
+                lock (_lock)
+                {
+                    _lastError = $"Output update error: {ex.Message}";
+                }
             }
         }
 
@@ -302,63 +343,80 @@ namespace Nodetool.SDK.VL.Nodes
         }
 
         /// <summary>
-        /// Convert a value to the expected pin type to prevent casting exceptions
+        /// Convert a NodeToolValue to the expected pin type to prevent casting exceptions
         /// </summary>
-        private static object? ConvertValueToExpectedType(object? value, Type expectedType)
+        private static object? ConvertNodeToolValueToExpectedType(NodeToolValue value, Type expectedType)
         {
-            if (value == null)
-                return GetDefaultValueForPinType(expectedType);
-
-            var valueType = value.GetType();
-            
-            // If types already match, return as-is
-            if (expectedType.IsAssignableFrom(valueType))
-                return value;
-
-            // Handle specific type conversions
+            // Fast paths for common VL pin types
             try
             {
                 if (expectedType == typeof(string))
                 {
-                    return value.ToString() ?? "";
+                    // Avoid ToString() on dictionaries (it yields "System.Collections.Generic.Dictionary`2[...]").
+                    // For refs/typed payloads, try common fields first, otherwise fall back to JSON.
+                    if (value.Kind == NodeToolValueKind.Map)
+                    {
+                        var map = value.AsMapOrEmpty();
+
+                        if (map.TryGetValue("uri", out var uri) &&
+                            uri.AsString() is string uriStr &&
+                            !string.IsNullOrWhiteSpace(uriStr))
+                        {
+                            return uriStr;
+                        }
+
+                        // Common payload shapes:
+                        // - { type: "text", text: "..." }
+                        // - { value: "..." }
+                        // - { result: "..." }
+                        if (map.TryGetValue("text", out var textVal) && textVal.AsString() is string textStr)
+                            return textStr;
+
+                        if (map.TryGetValue("value", out var valueVal))
+                            return valueVal.AsString() ?? valueVal.ToJsonString();
+
+                        if (map.TryGetValue("result", out var resultVal))
+                            return resultVal.AsString() ?? resultVal.ToJsonString();
+
+                        return value.ToJsonString();
+                    }
+
+                    if (value.Kind == NodeToolValueKind.List)
+                        return value.ToJsonString();
+
+                    return value.AsString() ?? value.ToJsonString();
                 }
                 else if (expectedType == typeof(int))
                 {
-                    return Convert.ToInt32(value);
+                    if (value.TryGetLong(out var l))
+                        return (int)l;
+                    return 0;
                 }
                 else if (expectedType == typeof(float))
                 {
-                    return Convert.ToSingle(value);
+                    if (value.TryGetDouble(out var d))
+                        return (float)d;
+                    return 0.0f;
                 }
                 else if (expectedType == typeof(bool))
                 {
-                    return Convert.ToBoolean(value);
+                    if (value.TryGetBool(out var b))
+                        return b;
+                    return false;
                 }
                 else if (expectedType == typeof(string[]))
                 {
-                    // Convert to string array
-                    if (value is Array array)
-                    {
-                        var stringArray = new string[array.Length];
-                        for (int i = 0; i < array.Length; i++)
-                        {
-                            stringArray[i] = array.GetValue(i)?.ToString() ?? "";
-                        }
-                        return stringArray;
-                    }
-                    else
-                    {
-                        return new string[] { value.ToString() ?? "" };
-                    }
+                    if (value.Kind == NodeToolValueKind.List)
+                        return value.AsListOrEmpty().Select(v => v.AsString() ?? v.ToJsonString()).ToArray();
+                    return new[] { value.AsString() ?? value.ToJsonString() };
                 }
                 else if (expectedType == typeof(object))
                 {
-                    return value; // object can hold anything
+                    return value.Raw; // object can hold anything
                 }
                 else
                 {
-                    // Last resort: try direct conversion
-                    return Convert.ChangeType(value, expectedType);
+                    return value.Raw ?? value.AsString() ?? value.ToJsonString();
                 }
             }
             catch (Exception)
@@ -374,7 +432,10 @@ namespace Nodetool.SDK.VL.Nodes
         public void Dispose()
         {
             // Clean up any resources
-            _lastOutputs.Clear();
+            lock (_lock)
+            {
+                _lastOutputs.Clear();
+            }
         }
 
         /// <summary>
