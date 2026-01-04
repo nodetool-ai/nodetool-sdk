@@ -80,6 +80,25 @@ public class OutputUpdate
 }
 
 /// <summary>
+/// WebSocket message for streaming preview values during execution.
+///
+/// Note: value is intentionally untyped (OpenAPI uses unknown).
+/// </summary>
+[MessagePackObject(true)]
+public class PreviewUpdate
+{
+    public string type { get; set; } = "preview_update";
+
+    public string? job_id { get; set; } = null;
+
+    public string? workflow_id { get; set; } = null;
+
+    public string node_id { get; set; } = "";
+
+    public object? value { get; set; } = null;
+}
+
+/// <summary>
 /// Base interface for all WebSocket messages from NodeTool.
 /// </summary>
 public interface IWebSocketMessage
@@ -91,6 +110,7 @@ public interface IWebSocketMessage
 /// WebSocket message for workflow execution requests.
 /// </summary>
 [MessagePackObject(true)]
+[Obsolete("Legacy message shape. Use the worker protocol: WebSocketCommand {command/type: run_job, data: RunJobRequest}.")]
 public class WorkflowExecuteRequest
 {
     public string type { get; set; } = "workflow_execute";
@@ -108,6 +128,7 @@ public class WorkflowExecuteRequest
 /// WebSocket message for single node execution requests.
 /// </summary>
 [MessagePackObject(true)]
+[Obsolete("Legacy message shape. Use the worker protocol: WebSocketCommand {command/type: run_job, data: RunJobRequest} with a minimal graph.")]
 public class NodeExecuteRequest
 {
     public string type { get; set; } = "node_execute";
@@ -125,11 +146,23 @@ public class NodeExecuteRequest
 /// WebSocket message for job cancellation requests.
 /// </summary>
 [MessagePackObject(true)]
+[Obsolete("Legacy message shape. Use the worker protocol: WebSocketCommand {command/type: cancel_job, data: CancelJobData}.")]
 public class JobCancelRequest
 {
     public string type { get; set; } = "job_cancel";
 
     public string job_id { get; set; } = "";
+}
+
+/// <summary>
+/// Canonical cancel_job payload for the worker protocol.
+/// </summary>
+[MessagePackObject(true)]
+public class CancelJobData
+{
+    public string job_id { get; set; } = "";
+
+    public string? workflow_id { get; set; } = null;
 }
 
 /// <summary>
@@ -305,7 +338,15 @@ public class RunJobRequest
 [MessagePackObject(true)]
 public class WebSocketCommand
 {
+    /// <summary>
+    /// Command name (e.g. "run_job", "cancel_job").
+    /// </summary>
     public string command { get; set; } = "";
+
+    /// <summary>
+    /// Message type. For the worker protocol this should match <see cref="command"/>.
+    /// </summary>
+    public string type { get; set; } = "";
 
     public object data { get; set; } = new Dictionary<string, object>();
 }

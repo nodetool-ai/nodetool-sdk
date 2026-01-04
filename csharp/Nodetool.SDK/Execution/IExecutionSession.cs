@@ -37,18 +37,17 @@ public interface IExecutionSession : IDisposable
     string CurrentStatus { get; }
 
     /// <summary>
-    /// Get a typed output value by name.
+    /// Get the latest output value for a specific node+output.
     /// </summary>
-    /// <typeparam name="T">Expected output type.</typeparam>
-    /// <param name="name">Output name.</param>
-    /// <returns>Output value or default if not found.</returns>
-    T? GetOutput<T>(string name);
+    /// <param name="nodeId">Node id that produced the output.</param>
+    /// <param name="outputName">Output slot name.</param>
+    /// <returns>Latest output value or null if none received.</returns>
+    Values.NodeToolValue? GetLatestOutput(string nodeId, string outputName);
 
     /// <summary>
-    /// Get all outputs as a dictionary.
+    /// Get latest outputs as a dictionary keyed by "nodeId:outputName".
     /// </summary>
-    /// <returns>Dictionary of output name to value.</returns>
-    Dictionary<string, object?> GetAllOutputs();
+    IReadOnlyDictionary<string, Values.NodeToolValue> GetLatestOutputs();
 
     /// <summary>
     /// Event fired when progress changes.
@@ -56,9 +55,14 @@ public interface IExecutionSession : IDisposable
     event Action<float>? ProgressChanged;
 
     /// <summary>
-    /// Event fired when an output value is received.
+    /// Event fired when an output update is received.
     /// </summary>
-    event Action<string, object?>? OutputReceived;
+    event Action<ExecutionOutputUpdate>? OutputReceived;
+
+    /// <summary>
+    /// Event fired when a preview update is received.
+    /// </summary>
+    event Action<ExecutionPreviewUpdate>? PreviewReceived;
 
     /// <summary>
     /// Event fired when a node update is received.

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using Nodetool.SDK.Configuration;
 using Nodetool.SDK.Types;
 using Nodetool.SDK.WebSocket;
 
@@ -13,6 +14,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
 {
     private readonly MessagePackWebSocketClient _webSocketClient;
     private readonly ILogger<NodeToolExecutionClient> _logger;
+    private readonly NodeToolClientOptions _options;
     private readonly ConcurrentDictionary<string, ExecutionSession> _sessions;
     private readonly ConcurrentDictionary<string, ExecutionSession> _pendingByWorkflowId;
     private readonly Uri _serverUri;
@@ -34,27 +36,30 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     /// <summary>
     /// Creates a new NodeTool execution client.
     /// </summary>
-    /// <param name="serverUrl">WebSocket server URL (e.g., "ws://localhost:7777").</param>
+    /// <param name="options">Client options (endpoints + auth).</param>
     /// <param name="apiKey">Optional API key for authentication.</param>
-    /// <param name="typeLookup">Type lookup service for message deserialization.</param>
     /// <param name="logger">Logger instance.</param>
     public NodeToolExecutionClient(
-        string serverUrl = "ws://localhost:7777",
+        NodeToolClientOptions options,
         string? apiKey = null,
         ILogger<NodeToolExecutionClient>? logger = null)
     {
-        // Ensure we have a WebSocket URL
-        var wsUrl = serverUrl;
-        if (wsUrl.StartsWith("http://"))
-            wsUrl = wsUrl.Replace("http://", "ws://");
-        else if (wsUrl.StartsWith("https://"))
-            wsUrl = wsUrl.Replace("https://", "wss://");
+        _options = options ?? throw new ArgumentNullException(nameof(options));
 
-        // Append /ws if not present
-        if (!wsUrl.EndsWith("/ws"))
-            wsUrl = wsUrl.TrimEnd('/') + "/ws";
+        // We accept http/https schemes as a convenience (convert to ws/wss),
+        // but callers must provide explicit host/port/path in options.
+        var wsUri = _options.GetNormalizedWorkerWebSocketUrl();
 
-        _serverUri = new Uri(wsUrl);
+        // If caller provided a host+port root, we still try the conventional /ws path.
+        // (This mirrors current server defaults and keeps samples ergonomic.)
+        if (!wsUri.AbsolutePath.EndsWith("/ws", StringComparison.OrdinalIgnoreCase))
+        {
+            var builder = new UriBuilder(wsUri);
+            builder.Path = builder.Path.TrimEnd('/') + "/ws";
+            wsUri = builder.Uri;
+        }
+
+        _serverUri = wsUri;
         _apiKey = apiKey;
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<NodeToolExecutionClient>.Instance;
         _sessions = new ConcurrentDictionary<string, ExecutionSession>();
@@ -67,6 +72,21 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         // Subscribe to WebSocket events
         _webSocketClient.MessageReceived += OnMessageReceived;
         _webSocketClient.ConnectionStatusChanged += OnConnectionStatusChanged;
+    }
+
+    /// <summary>
+    /// Backwards-compat convenience constructor. Prefer <see cref="NodeToolExecutionClient(NodeToolClientOptions,string?,ILogger{NodeToolExecutionClient}?)"/>.
+    /// </summary>
+    [Obsolete("Pass explicit NodeToolClientOptions (no hardcoded localhost defaults).")]
+    public NodeToolExecutionClient(
+        string serverUrl,
+        string? apiKey = null,
+        ILogger<NodeToolExecutionClient>? logger = null)
+        : this(
+            new NodeToolClientOptions { WorkerWebSocketUrl = new Uri(serverUrl) },
+            apiKey,
+            logger)
+    {
     }
 
     /// <inheritdoc/>
@@ -123,12 +143,17 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         var command = new WebSocketCommand
         {
             command = "run_job",
+            type = "run_job",
             data = new RunJobRequest
             {
                 WorkflowId = workflowId,
                 Params = inputs,
                 JobType = "workflow",
-                ExplicitTypes = true,
+                ExecutionStrategy = _options.ExecutionStrategy,
+                ApiUrl = _options.ApiUrl,
+                UserId = _options.UserId ?? "",
+                AuthToken = _options.AuthToken ?? "",
+                ExplicitTypes = _options.ExplicitTypes,
             }
         };
 
@@ -156,13 +181,18 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         var command = new WebSocketCommand
         {
             command = "run_job",
+            type = "run_job",
             data = new RunJobRequest
             {
                 WorkflowId = "",
                 Graph = graph,
                 Params = inputs,
                 JobType = "workflow",
-                ExplicitTypes = true,
+                ExecutionStrategy = _options.ExecutionStrategy,
+                ApiUrl = _options.ApiUrl,
+                UserId = _options.UserId ?? "",
+                AuthToken = _options.AuthToken ?? "",
+                ExplicitTypes = _options.ExplicitTypes,
             }
         };
 
@@ -206,12 +236,17 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         var command = new WebSocketCommand
         {
             command = "run_job",
+            type = "run_job",
             data = new RunJobRequest
             {
                 WorkflowId = "",
                 Graph = graph,
                 JobType = "workflow",
-                ExplicitTypes = true,
+                ExecutionStrategy = _options.ExecutionStrategy,
+                ApiUrl = _options.ApiUrl,
+                UserId = _options.UserId ?? "",
+                AuthToken = _options.AuthToken ?? "",
+                ExplicitTypes = _options.ExplicitTypes,
             }
         };
 
@@ -231,12 +266,13 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     /// <summary>
     /// Cancel a running job.
     /// </summary>
-    public async Task CancelJobAsync(string jobId, CancellationToken cancellationToken = default)
+    public async Task CancelJobAsync(string jobId, string? workflowId = null, CancellationToken cancellationToken = default)
     {
         var command = new WebSocketCommand
         {
             command = "cancel_job",
-            data = new Dictionary<string, object> { { "job_id", jobId } }
+            type = "cancel_job",
+            data = new CancelJobData { job_id = jobId, workflow_id = workflowId }
         };
 
         await _webSocketClient.SendMessageAsync(command, cancellationToken);
@@ -270,11 +306,30 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             {
                 case JobUpdate jobUpdate:
                     // Bind pending session (workflow_id -> job_id) on first update
-                    if (jobUpdate.job_id != null && jobUpdate.workflow_id != null &&
-                        _pendingByWorkflowId.TryRemove(jobUpdate.workflow_id, out var pending))
+                    if (jobUpdate.job_id != null)
                     {
-                        pending.SetJobId(jobUpdate.job_id);
-                        _sessions[jobUpdate.job_id] = pending;
+                        ExecutionSession? pending = null;
+
+                        if (jobUpdate.workflow_id != null &&
+                            _pendingByWorkflowId.TryRemove(jobUpdate.workflow_id, out pending))
+                        {
+                            // bound by workflow id
+                        }
+                        else if (_pendingByWorkflowId.Count == 1)
+                        {
+                            // best-effort bind when the server doesn't echo workflow_id but we only have one pending
+                            var only = _pendingByWorkflowId.FirstOrDefault();
+                            if (!string.IsNullOrEmpty(only.Key) && _pendingByWorkflowId.TryRemove(only.Key, out pending))
+                            {
+                                _logger.LogDebug("Binding job_id {JobId} to the only pending session (workflow_id={WorkflowId})", jobUpdate.job_id, only.Key);
+                            }
+                        }
+
+                        if (pending != null)
+                        {
+                            pending.SetJobId(jobUpdate.job_id);
+                            _sessions[jobUpdate.job_id] = pending;
+                        }
                     }
 
                     if (jobUpdate.job_id != null && _sessions.TryGetValue(jobUpdate.job_id, out var session1))
@@ -326,6 +381,20 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
                         foreach (var session in _sessions.Values)
                         {
                             session.ProcessOutputUpdate(outputUpdate);
+                        }
+                    }
+                    break;
+
+                case PreviewUpdate previewUpdate:
+                    if (previewUpdate.job_id != null && _sessions.TryGetValue(previewUpdate.job_id, out var sessionPreview))
+                    {
+                        sessionPreview.ProcessPreviewUpdate(previewUpdate);
+                    }
+                    else
+                    {
+                        foreach (var session in _sessions.Values)
+                        {
+                            session.ProcessPreviewUpdate(previewUpdate);
                         }
                     }
                     break;

@@ -22,9 +22,16 @@ C# SDK for integrating Nodetool AI workflows into any .NET application.
 
 ```csharp
 using Nodetool.SDK.Execution;
+using Nodetool.SDK.Configuration;
 
-// Create execution client
-using var client = new NodeToolExecutionClient("ws://localhost:7777");
+// Create execution client (provide explicit endpoints; no library defaults)
+var options = new NodeToolClientOptions
+{
+    WorkerWebSocketUrl = new Uri("ws://localhost:7777/ws"),
+    // ApiBaseUrl = new Uri("http://localhost:7777"), // optional (discovery)
+    // AuthToken = "...", UserId = "...", ApiUrl = "http://..."
+};
+using var client = new NodeToolExecutionClient(options);
 
 // Connect to server
 await client.ConnectAsync();
@@ -41,14 +48,23 @@ var session = await client.ExecuteWorkflowAsync("workflow-id", inputs);
 
 // Monitor progress
 session.ProgressChanged += (progress) => Console.WriteLine($"Progress: {progress:P0}");
-session.OutputReceived += (name, value) => Console.WriteLine($"Output {name}: {value}");
+session.OutputReceived += (update) =>
+{
+    Console.WriteLine(
+        $"Output {update.NodeName}.{update.OutputName} ({update.OutputType}): {update.Value.ToJsonString()}"
+    );
+};
+session.PreviewReceived += (preview) =>
+{
+    Console.WriteLine($"Preview from {preview.NodeId}: kind={preview.Value.Kind}");
+};
 
 // Wait for completion
 bool success = await session.WaitForCompletionAsync();
 
 if (success)
 {
-    var outputs = session.GetAllOutputs();
+    var outputs = session.GetLatestOutputs();
     Console.WriteLine($"Workflow completed with {outputs.Count} outputs");
 }
 else
@@ -126,6 +142,7 @@ The SDK handles these WebSocket message types:
 - `NodeUpdate`: Individual node execution status
 - `NodeProgress`: Progress for long-running nodes
 - `OutputUpdate`: Streaming output values
+- `PreviewUpdate`: Streaming preview values (often image-like)
 
 ## VL/VVVV Integration
 
@@ -152,12 +169,12 @@ For VL/VVVV Gamma integration, use the `Nodetool.SDK.VL` package which provides:
 
 ### Connection Settings
 
-Default WebSocket URL: `ws://localhost:7777/ws`
-Default HTTP URL: `http://localhost:8000`
+There are **no hardcoded defaults** in library code. Provide explicit endpoints via `NodeToolClientOptions`.
 
 Override via constructor or configuration:
 ```csharp
-var client = new NodeToolExecutionClient("wss://api.nodetool.ai", "your-api-key");
+var options = new NodeToolClientOptions { WorkerWebSocketUrl = new Uri("wss://api.nodetool.ai/ws") };
+var client = new NodeToolExecutionClient(options, apiKey: "your-api-key");
 ```
 
 ### Asset Cache

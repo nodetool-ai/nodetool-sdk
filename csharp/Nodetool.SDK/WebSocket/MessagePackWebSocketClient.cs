@@ -190,12 +190,14 @@ public class MessagePackWebSocketClient : IDisposable
     /// <param name="jobId">Optional job identifier</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if request was sent successfully</returns>
+    [Obsolete("Legacy message shape. Prefer NodeToolExecutionClient which uses run_job over the worker protocol.")]
     public async Task<bool> ExecuteWorkflowAsync(
         string workflowId, 
         Dictionary<string, object> inputs,
         string? jobId = null,
         CancellationToken cancellationToken = default)
     {
+        // Keep for backwards compatibility, but the canonical protocol is run_job.
         var request = new WorkflowExecuteRequest
         {
             workflow_id = workflowId,
@@ -214,12 +216,14 @@ public class MessagePackWebSocketClient : IDisposable
     /// <param name="nodeId">Optional node identifier</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if request was sent successfully</returns>
+    [Obsolete("Legacy message shape. Prefer NodeToolExecutionClient which uses run_job over the worker protocol.")]
     public async Task<bool> ExecuteNodeAsync(
         string nodeType,
         Dictionary<string, object> inputs,
         string? nodeId = null,
         CancellationToken cancellationToken = default)
     {
+        // Keep for backwards compatibility, but the canonical protocol is run_job with a minimal graph.
         var request = new NodeExecuteRequest
         {
             node_type = nodeType,
@@ -236,8 +240,10 @@ public class MessagePackWebSocketClient : IDisposable
     /// <param name="jobId">Job identifier to cancel</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if cancellation request was sent successfully</returns>
+    [Obsolete("Legacy message shape. Prefer NodeToolExecutionClient which uses cancel_job over the worker protocol.")]
     public async Task<bool> CancelJobAsync(string jobId, CancellationToken cancellationToken = default)
     {
+        // Keep for backwards compatibility, but the canonical protocol is cancel_job.
         var request = new JobCancelRequest { job_id = jobId };
         return await SendMessageAsync(request, cancellationToken);
     }
@@ -360,6 +366,7 @@ public class MessagePackWebSocketClient : IDisposable
                     "job_update" => MessagePackSerializer.Deserialize<JobUpdate>(data, _options),
                     "node_update" => MessagePackSerializer.Deserialize<NodeUpdate>(data, _options),
                     "output_update" => MessagePackSerializer.Deserialize<OutputUpdate>(data, _options),
+                    "preview_update" => MessagePackSerializer.Deserialize<PreviewUpdate>(data, _options),
                     "progress_update" => MessagePackSerializer.Deserialize<ProgressUpdate>(data, _options),
                     "node_progress" => MessagePackSerializer.Deserialize<NodeProgress>(data, _options),
                     "connection_status" => MessagePackSerializer.Deserialize<ConnectionStatus>(data, _options),
@@ -382,6 +389,7 @@ public class MessagePackWebSocketClient : IDisposable
         if (message is JobUpdate ju) return ju.type;
         if (message is NodeUpdate nu) return nu.type;
         if (message is OutputUpdate ou) return ou.type;
+        if (message is PreviewUpdate pru) return pru.type;
         if (message is ProgressUpdate pu) return pu.type;
         if (message is NodeProgress np) return np.type;
         if (message is ConnectionStatus cs) return cs.type;

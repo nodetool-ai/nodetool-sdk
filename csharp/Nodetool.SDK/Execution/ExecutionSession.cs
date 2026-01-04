@@ -1,4 +1,5 @@
 using Nodetool.SDK.Types;
+using Nodetool.SDK.Values;
 
 namespace Nodetool.SDK.Execution;
 
@@ -10,7 +11,7 @@ public class ExecutionSession : IExecutionSession
     private string _jobId;
     private readonly string? _workflowId;
     private readonly TaskCompletionSource<bool> _completionSource;
-    private readonly Dictionary<string, object?> _outputs;
+    private readonly Dictionary<string, NodeToolValue> _latestOutputs;
     private readonly object _lock = new();
     private bool _disposed;
 
@@ -23,7 +24,7 @@ public class ExecutionSession : IExecutionSession
         _jobId = jobId;
         _workflowId = workflowId;
         _completionSource = new TaskCompletionSource<bool>();
-        _outputs = new Dictionary<string, object?>();
+        _latestOutputs = new Dictionary<string, NodeToolValue>(StringComparer.Ordinal);
         CurrentStatus = "pending";
     }
 
@@ -61,7 +62,9 @@ public class ExecutionSession : IExecutionSession
     public event Action<float>? ProgressChanged;
 
     /// <inheritdoc/>
-    public event Action<string, object?>? OutputReceived;
+    public event Action<ExecutionOutputUpdate>? OutputReceived;
+
+    public event Action<ExecutionPreviewUpdate>? PreviewReceived;
 
     /// <inheritdoc/>
     public event Action<NodeUpdate>? NodeUpdated;
@@ -72,46 +75,24 @@ public class ExecutionSession : IExecutionSession
     /// <summary>
     /// Cancel action delegate - set by the execution client.
     /// </summary>
-    internal Func<string, CancellationToken, Task>? CancelAction { get; set; }
+    internal Func<string, string?, CancellationToken, Task>? CancelAction { get; set; }
 
     /// <inheritdoc/>
-    public T? GetOutput<T>(string name)
+    public NodeToolValue? GetLatestOutput(string nodeId, string outputName)
     {
         lock (_lock)
         {
-            if (_outputs.TryGetValue(name, out var value))
-            {
-                if (value is T typedValue)
-                    return typedValue;
-
-                if (value == null)
-                    return default;
-
-                try
-                {
-                    return (T?)Convert.ChangeType(value, typeof(T));
-                }
-                catch (InvalidCastException)
-                {
-                    // Type cannot be converted directly
-                    return default;
-                }
-                catch (FormatException)
-                {
-                    // Value format doesn't match expected type
-                    return default;
-                }
-            }
-            return default;
+            var key = OutputKey(nodeId, outputName);
+            return _latestOutputs.TryGetValue(key, out var value) ? value : null;
         }
     }
 
     /// <inheritdoc/>
-    public Dictionary<string, object?> GetAllOutputs()
+    public IReadOnlyDictionary<string, NodeToolValue> GetLatestOutputs()
     {
         lock (_lock)
         {
-            return new Dictionary<string, object?>(_outputs);
+            return new Dictionary<string, NodeToolValue>(_latestOutputs);
         }
     }
 
@@ -122,7 +103,7 @@ public class ExecutionSession : IExecutionSession
         {
             if (string.IsNullOrWhiteSpace(_jobId))
                 return;
-            await CancelAction(_jobId, CancellationToken.None);
+            await CancelAction(_jobId, _workflowId, CancellationToken.None);
         }
     }
 
@@ -175,7 +156,8 @@ public class ExecutionSession : IExecutionSession
                     {
                         foreach (var kvp in update.result)
                         {
-                            _outputs[kvp.Key] = kvp.Value;
+                            // job_update.result is free-form; store under a synthetic key to avoid collisions
+                            _latestOutputs[$"job_result:{kvp.Key}"] = NodeToolValue.From(kvp.Value);
                         }
                     }
                     _completionSource.TrySetResult(true);
@@ -243,12 +225,36 @@ public class ExecutionSession : IExecutionSession
     /// </summary>
     internal void ProcessOutputUpdate(OutputUpdate update)
     {
+        var receivedAt = DateTimeOffset.UtcNow;
+        var value = NodeToolValue.From(update.value);
+        var metadata = (update.metadata ?? new Dictionary<string, object>())
+            .ToDictionary(kvp => kvp.Key, kvp => NodeToolValue.From(kvp.Value), StringComparer.Ordinal);
+        var key = OutputKey(update.node_id, update.output_name);
+
         lock (_lock)
         {
-            _outputs[update.output_name] = update.value;
+            _latestOutputs[key] = value;
         }
-        OutputReceived?.Invoke(update.output_name, update.value);
+
+        OutputReceived?.Invoke(new ExecutionOutputUpdate(
+            NodeId: update.node_id,
+            NodeName: update.node_name,
+            OutputName: update.output_name,
+            OutputType: update.output_type,
+            Value: value,
+            Metadata: metadata,
+            ReceivedAt: receivedAt
+        ));
     }
+
+    internal void ProcessPreviewUpdate(PreviewUpdate update)
+    {
+        var receivedAt = DateTimeOffset.UtcNow;
+        var value = NodeToolValue.From(update.value);
+        PreviewReceived?.Invoke(new ExecutionPreviewUpdate(update.node_id, value, receivedAt));
+    }
+
+    private static string OutputKey(string nodeId, string outputName) => $"{nodeId}:{outputName}";
 
     /// <inheritdoc/>
     public void Dispose()

@@ -11,7 +11,7 @@ public class OpenAIModel
     [Key(1)]
     public string id { get; set; } = "";
     [Key(2)]
-    public string object { get; set; } = "";
+    public string @object { get; set; } = "";
     [Key(3)]
     public int created { get; set; } = 0;
     [Key(4)]

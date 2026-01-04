@@ -142,6 +142,16 @@ class Program
 
             typeName = typeLookup.GetTypeName(outputUpdate);
             logger.LogInformation("   ✅ OutputUpdate type name: {TypeName}", typeName);
+
+            // Test PreviewUpdate
+            var previewUpdate = new PreviewUpdate
+            {
+                node_id = "node-101",
+                value = new Dictionary<string, object> { { "type", "image" }, { "uri", "data:..." } }
+            };
+
+            typeName = typeLookup.GetTypeName(previewUpdate);
+            logger.LogInformation("   ✅ PreviewUpdate type name: {TypeName}", typeName);
         }
         catch (Exception ex)
         {
@@ -154,31 +164,37 @@ class Program
         try
         {
             // Test serialization/deserialization round-trip
-            var originalMessage = new WorkflowExecuteRequest
+            var originalMessage = new WebSocketCommand
             {
-                workflow_id = "test-workflow-123",
-                inputs = new Dictionary<string, object>
+                command = "run_job",
+                type = "run_job",
+                data = new RunJobRequest
                 {
-                    { "prompt", "Generate an AI image" },
-                    { "width", 512 },
-                    { "height", 512 }
-                },
-                job_id = Guid.NewGuid().ToString()
+                    WorkflowId = "test-workflow-123",
+                    JobType = "workflow",
+                    Params = new Dictionary<string, object>
+                    {
+                        { "prompt", "Generate an AI image" },
+                        { "width", 512 },
+                        { "height", 512 }
+                    },
+                    ExplicitTypes = true
+                }
             };
 
             // Serialize
             var serializedData = typeLookup.Serialize(originalMessage);
-            logger.LogInformation("   ✅ Serialized WorkflowExecuteRequest: {Size} bytes", serializedData.Length);
+            logger.LogInformation("   ✅ Serialized run_job WebSocketCommand: {Size} bytes", serializedData.Length);
 
             // Deserialize
-            var deserializedMessage = typeLookup.Deserialize<WorkflowExecuteRequest>(serializedData);
+            var deserializedMessage = typeLookup.Deserialize<WebSocketCommand>(serializedData);
             
             if (deserializedMessage != null)
             {
-                logger.LogInformation("   ✅ Deserialized WorkflowExecuteRequest: workflow_id={WorkflowId}", 
-                    deserializedMessage.workflow_id);
+                logger.LogInformation("   ✅ Deserialized WebSocketCommand: command={Command}, type={Type}", 
+                    deserializedMessage.command, deserializedMessage.type);
                 
-                if (deserializedMessage.workflow_id == originalMessage.workflow_id)
+                if (deserializedMessage.command == originalMessage.command)
                 {
                     logger.LogInformation("   ✅ Round-trip serialization successful!");
                 }

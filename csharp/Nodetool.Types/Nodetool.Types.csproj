@@ -16,4 +16,30 @@
     <PackageReference Include="MessagePack" Version="3.0.300" />
   </ItemGroup>
 
+  <!--
+    Only compile the generated DTOs that are valid C#.
+
+    Notes:
+    - The `scripts/**` tree contains generator inputs/outputs and is not meant to compile.
+    - Some files in `generated/**` are stubs/placeholders or contain unescaped identifiers.
+      We exclude those until generation is hardened (keyword escaping, identifier sanitization).
+  -->
+  <ItemGroup>
+    <Compile Remove="scripts\**\*.cs" />
+    <Compile Remove="generated\Types\Core.cs" />
+    <Compile Remove="generated\Types\Core\**\*.cs" />
+    <Compile Remove="generated\Nodes\**\*.cs" />
+    <Compile Remove="generated\NodeToolTypes.cs" />
+  </ItemGroup>
+
+  <!-- Include only the per-type DTO files (these are valid and used by SDK consumers). -->
+  <ItemGroup>
+    <!-- Minimal v0.1 set (mini-app style media + text refs) -->
+    <Compile Include="generated\Types\Core\ImageRef.cs" />
+    <Compile Include="generated\Types\Core\AudioRef.cs" />
+    <Compile Include="generated\Types\Core\VideoRef.cs" />
+    <Compile Include="generated\Types\Core\DocumentRef.cs" />
+    <Compile Include="generated\Types\Core\TextRef.cs" />
+  </ItemGroup>
+
 </Project>
