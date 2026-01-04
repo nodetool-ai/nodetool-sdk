@@ -197,12 +197,17 @@ namespace Nodetool.SDK.VL.Factories
         private static void PerformGlobalDataFetchAndStore()
         {
             Console.WriteLine("=== WorkflowNodeFactory: Fetching workflow metadata from API ===");
-            Console.WriteLine($"WorkflowNodeFactory: Target URL: {NodetoolConstants.Defaults.BaseUrl}{NodetoolConstants.Endpoints.Workflows}");
+            var apiBase = NodeToolClientProvider.CurrentApiBaseUrl?.ToString().TrimEnd('/')
+                          ?? NodetoolConstants.Defaults.BaseUrl;
+            Console.WriteLine($"WorkflowNodeFactory: Target URL: {apiBase}{NodetoolConstants.Endpoints.Workflows}");
             
             try
             {
                 var metadataService = new WorkflowMetadataService();
                 Console.WriteLine("WorkflowNodeFactory: Created WorkflowMetadataService instance");
+
+                // Ensure the metadata service uses the same API base URL as the Connect node.
+                metadataService.Configure(new NodetoolOptions { BaseUrl = apiBase });
                 
                 // Since we can't use async in static constructor context, we need to handle this differently
                 // For now, we'll use Task.Run to block synchronously - this isn't ideal but works for initialization

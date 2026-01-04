@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using System.Reflection;
 using VL.Core;
 using VL.Core.CompilerServices;
 using Nodetool.SDK.VL.Factories;
@@ -27,6 +29,8 @@ namespace Nodetool.SDK.VL
             
             try
             {
+                DumpLoadedAssemblies();
+
                 Console.WriteLine("Nodetool.SDK.VL: About to register factories...");
                 
                 // Register the workflow node factory
@@ -58,6 +62,48 @@ namespace Nodetool.SDK.VL
                 }
                 
                 throw;
+            }
+        }
+
+        private static void DumpLoadedAssemblies()
+        {
+            try
+            {
+                var assemblies = AppDomain.CurrentDomain.GetAssemblies()
+                    .Where(a =>
+                    {
+                        var name = a.GetName().Name ?? "";
+                        return name.StartsWith("Nodetool.", StringComparison.OrdinalIgnoreCase)
+                               || name.StartsWith("MessagePack", StringComparison.OrdinalIgnoreCase)
+                               || name.StartsWith("VL.", StringComparison.OrdinalIgnoreCase);
+                    })
+                    .OrderBy(a => a.GetName().Name, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                Console.WriteLine("=== Nodetool.SDK.VL: Loaded assemblies (filtered) ===");
+                foreach (var a in assemblies)
+                {
+                    var name = a.GetName();
+                    var location = "(dynamic)";
+                    try { location = a.Location; } catch { /* ignored */ }
+
+                    Console.WriteLine($"- {name.Name}, Version={name.Version}, Location={location}");
+                }
+
+                // Extra: explicitly show what 'Nodetool.SDK' the runtime resolved (if any)
+                var sdkAsm = assemblies.FirstOrDefault(a =>
+                    string.Equals(a.GetName().Name, "Nodetool.SDK", StringComparison.OrdinalIgnoreCase));
+                if (sdkAsm != null)
+                {
+                    var hasIExecutionSession = sdkAsm.GetType("Nodetool.SDK.Execution.IExecutionSession", throwOnError: false) != null;
+                    Console.WriteLine($"Nodetool.SDK.VL: Nodetool.SDK has IExecutionSession = {hasIExecutionSession}");
+                }
+
+                Console.WriteLine("=== Nodetool.SDK.VL: Loaded assemblies dump done ===");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Nodetool.SDK.VL: Failed to dump loaded assemblies: {ex.GetType().Name}: {ex.Message}");
             }
         }
     }

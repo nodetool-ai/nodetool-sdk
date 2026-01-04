@@ -274,12 +274,14 @@ namespace Nodetool.SDK.VL.Factories
         private static void PerformGlobalDataFetchAndStore()
         {
             Console.WriteLine("=== NodesFactory: Fetching node metadata from API ===");
-            Console.WriteLine($"NodesFactory: Target URL: {NodetoolConstants.Defaults.BaseUrl}{NodetoolConstants.Endpoints.NodesMetadata}");
+            var apiBase = NodeToolClientProvider.CurrentApiBaseUrl?.ToString().TrimEnd('/')
+                          ?? NodetoolConstants.Defaults.BaseUrl;
+            Console.WriteLine($"NodesFactory: Target URL: {apiBase}{NodetoolConstants.Endpoints.NodesMetadata}");
             
             try
             {
                 using var client = new Nodetool.SDK.Api.NodetoolClient();
-                client.Configure(NodetoolConstants.Defaults.BaseUrl);
+                client.Configure(apiBase);
                 Console.WriteLine("NodesFactory: Created NodetoolClient instance");
                 
                 // Since we can't use async in static constructor context, we need to handle this differently

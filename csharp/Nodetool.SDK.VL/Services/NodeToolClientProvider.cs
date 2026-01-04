@@ -13,6 +13,7 @@ public static class NodeToolClientProvider
     private static readonly object _lock = new();
     private static string _currentUrl = "ws://localhost:7777";
     private static string? _currentApiKey;
+    private static Uri? _currentApiBaseUrl;
 
     /// <summary>
     /// Current connection status.
@@ -28,6 +29,17 @@ public static class NodeToolClientProvider
     /// Whether the client is currently connected.
     /// </summary>
     public static bool IsConnected => _client?.IsConnected ?? false;
+
+    /// <summary>
+    /// Current worker URL as configured by the Connect node.
+    /// </summary>
+    public static string CurrentWorkerUrl => _currentUrl;
+
+    /// <summary>
+    /// Current API base URL derived from the worker URL (ws/wss → http/https).
+    /// Used for workflow/node metadata discovery.
+    /// </summary>
+    public static Uri? CurrentApiBaseUrl => _currentApiBaseUrl;
 
     /// <summary>
     /// Event raised when connection status changes.
@@ -57,6 +69,7 @@ public static class NodeToolClientProvider
 
                 var workerUri = new Uri(url);
                 var apiBaseUrl = TryDeriveApiBaseUrl(workerUri);
+                _currentApiBaseUrl = apiBaseUrl;
 
                 var options = new NodeToolClientOptions
                 {

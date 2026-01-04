@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>Nodetool.SDK.VL</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Description>VL/vvvv integration for Nodetool SDK - workflow execution and node management</Description>
     <Authors>Nodetool Contributors</Authors>
     <RepositoryUrl>https://github.com/nodetool-ai/nodetool</RepositoryUrl>
