@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Subjects;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Reflection;
 using VL.Core;
 using VL.Core.CompilerServices;
 using VL.Core.Diagnostics;
@@ -27,6 +29,7 @@ namespace Nodetool.SDK.VL.Nodes
         private readonly IVLNodeDescription _nodeDescription;
 
         private readonly object _lock = new();
+        private readonly Dictionary<string, StringBuilder> _chunkBuffers = new(StringComparer.Ordinal);
         
         // Execution state
         private bool _isRunning = false;
@@ -141,10 +144,15 @@ namespace Nodetool.SDK.VL.Nodes
                 _isRunning = true;
                 _lastError = "";
                 _lastOutputs.Clear();
+                _chunkBuffers.Clear();
             }
 
             try
             {
+                // Help debug "changes not taking effect": print the actual loaded DLL + version at runtime.
+                var asm = typeof(NodeBase).Assembly;
+                Console.WriteLine($"NodeBase: Using assembly '{asm.Location}', version={asm.GetName().Version}");
+
                 if (string.IsNullOrWhiteSpace(_nodeMetadata.NodeType))
                     throw new InvalidOperationException("NodeType is missing from node metadata.");
 
@@ -191,6 +199,26 @@ namespace Nodetool.SDK.VL.Nodes
 
                         lock (_lock)
                         {
+                            // Chunk streaming: turn {type:"chunk", content:"..."} into accumulated text.
+                            if (update.Value.Kind == NodeToolValueKind.Map &&
+                                string.Equals(update.Value.TypeDiscriminator, "chunk", StringComparison.OrdinalIgnoreCase))
+                            {
+                                var map = update.Value.AsMapOrEmpty();
+                                var content = map.TryGetValue("content", out var c) ? (c.AsString() ?? "") : "";
+
+                                if (!_chunkBuffers.TryGetValue(update.OutputName, out var sb))
+                                {
+                                    sb = new StringBuilder();
+                                    _chunkBuffers[update.OutputName] = sb;
+                                }
+
+                                if (!string.IsNullOrEmpty(content))
+                                    sb.Append(content);
+
+                                _lastOutputs[update.OutputName] = NodeToolValue.From(sb.ToString());
+                                return;
+                            }
+
                             _lastOutputs[update.OutputName] = update.Value;
                         }
                     };
@@ -367,10 +395,14 @@ namespace Nodetool.SDK.VL.Nodes
 
                         // Common payload shapes:
                         // - { type: "text", text: "..." }
+                        // - { type: "chunk", content: "..." }
                         // - { value: "..." }
                         // - { result: "..." }
                         if (map.TryGetValue("text", out var textVal) && textVal.AsString() is string textStr)
                             return textStr;
+
+                        if (map.TryGetValue("content", out var contentVal))
+                            return contentVal.AsString() ?? contentVal.ToJsonString();
 
                         if (map.TryGetValue("value", out var valueVal))
                             return valueVal.AsString() ?? valueVal.ToJsonString();
@@ -412,7 +444,22 @@ namespace Nodetool.SDK.VL.Nodes
                 }
                 else if (expectedType == typeof(object))
                 {
-                    return value.Raw; // object can hold anything
+                    // VL isn't great at displaying/handling arbitrary dictionaries; prefer readable text/JSON.
+                    if (value.Kind == NodeToolValueKind.Map)
+                    {
+                        var map = value.AsMapOrEmpty();
+                        if (map.TryGetValue("text", out var textVal) && textVal.AsString() is string textStr)
+                            return textStr;
+                        if (map.TryGetValue("delta", out var deltaVal))
+                            return deltaVal.AsString() ?? deltaVal.ToJsonString();
+                        if (map.TryGetValue("content", out var contentVal))
+                            return contentVal.AsString() ?? contentVal.ToJsonString();
+                        return value.ToJsonString();
+                    }
+                    if (value.Kind == NodeToolValueKind.List)
+                        return value.ToJsonString();
+
+                    return value.Raw; // primitives etc.
                 }
                 else
                 {

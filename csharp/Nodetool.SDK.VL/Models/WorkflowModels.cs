@@ -17,6 +17,13 @@ public class WorkflowSchemaDefinition
     [JsonPropertyName("required")]
     public List<string> Required { get; set; } = new();
 
+    // JSON Schema definitions (used by $ref)
+    [JsonPropertyName("definitions")]
+    public Dictionary<string, WorkflowPropertyDefinition>? Definitions { get; set; }
+
+    [JsonPropertyName("$defs")]
+    public Dictionary<string, WorkflowPropertyDefinition>? Defs { get; set; }
+
     [JsonPropertyName("title")]
     public string? Title { get; set; }
 
@@ -29,6 +36,9 @@ public class WorkflowSchemaDefinition
 /// </summary>
 public class WorkflowPropertyDefinition
 {
+    [JsonPropertyName("$ref")]
+    public string? Ref { get; set; }
+
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
@@ -64,6 +74,17 @@ public class WorkflowPropertyDefinition
 
     [JsonPropertyName("items")]
     public WorkflowPropertyDefinition? Items { get; set; }
+
+    // NodeTool schemas may wrap refs in anyOf/oneOf/allOf (e.g., nullable refs).
+    // If we don't model these, System.Text.Json will drop the info and adapters (image/audio) won't trigger.
+    [JsonPropertyName("anyOf")]
+    public List<WorkflowPropertyDefinition>? AnyOf { get; set; }
+
+    [JsonPropertyName("oneOf")]
+    public List<WorkflowPropertyDefinition>? OneOf { get; set; }
+
+    [JsonPropertyName("allOf")]
+    public List<WorkflowPropertyDefinition>? AllOf { get; set; }
 
     /// <summary>
     /// Convert this property definition to SDK TypeMetadata

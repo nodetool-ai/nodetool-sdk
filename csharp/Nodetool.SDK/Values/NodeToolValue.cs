@@ -248,6 +248,34 @@ public sealed class NodeToolValue
 
     private object? ToPlainObject()
     {
+        // Safety net: if Raw is a container but Kind isn't Map/List for any reason,
+        // still normalize it so JSON output is useful.
+        if (Raw is IDictionary dict)
+        {
+            var map = new Dictionary<string, object?>(StringComparer.Ordinal);
+            foreach (DictionaryEntry entry in dict)
+            {
+                var key = entry.Key switch
+                {
+                    null => "null",
+                    string ks => ks,
+                    _ => Convert.ToString(entry.Key, CultureInfo.InvariantCulture) ?? entry.Key.ToString() ?? "key"
+                };
+                map[key] = From(entry.Value).ToPlainObject();
+            }
+            return map;
+        }
+
+        if (Raw is IEnumerable enumerable && Raw is not string)
+        {
+            var list = new List<object?>();
+            foreach (var item in enumerable)
+            {
+                list.Add(From(item).ToPlainObject());
+            }
+            return list;
+        }
+
         return Kind switch
         {
             NodeToolValueKind.Null => null,

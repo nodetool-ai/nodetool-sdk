@@ -202,56 +202,45 @@ public class WorkflowMetadataService : IDisposable
         {
             if (string.IsNullOrEmpty(prop.Key) || prop.Value == null)
                 continue;
-
-            var propertyDef = new WorkflowPropertyDefinition
-            {
-                Type = prop.Value.Type,
-                Title = prop.Value.Title,
-                Description = prop.Value.Description,
-                Default = prop.Value.Default,
-                Minimum = prop.Value.Minimum,
-                Maximum = prop.Value.Maximum,
-                Format = prop.Value.Format,
-                Enum = prop.Value.Enum,
-                Const = prop.Value.Const
-            };
-
-            // Handle nested properties for object types
-            if (prop.Value.Properties != null && prop.Value.Properties.Count > 0)
-            {
-                propertyDef.Properties = new Dictionary<string, WorkflowPropertyDefinition>();
-                foreach (var nestedProp in prop.Value.Properties)
-                {
-                    if (string.IsNullOrEmpty(nestedProp.Key) || nestedProp.Value == null)
-                        continue;
-
-                    var nestedPropertyDef = new WorkflowPropertyDefinition
-                    {
-                        Type = nestedProp.Value.Type,
-                        Title = nestedProp.Value.Title,
-                        Description = nestedProp.Value.Description,
-                        Default = nestedProp.Value.Default
-                    };
-                    propertyDef.Properties[nestedProp.Key] = nestedPropertyDef;
-                }
-            }
-
-            // Handle array items
-            if (prop.Value.Items != null)
-            {
-                propertyDef.Items = new WorkflowPropertyDefinition
-                {
-                    Type = prop.Value.Items.Type,
-                    Title = prop.Value.Items.Title,
-                    Description = prop.Value.Items.Description,
-                    Default = prop.Value.Items.Default
-                };
-            }
-
-            schema.Properties[prop.Key] = propertyDef;
+            schema.Properties[prop.Key] = ConvertProperty(prop.Value);
         }
 
         return schema;
+    }
+
+    private static WorkflowPropertyDefinition ConvertProperty(Nodetool.SDK.Api.Models.PropertyDefinition apiProp)
+    {
+        var def = new WorkflowPropertyDefinition
+        {
+            Type = apiProp.Type,
+            Title = apiProp.Title,
+            Description = apiProp.Description,
+            Default = apiProp.Default,
+            Minimum = apiProp.Minimum,
+            Maximum = apiProp.Maximum,
+            Format = apiProp.Format,
+            Enum = apiProp.Enum,
+            Const = apiProp.Const,
+            Required = apiProp.Required
+        };
+
+        if (apiProp.Properties != null && apiProp.Properties.Count > 0)
+        {
+            def.Properties = new Dictionary<string, WorkflowPropertyDefinition>();
+            foreach (var nested in apiProp.Properties)
+            {
+                if (string.IsNullOrEmpty(nested.Key) || nested.Value == null)
+                    continue;
+                def.Properties[nested.Key] = ConvertProperty(nested.Value);
+            }
+        }
+
+        if (apiProp.Items != null)
+        {
+            def.Items = ConvertProperty(apiProp.Items);
+        }
+
+        return def;
     }
 
     public void Dispose()

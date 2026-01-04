@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.IO;
 using System.Reflection;
 using VL.Core;
 using VL.Core.CompilerServices;
@@ -16,6 +17,22 @@ namespace Nodetool.SDK.VL
         {
             Console.WriteLine("=== Nodetool.SDK.VL: Assembly initializer created ===");
             Console.WriteLine($"Nodetool.SDK.VL: Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+
+            // Help debug "old DLL loaded" issues: print our own assembly path/version/write time.
+            try
+            {
+                var asm = typeof(Initialization).Assembly;
+                var loc = asm.Location;
+                Console.WriteLine($"Nodetool.SDK.VL: Self assembly: {loc}, Version={asm.GetName().Version}");
+                if (!string.IsNullOrWhiteSpace(loc) && File.Exists(loc))
+                {
+                    Console.WriteLine($"Nodetool.SDK.VL: Self assembly lastWriteUtc: {File.GetLastWriteTimeUtc(loc):O}");
+                }
+            }
+            catch
+            {
+                // ignored
+            }
         }
 
         /// <summary>

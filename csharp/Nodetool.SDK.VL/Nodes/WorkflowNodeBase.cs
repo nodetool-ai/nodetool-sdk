@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.Json;
 using System.Threading;
+using System.Reflection;
 using VL.Core;
 using Nodetool.SDK.Execution;
 using Nodetool.SDK.Values;
@@ -27,6 +30,7 @@ namespace Nodetool.SDK.VL.Nodes
         private bool _lastTriggerState = false;
         private bool _isDisposed = false;
         private bool _isRunning = false;
+        private readonly Dictionary<string, StringBuilder> _chunkBuffers = new(StringComparer.Ordinal);
 
         public WorkflowNodeBase(NodeContext nodeContext, WorkflowNodeDescription description, WorkflowDetail workflow)
         {
@@ -116,6 +120,13 @@ namespace Nodetool.SDK.VL.Nodes
             try
             {
                 Console.WriteLine($"WorkflowNodeBase: Starting execution of workflow '{_workflow.Name}'");
+                // Help debug "changes not taking effect": print the actual loaded DLL + version at runtime.
+                var asm = typeof(WorkflowNodeBase).Assembly;
+                Console.WriteLine($"WorkflowNodeBase: Using assembly '{asm.Location}', version={asm.GetName().Version}");
+
+                // Reset per-run chunk buffers so streaming output doesn't accumulate across runs.
+                _chunkBuffers.Clear();
+
                 SetIsRunning(true);
                 SetError("");
 
@@ -176,6 +187,34 @@ namespace Nodetool.SDK.VL.Nodes
                     {
                         // IVLPin doesn't expose Type; our InternalPin does.
                         var expectedType = (pin as InternalPin)?.Type ?? typeof(string);
+
+                        // Special handling for streamed "chunk" payloads: accumulate content so the pin shows useful text.
+                        if (update.Value.Kind == NodeToolValueKind.Map)
+                        {
+                            var map = update.Value.AsMapOrEmpty();
+                            var typeDisc = update.Value.TypeDiscriminator;
+                            if (string.Equals(typeDisc, "chunk", StringComparison.OrdinalIgnoreCase))
+                            {
+                                var content = map.TryGetValue("content", out var c) ? (c.AsString() ?? "") : "";
+                                var done = map.TryGetValue("done", out var d) && d.TryGetBool(out var b) && b;
+
+                                if (!_chunkBuffers.TryGetValue(update.OutputName, out var sb))
+                                {
+                                    sb = new StringBuilder();
+                                    _chunkBuffers[update.OutputName] = sb;
+                                }
+
+                                if (!string.IsNullOrEmpty(content))
+                                {
+                                    sb.Append(content);
+                                }
+
+                                // Show accumulated content even when we get the final done=true message (often empty content).
+                                pin.Value = sb.ToString();
+                                return;
+                            }
+                        }
+
                         pin.Value = ConvertNodeToolValueToExpectedType(update.Value, expectedType);
                     }
                 };
@@ -340,6 +379,24 @@ namespace Nodetool.SDK.VL.Nodes
                 return value.AsString() ?? value.ToJsonString();
             }
 
+            if (expectedType == typeof(object))
+            {
+                if (value.Kind == NodeToolValueKind.Map)
+                {
+                    var map = value.AsMapOrEmpty();
+                    if (map.TryGetValue("text", out var textVal) && textVal.AsString() is string textStr)
+                        return textStr;
+                    if (map.TryGetValue("delta", out var deltaVal))
+                        return deltaVal.AsString() ?? deltaVal.ToJsonString();
+                    if (map.TryGetValue("chunk", out var chunkVal))
+                        return chunkVal.AsString() ?? chunkVal.ToJsonString();
+                    return value.ToJsonString();
+                }
+                if (value.Kind == NodeToolValueKind.List)
+                    return value.ToJsonString();
+                return value.Raw;
+            }
+
             if (expectedType == typeof(int) && value.TryGetLong(out var l))
             {
                 return (int)l;
@@ -391,9 +448,9 @@ namespace Nodetool.SDK.VL.Nodes
                 ? p
                 : null;
 
-            // Heuristic: if schema indicates an image, accept a local file path and upload it as an asset,
-            // then send an ImageRef-like dict ({type, asset_id, uri, data}) to the workflow params.
-            if (IsImageSchema(propDef))
+            // Schema-based detection only (no name heuristics).
+            // This must handle $ref / anyOf / oneOf / allOf properly.
+            if (IsImageSchema(propDef, _workflow.InputSchema))
             {
                 var rawType = rawValue?.GetType().FullName ?? "<null>";
 
@@ -424,6 +481,7 @@ namespace Nodetool.SDK.VL.Nodes
                     s = s.Trim('"');
 
                 Console.WriteLine($"WorkflowNodeBase: Image input '{inputName}' rawType={rawType} value='{s ?? "<null>"}'");
+                DumpSchemaForDebug(inputName, propDef, _workflow.InputSchema);
 
                 if (string.IsNullOrWhiteSpace(s))
                 {
@@ -434,10 +492,13 @@ namespace Nodetool.SDK.VL.Nodes
                 if (!string.IsNullOrWhiteSpace(s))
                 {
                     // Local file path → send bytes directly (no extra asset creation step).
-                    if (File.Exists(s))
+                    // Normalize first so relative paths work.
+                    var fullPath = s;
+                    try { fullPath = Path.GetFullPath(s); } catch { /* ignore */ }
+
+                    if (!string.IsNullOrWhiteSpace(fullPath) && File.Exists(fullPath))
                     {
-                        Console.WriteLine($"WorkflowNodeBase: Image input '{inputName}' using local file path: {s}");
-                        var fullPath = Path.GetFullPath(s);
+                        Console.WriteLine($"WorkflowNodeBase: Image input '{inputName}' using local file path: {fullPath}");
                         var bytes = await File.ReadAllBytesAsync(fullPath, cancellationToken);
                         var fileUri = new Uri(fullPath).AbsoluteUri;
                         var imageRef = new Dictionary<string, object?>
@@ -480,17 +541,48 @@ namespace Nodetool.SDK.VL.Nodes
             return rawValue ?? "";
         }
 
-        private static bool IsImageSchema(WorkflowPropertyDefinition? prop)
+        private static bool IsImageSchema(WorkflowPropertyDefinition? prop, WorkflowSchemaDefinition? rootSchema)
         {
-            if (prop == null)
+            var visited = new HashSet<string>(StringComparer.Ordinal);
+            return IsImageSchemaInner(prop, rootSchema, visited, depth: 0);
+        }
+
+        private static bool IsImageSchemaInner(
+            WorkflowPropertyDefinition? prop,
+            WorkflowSchemaDefinition? rootSchema,
+            HashSet<string> visitedRefs,
+            int depth)
+        {
+            if (prop == null || depth > 10)
                 return false;
 
-            // JSON schema 'format' is the strongest hint
+            // Strong hint: explicit format
             if (string.Equals(prop.Format, "image", StringComparison.OrdinalIgnoreCase))
                 return true;
 
-            // Many NodeTool schemas represent refs as objects with a const "type" field.
-            // Example: { "type": "object", "properties": { "type": { "const": "image" }, "uri": {...}, ... } }
+            // Handle wrappers
+            if (prop.AnyOf != null && prop.AnyOf.Any(p => IsImageSchemaInner(p, rootSchema, visitedRefs, depth + 1)))
+                return true;
+            if (prop.OneOf != null && prop.OneOf.Any(p => IsImageSchemaInner(p, rootSchema, visitedRefs, depth + 1)))
+                return true;
+            if (prop.AllOf != null && prop.AllOf.Any(p => IsImageSchemaInner(p, rootSchema, visitedRefs, depth + 1)))
+                return true;
+
+            // $ref resolution (the actual robust bit)
+            if (!string.IsNullOrWhiteSpace(prop.Ref))
+            {
+                if (!visitedRefs.Add(prop.Ref))
+                    return false;
+
+                var resolved = ResolveRef(rootSchema, prop.Ref);
+                if (resolved != null)
+                    return IsImageSchemaInner(resolved, rootSchema, visitedRefs, depth + 1);
+
+                // If we can't resolve (unexpected ref shape), treat as non-image (no heuristics here).
+                return false;
+            }
+
+            // Object-ref shape: { type:"object", properties:{ type:{const:"image"}, ... } }
             if (string.Equals(prop.Type, "object", StringComparison.OrdinalIgnoreCase) && prop.Properties != null)
             {
                 if (prop.Properties.TryGetValue("type", out var typeProp))
@@ -502,20 +594,59 @@ namespace Nodetool.SDK.VL.Nodes
                         return true;
                 }
 
-                // Heuristic: looks like an AssetRef-ish object
+                // AssetRef-ish object (uri/asset_id/data)
                 if (prop.Properties.ContainsKey("uri") && prop.Properties.ContainsKey("asset_id"))
                     return true;
             }
 
-            // Fallback hints
-            if (string.Equals(prop.Type, "image", StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            if (!string.IsNullOrWhiteSpace(prop.Title) &&
-                prop.Title.Contains("image", StringComparison.OrdinalIgnoreCase))
-                return true;
+            // Array of image refs
+            if (string.Equals(prop.Type, "array", StringComparison.OrdinalIgnoreCase) && prop.Items != null)
+                return IsImageSchemaInner(prop.Items, rootSchema, visitedRefs, depth + 1);
 
             return false;
+        }
+
+        private static WorkflowPropertyDefinition? ResolveRef(WorkflowSchemaDefinition? rootSchema, string refStr)
+        {
+            // Supports: "#/definitions/Name" and "#/$defs/Name"
+            if (rootSchema == null)
+                return null;
+
+            if (!refStr.StartsWith("#/", StringComparison.Ordinal))
+                return null;
+
+            var path = refStr.Substring(2); // drop "#/"
+            var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 2 && string.Equals(parts[0], "definitions", StringComparison.Ordinal))
+            {
+                return rootSchema.Definitions != null && rootSchema.Definitions.TryGetValue(parts[1], out var def) ? def : null;
+            }
+            if (parts.Length == 2 && string.Equals(parts[0], "$defs", StringComparison.Ordinal))
+            {
+                return rootSchema.Defs != null && rootSchema.Defs.TryGetValue(parts[1], out var def) ? def : null;
+            }
+
+            return null;
+        }
+
+        private static void DumpSchemaForDebug(string inputName, WorkflowPropertyDefinition? propDef, WorkflowSchemaDefinition? rootSchema)
+        {
+            try
+            {
+                var propJson = propDef == null ? "<null>" : JsonSerializer.Serialize(propDef);
+                Console.WriteLine($"WorkflowNodeBase: Input property schema '{inputName}': {propJson}");
+
+                if (propDef?.Ref != null)
+                {
+                    var resolved = ResolveRef(rootSchema, propDef.Ref);
+                    var resolvedJson = resolved == null ? "<unresolved>" : JsonSerializer.Serialize(resolved);
+                    Console.WriteLine($"WorkflowNodeBase: Resolved $ref for '{inputName}' ({propDef.Ref}): {resolvedJson}");
+                }
+            }
+            catch
+            {
+                // ignore
+            }
         }
 
         public void Dispose()
