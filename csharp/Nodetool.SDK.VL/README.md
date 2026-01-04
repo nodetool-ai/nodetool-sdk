@@ -33,6 +33,15 @@ If you reference `Nodetool.SDK.VL.csproj` and hit type-load issues, prefer refer
 - `csharp/Nodetool.SDK/Nodetool.SDK.csproj`
 - `csharp/Nodetool.SDK.VL/Nodetool.SDK.VL.csproj`
 
+**Recommended (most reliable):** reference this DLL directly:
+
+- `csharp/Nodetool.SDK.VL/bin/Release/net8.0/Nodetool.SDK.VL.dll`
+
+…and keep these DLLs next to it (same folder), so .NET can resolve dependencies:
+
+- `Nodetool.SDK.dll`
+- `Nodetool.Types.dll`
+
 ### 1) Make sure you referenced the right thing
 
 If you only reference **`Nodetool.SDK`** (the plain .NET library), VL will show lots of imported C# types — but you **won’t** get the dynamic VL nodes like **Connect** or the generated workflow nodes.
