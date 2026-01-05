@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using VL.Core;
 using VL.Core.CompilerServices;
 using Nodetool.SDK.VL.Services;
+using Nodetool.SDK.VL.Utilities;
 using Nodetool.SDK.VL.Factories;
 
 namespace Nodetool.SDK.VL.Factories;
@@ -174,7 +175,7 @@ internal static class DiagnosticsNodeFactory
     {
         if (vlSelfFactory == null)
         {
-            Console.WriteLine("DiagnosticsNodeFactory: vlSelfFactory is null, skipping diagnostic nodes");
+            VlLog.Error("DiagnosticsNodeFactory: vlSelfFactory is null");
             return;
         }
 
@@ -183,7 +184,6 @@ internal static class DiagnosticsNodeFactory
         if (connectNode != null)
         {
             nodeDescriptions.Add(connectNode);
-            Console.WriteLine("DiagnosticsNodeFactory: Created Connect node");
         }
 
         // Connection status node
@@ -191,7 +191,6 @@ internal static class DiagnosticsNodeFactory
         if (statusNode != null)
         {
             nodeDescriptions.Add(statusNode);
-            Console.WriteLine("DiagnosticsNodeFactory: Created ConnectionStatus node");
         }
 
         // Image helper nodes (decode ImageRef JSON to bytes/path)
@@ -199,7 +198,6 @@ internal static class DiagnosticsNodeFactory
         if (decodeImageRefNode != null)
         {
             nodeDescriptions.Add(decodeImageRefNode);
-            Console.WriteLine("DiagnosticsNodeFactory: Created DecodeImageRef node");
         }
     }
 }

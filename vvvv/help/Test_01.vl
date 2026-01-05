@@ -214,8 +214,6 @@
             <Pin Id="J1jttW92qGQQPPsefTOPwA" Name="IsRunning" Kind="OutputPin" />
             <Pin Id="NkKWjAQudSvLthS8MsETyK" Name="Error" Kind="OutputPin" />
             <Pin Id="JbzuxcwhMBlPlxvtuS3bwg" Name="Debug" Kind="OutputPin" />
-            <Pin Id="Qw3TQT0nrByOWh7Fgfh7Si" Name="InstanceId" Kind="OutputPin" />
-            <Pin Id="ArJKxE1avmUPmdniwfYJrJ" Name="NodePath" Kind="OutputPin" />
           </Node>
           <Pad Id="McYZ0lrr9poPxgB5UoaqIv" Comment="a" Bounds="555,130,58,15" ShowValueBox="true" isIOBox="true" Value="hello ">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -300,8 +298,6 @@
             <Pin Id="F8lnr5BJlwrQcGsNKNxNZx" Name="IsRunning" Kind="OutputPin" />
             <Pin Id="ImbHYY4xQv0OSYcBrErQTy" Name="Error" Kind="OutputPin" />
             <Pin Id="RGXIogxACJBMj3ykqZ3g8h" Name="Debug" Kind="OutputPin" />
-            <Pin Id="AeEGYtU6FSBPcOqr4YUSaY" Name="InstanceId" Kind="OutputPin" />
-            <Pin Id="PsbBvjGSx9GNjeHs3EQY61" Name="NodePath" Kind="OutputPin" />
           </Node>
           <Pad Id="EZuNqZs8nxTPv0YoGarkks" Comment="old" Bounds="572,295,38,15" ShowValueBox="true" isIOBox="true" Value="node">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -340,8 +336,6 @@
             <Pin Id="G2VFJWLwNowQasZzap7nhJ" Name="IsRunning" Kind="OutputPin" />
             <Pin Id="IVvVGhLDHj1OBWB5Tgbxlt" Name="Error" Kind="OutputPin" />
             <Pin Id="E4rXGC3ddGQOylCgxDueHo" Name="Debug" Kind="OutputPin" />
-            <Pin Id="FB1eopYGhbOOnrrxnwEs2E" Name="InstanceId" Kind="OutputPin" />
-            <Pin Id="KtQpJ8mzcgRNFNRdegT0YR" Name="NodePath" Kind="OutputPin" />
           </Node>
           <Pad Id="IShUp5kNtKpMz0q8RkOCtA" Comment="Execute" Bounds="446,610,35,35" ShowValueBox="true" isIOBox="true" Value="false">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -376,8 +370,6 @@
             <Pin Id="CMWeC6CYv5WNk1bR69pmKu" Name="IsRunning" Kind="OutputPin" />
             <Pin Id="GrjG5jzlK6pOAX4ICgcdU5" Name="Error" Kind="OutputPin" />
             <Pin Id="SaaaJgTxKJJQZwcBTwDRUa" Name="Debug" Kind="OutputPin" />
-            <Pin Id="RY4rSMB3BWbP70cGNVZsZO" Name="InstanceId" Kind="OutputPin" />
-            <Pin Id="O0yuOyYmKW1OkgOVyg7WLr" Name="NodePath" Kind="OutputPin" />
           </Node>
           <Pad Id="UhAfbsnAz3ANOIE4Fm81Im" Comment="Execute" Bounds="2938,90,35,35" ShowValueBox="true" isIOBox="true" Value="false">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -628,11 +620,7 @@
             <Pin Id="OAgnzjqq5ZgL9MKW1aXE9d" Name="IsRunning" Kind="OutputPin" />
             <Pin Id="RNxn5vNatPLPIHdnogoiWi" Name="Error" Kind="OutputPin" />
             <Pin Id="GbHpSxDcTLlPUFqEV11wl9" Name="Debug" Kind="OutputPin" />
-            <Pin Id="G8wTmfFc99DP2WmgGQl8SM" Name="InstanceId" Kind="OutputPin" />
-            <Pin Id="AqhP7BPzFkDQMHhGF59suS" Name="NodePath" Kind="OutputPin" />
           </Node>
-          <Pad Id="DmawIwAdnKkMgUh9Nf4vXx" Comment="InstanceId" Bounds="3179,291,214,15" ShowValueBox="true" isIOBox="true" />
-          <Pad Id="Lcf2ufFWxyjODWcjRlQOCZ" Comment="NodePath" Bounds="3268,250,297,46" ShowValueBox="true" isIOBox="true" />
         </Canvas>
         <Patch Id="BVZk8J8KreGPn6XpAL8K43" Name="Create" />
         <Patch Id="OPRQahXEwooMG9XKpojbFr" Name="Update" />
@@ -725,8 +713,6 @@
         <Link Id="E945WvjHkS9MeiGjHA6ka5" Ids="S6sszU7uVanOsznfLVr4B7,NQabgDFIAMoMPbZCc54JG8" />
         <Link Id="Dz2JA817n6lMdLhiy5B2FI" Ids="SaaaJgTxKJJQZwcBTwDRUa,JD4B392w7L5Nj0ZDbnyKhT" />
         <Link Id="OzL1cB6OdVwLtYVsxxkduG" Ids="CMWeC6CYv5WNk1bR69pmKu,VnP3WKsAjFGO9FPKYCLHTh" />
-        <Link Id="DBm0x8gd9OYNLFPld58LmI" Ids="RY4rSMB3BWbP70cGNVZsZO,DmawIwAdnKkMgUh9Nf4vXx" />
-        <Link Id="OfomaHk1U0nPhNUb4w1CXJ" Ids="O0yuOyYmKW1OkgOVyg7WLr,Lcf2ufFWxyjODWcjRlQOCZ" />
       </Patch>
     </Node>
   </Patch>

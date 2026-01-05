@@ -5,6 +5,7 @@ using System.Reflection;
 using VL.Core;
 using VL.Core.CompilerServices;
 using Nodetool.SDK.VL.Factories;
+using Nodetool.SDK.VL.Utilities;
 
 namespace Nodetool.SDK.VL
 {
@@ -15,19 +16,17 @@ namespace Nodetool.SDK.VL
     {
         public Initialization()
         {
-            Console.WriteLine("=== Nodetool.SDK.VL: Assembly initializer created ===");
-            Console.WriteLine($"Nodetool.SDK.VL: Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
-
-            // Help debug "old DLL loaded" issues: print our own assembly path/version/write time.
             try
             {
                 var asm = typeof(Initialization).Assembly;
                 var loc = asm.Location;
-                Console.WriteLine($"Nodetool.SDK.VL: Self assembly: {loc}, Version={asm.GetName().Version}");
-                if (!string.IsNullOrWhiteSpace(loc) && File.Exists(loc))
-                {
-                    Console.WriteLine($"Nodetool.SDK.VL: Self assembly lastWriteUtc: {File.GetLastWriteTimeUtc(loc):O}");
-                }
+                var ver = asm.GetName().Version?.ToString() ?? "unknown";
+                var lastWrite = (!string.IsNullOrWhiteSpace(loc) && File.Exists(loc))
+                    ? File.GetLastWriteTimeUtc(loc).ToString("O")
+                    : "unknown";
+
+                // Keep startup log concise; full dumps are behind NODETOOL_VL_VERBOSE=1.
+                VlLog.Info($"loaded v{ver} from '{loc}' (lastWriteUtc={lastWrite})");
             }
             catch
             {
@@ -41,48 +40,36 @@ namespace Nodetool.SDK.VL
         /// </summary>
         public override void Configure(AppHost appHost)
         {
-            Console.WriteLine("=== Nodetool.SDK.VL: Configure called - registering workflow factory ===");
-            Console.WriteLine($"Nodetool.SDK.VL: AppHost type: {appHost?.GetType().Name ?? "null"}");
+            VlLog.Debug($"Configure() appHost={appHost?.GetType().Name ?? "null"}");
             
             try
             {
                 DumpLoadedAssemblies();
 
-                Console.WriteLine("Nodetool.SDK.VL: About to register factories...");
-
                 // Register diagnostics first so Connect is always available (even if API calls fail)
-                Console.WriteLine("Nodetool.SDK.VL: Registering DiagnosticsNodeFactory...");
                 appHost?.RegisterNodeFactory("Nodetool",
                     vlSelfFactory => DiagnosticsNodeFactory.GetFactory(vlSelfFactory)
                 );
-                Console.WriteLine("Nodetool.SDK.VL: DiagnosticsNodeFactory registered");
                 
                 // Register the workflow node factory
-                Console.WriteLine("Nodetool.SDK.VL: Registering WorkflowNodeFactory...");
                 appHost?.RegisterNodeFactory("Nodetool.Workflows", 
                     vlSelfFactory => WorkflowNodeFactory.GetFactory(vlSelfFactory)
                 );
-                Console.WriteLine("Nodetool.SDK.VL: WorkflowNodeFactory registered");
                 
                 // Register the individual nodes factory
-                Console.WriteLine("Nodetool.SDK.VL: Registering NodesFactory...");
                 appHost?.RegisterNodeFactory("Nodetool.Nodes", 
                     vlSelfFactory => NodesFactory.GetFactory(vlSelfFactory)
                 );
-                Console.WriteLine("Nodetool.SDK.VL: NodesFactory registered");
-                
-                Console.WriteLine("=== Nodetool.SDK.VL: All factories registered successfully ===");
+
+                VlLog.Info("registered factories (Diagnostics, Workflows, Nodes)");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"=== Nodetool.SDK.VL: ERROR registering workflow factory ===");
-                Console.WriteLine($"Nodetool.SDK.VL: Error message: {ex.Message}");
-                Console.WriteLine($"Nodetool.SDK.VL: Error type: {ex.GetType().Name}");
-                Console.WriteLine($"Nodetool.SDK.VL: Stack trace: {ex.StackTrace}");
+                VlLog.Error($"factory registration failed: {ex.GetType().Name}: {ex.Message}");
                 
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"Nodetool.SDK.VL: Inner exception: {ex.InnerException.Message}");
+                    VlLog.Error($"inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
                 }
                 
                 throw;
@@ -93,6 +80,9 @@ namespace Nodetool.SDK.VL
         {
             try
             {
+                if (!VlLog.Verbose)
+                    return;
+
                 var assemblies = AppDomain.CurrentDomain.GetAssemblies()
                     .Where(a =>
                     {
@@ -104,7 +94,7 @@ namespace Nodetool.SDK.VL
                     .OrderBy(a => a.GetName().Name, StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
-                Console.WriteLine("=== Nodetool.SDK.VL: Loaded assemblies (filtered) ===");
+                VlLog.Debug("Loaded assemblies (filtered):");
                 foreach (var a in assemblies)
                 {
                     var name = a.GetName();
@@ -120,14 +110,12 @@ namespace Nodetool.SDK.VL
                 if (sdkAsm != null)
                 {
                     var hasIExecutionSession = sdkAsm.GetType("Nodetool.SDK.Execution.IExecutionSession", throwOnError: false) != null;
-                    Console.WriteLine($"Nodetool.SDK.VL: Nodetool.SDK has IExecutionSession = {hasIExecutionSession}");
+                    VlLog.Debug($"Nodetool.SDK has IExecutionSession = {hasIExecutionSession}");
                 }
-
-                Console.WriteLine("=== Nodetool.SDK.VL: Loaded assemblies dump done ===");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Nodetool.SDK.VL: Failed to dump loaded assemblies: {ex.GetType().Name}: {ex.Message}");
+                VlLog.Error($"Failed to dump loaded assemblies: {ex.GetType().Name}: {ex.Message}");
             }
         }
     }

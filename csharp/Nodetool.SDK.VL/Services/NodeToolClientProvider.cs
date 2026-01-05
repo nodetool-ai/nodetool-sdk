@@ -1,5 +1,6 @@
 using Nodetool.SDK.Configuration;
 using Nodetool.SDK.Execution;
+using Nodetool.SDK.VL.Utilities;
 
 namespace Nodetool.SDK.VL.Services;
 
@@ -175,7 +176,8 @@ public static class NodeToolClientProvider
         else
         {
             Status = "error";
-            LastError = "Connection failed";
+            LastError = _client?.LastError ?? "Connection failed";
+            VlLog.Error($"connect failed to '{_currentUrl}': {LastError}");
         }
         
         StatusChanged?.Invoke(Status);
