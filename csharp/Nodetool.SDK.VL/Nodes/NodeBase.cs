@@ -198,7 +198,8 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 _isRunning = true;
                 _lastError = "";
-                _lastOutputs.Clear();
+                // Keep last outputs latched across runs for better VL ergonomics.
+                // (If the next run produces no outputs or fails, downstream patches still have the previous value.)
                 _chunkBuffers.Clear();
                 _debugLines.Clear();
                 _rerunRequested = false;
