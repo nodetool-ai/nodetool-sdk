@@ -37,6 +37,9 @@ internal static class VlWorkflowTypeMapping
         if (t == "image")
             return (typeof(SKImage), null!);
 
+        if (t == "audio")
+            return (typeof(string), schemaDefaultValue?.ToString() ?? "");
+
         if (t == "datetime")
             return (typeof(DateTime), default(DateTime));
 

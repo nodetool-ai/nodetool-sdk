@@ -35,6 +35,8 @@ namespace Nodetool.SDK.VL.Nodes
         private readonly object _lock = new();
         private readonly Dictionary<string, StringBuilder> _chunkBuffers = new(StringComparer.Ordinal);
         private readonly Dictionary<string, SKImage> _latestImages = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> _latestAudioPaths = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _audioDownloadsInFlight = new(StringComparer.Ordinal);
         private readonly Queue<string> _debugLines = new();
         private const int DebugMaxLines = 30;
         
@@ -715,6 +717,67 @@ namespace Nodetool.SDK.VL.Nodes
                                     continue;
                                 }
 
+                                // Special handling for audio outputs: expose a local file path string.
+                                // We do best-effort resolution (cache hit first; otherwise download in background).
+                                if (targetType == typeof(string) && TryExtractAssetUri(value, expectedType: "audio", out var audioUri))
+                                {
+                                    var normalized = NodeToolClientProvider.NormalizeAssetUri(audioUri);
+                                    if (_latestAudioPaths.TryGetValue(output.Name, out var cachedPath) && !string.IsNullOrWhiteSpace(cachedPath))
+                                    {
+                                        outputPin.Value = cachedPath;
+                                        continue;
+                                    }
+
+                                    try
+                                    {
+                                        var assets = NodeToolClientProvider.GetAssetManager();
+                                        var hit = assets.GetCachedPath(normalized);
+                                        if (!string.IsNullOrWhiteSpace(hit) && File.Exists(hit))
+                                        {
+                                            _latestAudioPaths[output.Name] = hit;
+                                            outputPin.Value = hit;
+                                            continue;
+                                        }
+
+                                        // No cache yet: show the URI for now and download asynchronously.
+                                        outputPin.Value = normalized;
+                                        if (_audioDownloadsInFlight.Add(output.Name))
+                                        {
+                                            _ = Task.Run(async () =>
+                                            {
+                                                try
+                                                {
+                                                    var path = await assets.DownloadAssetAsync(normalized, cancellationToken: CancellationToken.None);
+                                                    lock (_lock)
+                                                    {
+                                                        _latestAudioPaths[output.Name] = path;
+                                                    }
+                                                }
+                                                catch (Exception ex)
+                                                {
+                                                    lock (_lock)
+                                                    {
+                                                        _lastError = $"Audio download failed ({output.Name}): {ex.Message}";
+                                                    }
+                                                }
+                                                finally
+                                                {
+                                                    lock (_lock)
+                                                    {
+                                                        _audioDownloadsInFlight.Remove(output.Name);
+                                                    }
+                                                    InvalidateOutputs();
+                                                }
+                                            });
+                                        }
+                                        continue;
+                                    }
+                                    catch
+                                    {
+                                        // Fall through to default conversion.
+                                    }
+                                }
+
                                 valueToSet = ConvertNodeToolValueToExpectedType(value, targetType);
                                 outputPin.Value = valueToSet;
                             }
@@ -896,7 +959,93 @@ namespace Nodetool.SDK.VL.Nodes
                 return "";
             }
 
+            if (t == "audio")
+            {
+                // Input pin type is string in VL. Convert file path / URL into an AudioRef-like payload.
+                if (rawValue is byte[] bytesDirect)
+                {
+                    return new Dictionary<string, object?>
+                    {
+                        ["type"] = "audio",
+                        ["asset_id"] = null,
+                        ["uri"] = "",
+                        ["data"] = bytesDirect
+                    };
+                }
+
+                var s = rawValue switch
+                {
+                    string str => str,
+                    Uri u => u.ToString(),
+                    _ => rawValue.ToString() ?? ""
+                };
+
+                s = s.Trim();
+                if (string.IsNullOrWhiteSpace(s))
+                    return optional ? null! : "";
+
+                var fullPath = s;
+                try { fullPath = Path.GetFullPath(s); } catch { /* ignore */ }
+
+                if (!string.IsNullOrWhiteSpace(fullPath) && File.Exists(fullPath))
+                {
+                    var bytes = await File.ReadAllBytesAsync(fullPath, cancellationToken);
+                    return new Dictionary<string, object?>
+                    {
+                        ["type"] = "audio",
+                        ["asset_id"] = null,
+                        ["uri"] = new Uri(fullPath).AbsoluteUri,
+                        ["data"] = bytes
+                    };
+                }
+
+                if (Uri.TryCreate(s, UriKind.Absolute, out var uri))
+                {
+                    return new Dictionary<string, object?>
+                    {
+                        ["type"] = "audio",
+                        ["asset_id"] = null,
+                        ["uri"] = uri.ToString(),
+                        ["data"] = null
+                    };
+                }
+
+                return new Dictionary<string, object?>
+                {
+                    ["type"] = "audio",
+                    ["asset_id"] = null,
+                    ["uri"] = s,
+                    ["data"] = null
+                };
+            }
+
             return rawValue;
+        }
+
+        private static bool TryExtractAssetUri(NodeToolValue value, string expectedType, out string uri)
+        {
+            uri = "";
+            var map = ExtractFirstMap(value);
+            if (map == null)
+                return false;
+
+            if (map.TryGetValue("type", out var typeVal) && typeVal.AsString() is string typeStr &&
+                string.Equals(typeStr, expectedType, StringComparison.OrdinalIgnoreCase) &&
+                map.TryGetValue("uri", out var uriVal) && uriVal.AsString() is string u && !string.IsNullOrWhiteSpace(u))
+            {
+                uri = u;
+                return true;
+            }
+
+            // Sometimes the type discriminator is attached even if "type" is missing.
+            if (string.Equals(value.TypeDiscriminator, expectedType, StringComparison.OrdinalIgnoreCase) &&
+                map.TryGetValue("uri", out var uriVal2) && uriVal2.AsString() is string u2 && !string.IsNullOrWhiteSpace(u2))
+            {
+                uri = u2;
+                return true;
+            }
+
+            return false;
         }
 
         private static IReadOnlyDictionary<string, NodeToolValue>? ExtractFirstMap(NodeToolValue value)
@@ -1503,6 +1652,9 @@ namespace Nodetool.SDK.VL.Nodes
                 if (type == typeof(bool)) return false;
                 if (type == typeof(string[])) return new string[0];
                 if (type == typeof(object)) return null;
+                if (type == typeof(DateTime)) return default(DateTime);
+                if (type == typeof(SKImage)) return null;
+                if (type.IsEnum) return Enum.ToObject(type, 0);
                 return Activator.CreateInstance(type);
             }
 

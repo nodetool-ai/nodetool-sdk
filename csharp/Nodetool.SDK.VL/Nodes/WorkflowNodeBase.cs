@@ -46,6 +46,8 @@ namespace Nodetool.SDK.VL.Nodes
         private bool _isRunning = false;
         private readonly Dictionary<string, StringBuilder> _chunkBuffers = new(StringComparer.Ordinal);
         private readonly Dictionary<string, SKImage> _latestImages = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> _latestAudioPaths = new(StringComparer.Ordinal);
+        private readonly HashSet<string> _audioDownloadsInFlight = new(StringComparer.Ordinal);
         private readonly Queue<string> _debugLines = new();
         private const int DebugMaxLines = 30;
 
@@ -368,6 +370,66 @@ namespace Nodetool.SDK.VL.Nodes
                             }
                         }
 
+                        // Special handling for audio outputs: expose a local cached file path string.
+                        if (string.Equals(update.OutputType, "audio", StringComparison.OrdinalIgnoreCase) &&
+                            TryExtractAssetUri(update.Value, expectedType: "audio", out var audioUri))
+                        {
+                            var normalized = NodeToolClientProvider.NormalizeAssetUri(audioUri);
+
+                            if (_latestAudioPaths.TryGetValue(update.OutputName, out var cached) &&
+                                !string.IsNullOrWhiteSpace(cached) &&
+                                File.Exists(cached))
+                            {
+                                pin.Value = cached;
+                                return;
+                            }
+
+                            try
+                            {
+                                var assets = NodeToolClientProvider.GetAssetManager();
+                                var hit = assets.GetCachedPath(normalized);
+                                if (!string.IsNullOrWhiteSpace(hit) && File.Exists(hit))
+                                {
+                                    _latestAudioPaths[update.OutputName] = hit;
+                                    pin.Value = hit;
+                                    return;
+                                }
+
+                                // Show URI while downloading; replace once done.
+                                pin.Value = normalized;
+                                if (_audioDownloadsInFlight.Add(update.OutputName))
+                                {
+                                    _ = Task.Run(async () =>
+                                    {
+                                        try
+                                        {
+                                            var path = await assets.DownloadAssetAsync(normalized, cancellationToken: CancellationToken.None);
+                                            _latestAudioPaths[update.OutputName] = path;
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            SetError($"Audio download failed ({update.OutputName}): {ex.Message}");
+                                        }
+                                        finally
+                                        {
+                                            _audioDownloadsInFlight.Remove(update.OutputName);
+                                            if (_outputPins.TryGetValue(update.OutputName, out var p) &&
+                                                _latestAudioPaths.TryGetValue(update.OutputName, out var finalPath))
+                                            {
+                                                p.Value = finalPath;
+                                            }
+                                        }
+                                    });
+                                }
+
+                                return;
+                            }
+                            catch
+                            {
+                                // fall through to default conversion
+                            }
+                        }
+
                         pin.Value = ConvertNodeToolValueToExpectedType(update.Value, expectedType);
                     }
                 };
@@ -583,6 +645,66 @@ namespace Nodetool.SDK.VL.Nodes
                             continue;
                         }
 
+                        // Final audio: turn AudioRef into a local cached file path (string pin).
+                        if (expectedType == typeof(string) &&
+                            TryExtractAssetUri(kvp.Value, expectedType: "audio", out var audioUri))
+                        {
+                            try
+                            {
+                                var normalized = NodeToolClientProvider.NormalizeAssetUri(audioUri);
+                                var assets = NodeToolClientProvider.GetAssetManager();
+
+                                if (_latestAudioPaths.TryGetValue(outputName, out var already) &&
+                                    !string.IsNullOrWhiteSpace(already) &&
+                                    File.Exists(already))
+                                {
+                                    pin.Value = already;
+                                    continue;
+                                }
+
+                                var hit = assets.GetCachedPath(normalized);
+                                if (!string.IsNullOrWhiteSpace(hit) && File.Exists(hit))
+                                {
+                                    _latestAudioPaths[outputName] = hit;
+                                    pin.Value = hit;
+                                    continue;
+                                }
+
+                                // Show URI while downloading.
+                                pin.Value = normalized;
+                                if (_audioDownloadsInFlight.Add(outputName))
+                                {
+                                    _ = Task.Run(async () =>
+                                    {
+                                        try
+                                        {
+                                            var path = await assets.DownloadAssetAsync(normalized, cancellationToken: CancellationToken.None);
+                                            _latestAudioPaths[outputName] = path;
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            SetError($"Audio download failed ({outputName}): {ex.Message}");
+                                        }
+                                        finally
+                                        {
+                                            _audioDownloadsInFlight.Remove(outputName);
+                                            if (_outputPins.TryGetValue(outputName, out var p) &&
+                                                _latestAudioPaths.TryGetValue(outputName, out var finalPath))
+                                            {
+                                                p.Value = finalPath;
+                                            }
+                                        }
+                                    });
+                                }
+
+                                continue;
+                            }
+                            catch
+                            {
+                                // fall through to default conversion
+                            }
+                        }
+
                         pin.Value = ConvertNodeToolValueToExpectedType(kvp.Value, expectedType);
                     }
                 }
@@ -606,6 +728,31 @@ namespace Nodetool.SDK.VL.Nodes
             }
 
             return null;
+        }
+
+        private static bool TryExtractAssetUri(NodeToolValue value, string expectedType, out string uri)
+        {
+            uri = "";
+            var map = ExtractFirstMap(value);
+            if (map == null)
+                return false;
+
+            if (map.TryGetValue("type", out var typeVal) && typeVal.AsString() is string typeStr &&
+                string.Equals(typeStr, expectedType, StringComparison.OrdinalIgnoreCase) &&
+                map.TryGetValue("uri", out var uriVal) && uriVal.AsString() is string u && !string.IsNullOrWhiteSpace(u))
+            {
+                uri = u;
+                return true;
+            }
+
+            if (string.Equals(value.TypeDiscriminator, expectedType, StringComparison.OrdinalIgnoreCase) &&
+                map.TryGetValue("uri", out var uriVal2) && uriVal2.AsString() is string u2 && !string.IsNullOrWhiteSpace(u2))
+            {
+                uri = u2;
+                return true;
+            }
+
+            return false;
         }
 
         private static bool TryExtractImageBytes(NodeToolValue value, out byte[] bytes)
@@ -1254,6 +1401,70 @@ namespace Nodetool.SDK.VL.Nodes
                         ["data"] = null
                     };
                 }
+            }
+
+            var treatAsAudio = (_workflow.TryGetInputType(inputName, out var tm3) &&
+                                string.Equals(tm3.Type, "audio", StringComparison.OrdinalIgnoreCase));
+
+            if (treatAsAudio)
+            {
+                // VL pin type is string. Convert file path / URL into an AudioRef-like payload.
+                if (rawValue is byte[] bytesDirect)
+                {
+                    return new Dictionary<string, object?>
+                    {
+                        ["type"] = "audio",
+                        ["asset_id"] = null,
+                        ["uri"] = "",
+                        ["data"] = bytesDirect
+                    };
+                }
+
+                var s = rawValue switch
+                {
+                    null => null,
+                    string str => str,
+                    Uri u => u.ToString(),
+                    _ => rawValue.ToString()
+                };
+
+                s = s?.Trim();
+                if (string.IsNullOrWhiteSpace(s))
+                    throw new InvalidOperationException($"Audio input '{inputName}' is empty. Provide a file path/URL.");
+
+                var fullPath = s;
+                try { fullPath = Path.GetFullPath(s); } catch { /* ignore */ }
+
+                if (!string.IsNullOrWhiteSpace(fullPath) && File.Exists(fullPath))
+                {
+                    var bytes = await File.ReadAllBytesAsync(fullPath, cancellationToken);
+                    return new Dictionary<string, object?>
+                    {
+                        ["type"] = "audio",
+                        ["asset_id"] = null,
+                        ["uri"] = new Uri(fullPath).AbsoluteUri,
+                        ["data"] = bytes
+                    };
+                }
+
+                if (Uri.TryCreate(s, UriKind.Absolute, out var uri))
+                {
+                    return new Dictionary<string, object?>
+                    {
+                        ["type"] = "audio",
+                        ["asset_id"] = null,
+                        ["uri"] = uri.ToString(),
+                        ["data"] = null
+                    };
+                }
+
+                return new Dictionary<string, object?>
+                {
+                    ["type"] = "audio",
+                    ["asset_id"] = null,
+                    ["uri"] = s,
+                    ["data"] = null
+                };
             }
 
             return rawValue ?? "";

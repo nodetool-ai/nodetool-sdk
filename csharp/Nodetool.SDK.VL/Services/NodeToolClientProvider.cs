@@ -1,3 +1,5 @@
+using System.Net.Http.Headers;
+using Nodetool.SDK.Assets;
 using Nodetool.SDK.Configuration;
 using Nodetool.SDK.Execution;
 using Nodetool.SDK.VL.Utilities;
@@ -11,6 +13,9 @@ namespace Nodetool.SDK.VL.Services;
 public static class NodeToolClientProvider
 {
     private static NodeToolExecutionClient? _client;
+    private static AssetManager? _assetManager;
+    private static string? _assetCacheDirectory;
+    private static string? _assetAuthTokenSnapshot;
     private static readonly object _lock = new();
     private static string _currentUrl = "ws://localhost:7777";
     private static string? _currentApiKey;
@@ -48,6 +53,81 @@ public static class NodeToolClientProvider
     /// Used for HTTP requests (assets/workflow discovery) and WS payload auth token.
     /// </summary>
     public static string? CurrentAuthToken => _currentApiKey;
+
+    /// <summary>
+    /// Current local cache directory for downloaded assets (audio/video/image refs).
+    /// If null/empty, the SDK default is used (UserProfile/.nodetool/cache/assets).
+    /// </summary>
+    public static string? CurrentAssetCacheDirectory => _assetCacheDirectory;
+
+    /// <summary>
+    /// Configure the local asset cache directory (used by VL when converting audio outputs to local paths).
+    /// Safe to call during VL default value injection (does not hit network).
+    /// </summary>
+    public static void ConfigureAssetCacheDirectory(string? cacheDirectory)
+    {
+        lock (_lock)
+        {
+            _assetCacheDirectory = string.IsNullOrWhiteSpace(cacheDirectory) ? null : cacheDirectory.Trim();
+            // Recreate on next GetAssetManager() call.
+            _assetManager = null;
+            _assetAuthTokenSnapshot = null;
+        }
+    }
+
+    /// <summary>
+    /// Normalize server-relative asset URLs ("/api/assets/...") to absolute HTTP URLs using CurrentApiBaseUrl.
+    /// </summary>
+    public static string NormalizeAssetUri(string uri)
+    {
+        if (string.IsNullOrWhiteSpace(uri))
+            return uri;
+
+        var s = uri.Trim();
+        if (s.StartsWith("/", StringComparison.Ordinal) && _currentApiBaseUrl != null)
+        {
+            try
+            {
+                return new Uri(_currentApiBaseUrl, s).ToString();
+            }
+            catch
+            {
+                return s;
+            }
+        }
+
+        return s;
+    }
+
+    /// <summary>
+    /// Get or create a shared AssetManager configured with the current cache directory and auth token.
+    /// </summary>
+    public static AssetManager GetAssetManager()
+    {
+        lock (_lock)
+        {
+            var token = _currentApiKey ?? "";
+            if (_assetManager != null && string.Equals(_assetAuthTokenSnapshot, token, StringComparison.Ordinal))
+                return _assetManager;
+
+            var http = new HttpClient();
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                try
+                {
+                    http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                }
+                catch
+                {
+                    // ignore header issues
+                }
+            }
+
+            _assetManager = new AssetManager(_assetCacheDirectory, nodetoolClient: null, httpClient: http, logger: null);
+            _assetAuthTokenSnapshot = token;
+            return _assetManager;
+        }
+    }
 
     /// <summary>
     /// Event raised when connection status changes.
@@ -102,6 +182,10 @@ public static class NodeToolClientProvider
 
             _currentUrl = serverUrl;
             _currentApiKey = apiKey;
+
+            // Auth changed → refresh asset manager on next use.
+            _assetManager = null;
+            _assetAuthTokenSnapshot = null;
 
             try
             {

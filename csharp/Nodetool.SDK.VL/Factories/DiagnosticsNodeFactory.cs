@@ -47,6 +47,10 @@ internal static class DiagnosticsNodeFactory
                     "🌐 Server URL", "WebSocket URL of the NodeTool server (e.g., ws://localhost:7777)");
                 var apiKeyPin = bc.Pin("ApiKey", typeof(string), "",
                     "🔑 API Key", "Optional API key for authentication");
+                var assetCacheDirPin = bc.Pin("AssetCacheDir", typeof(string), "",
+                    "📁 Asset cache dir",
+                    "Optional: local folder for downloaded assets (audio/video/image refs).\n\n"
+                    + "Leave empty to use the default: %USERPROFILE%\\.nodetool\\cache\\assets");
                 var autoReconnectPin = bc.Pin("AutoReconnect", typeof(bool), true,
                     "🔄 Auto Reconnect", "Automatically reconnect on connection loss");
                 var reconnectTriggerPin = bc.Pin("Reconnect", typeof(bool), false,
@@ -61,7 +65,7 @@ internal static class DiagnosticsNodeFactory
                     "❌ Last Error", "Last error message if connection failed");
 
                 return bc.Node(
-                    inputs: new IVLPinDescription[] { baseUrlPin, apiKeyPin, autoReconnectPin, reconnectTriggerPin },
+                    inputs: new IVLPinDescription[] { baseUrlPin, apiKeyPin, assetCacheDirPin, autoReconnectPin, reconnectTriggerPin },
                     outputs: new IVLPinDescription[] { isConnectedPin, statusPin, lastErrorPin },
                     newNode: ibc =>
                     {
@@ -69,6 +73,7 @@ internal static class DiagnosticsNodeFactory
                         bool hasConnected = false;
                         string lastUrl = "";
                         string lastApiKey = "";
+                        string lastAssetCacheDir = "";
 
                         return ibc.Node(
                             inputs: new IVLPin[]
@@ -92,6 +97,15 @@ internal static class DiagnosticsNodeFactory
 
                                         if (!string.IsNullOrEmpty(lastUrl))
                                             NodeToolClientProvider.Configure(lastUrl, lastApiKey, disposeExistingClient: true);
+                                    }
+                                }),
+                                ibc.Input<string>(val =>
+                                {
+                                    var v = val ?? "";
+                                    if (v != lastAssetCacheDir)
+                                    {
+                                        lastAssetCacheDir = v;
+                                        NodeToolClientProvider.ConfigureAssetCacheDirectory(v);
                                     }
                                 }),
                                 ibc.Input<bool>(val =>
