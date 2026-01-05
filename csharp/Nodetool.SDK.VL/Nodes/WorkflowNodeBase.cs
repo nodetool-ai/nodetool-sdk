@@ -35,6 +35,8 @@ namespace Nodetool.SDK.VL.Nodes
         private string _lastInputSignature = "";
         private bool _rerunRequested = false;
         private bool _cancelRequestedByRestart = false;
+        private bool _hasInitialized = false;
+        private bool _prevAutoRunEnabled = false;
 
         private IExecutionSession? _activeSession = null;
         private CancellationTokenSource? _manualCancelCts = null;
@@ -139,6 +141,19 @@ namespace Nodetool.SDK.VL.Nodes
                 var triggerPin = _inputPins["Trigger"];
                 bool currentTriggerState = (bool)(triggerPin.Value ?? false);
 
+                _autoRunEnabled = _inputPins.TryGetValue("AutoRun", out var autoRunPin) && autoRunPin.Value is bool bAuto && bAuto;
+                _restartOnChangeEnabled = _inputPins.TryGetValue("RestartOnChange", out var restartPin) && restartPin.Value is bool bRestart && bRestart;
+
+                // IMPORTANT: first evaluation after load/save/rewire should not trigger execution.
+                if (!_hasInitialized)
+                {
+                    _lastTriggerState = currentTriggerState;
+                    _lastInputSignature = ComputeInputSignature();
+                    _prevAutoRunEnabled = _autoRunEnabled;
+                    _hasInitialized = true;
+                    return;
+                }
+
                 if (currentTriggerState && !_lastTriggerState)
                 {
                     // Rising edge detected - execute workflow
@@ -148,12 +163,14 @@ namespace Nodetool.SDK.VL.Nodes
 
                 _lastTriggerState = currentTriggerState;
 
-                // Auto-run toggle
-                if (_inputPins.TryGetValue("AutoRun", out var autoRunPin))
-                    _autoRunEnabled = autoRunPin.Value is bool b && b;
-
-                if (_inputPins.TryGetValue("RestartOnChange", out var restartPin))
-                    _restartOnChangeEnabled = restartPin.Value is bool b2 && b2;
+                // When AutoRun is turned on, just "arm" it (capture current signature) instead of running immediately.
+                if (_autoRunEnabled && !_prevAutoRunEnabled)
+                {
+                    _lastInputSignature = ComputeInputSignature();
+                    _prevAutoRunEnabled = true;
+                    return;
+                }
+                _prevAutoRunEnabled = _autoRunEnabled;
 
                 if (_autoRunEnabled)
                 {

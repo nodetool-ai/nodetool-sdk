@@ -40,6 +40,8 @@ namespace Nodetool.SDK.VL.Nodes
         private string _lastError = "";
         private readonly Dictionary<string, NodeToolValue> _lastOutputs = new(StringComparer.Ordinal);
         private bool _lastExecuteState = false;
+        private bool _hasInitialized = false;
+        private bool _prevAutoRunEnabled = false;
 
         // Auto-run on input change
         private bool _autoRunEnabled = false;
@@ -119,7 +121,8 @@ namespace Nodetool.SDK.VL.Nodes
 
         public IVLObject With(IReadOnlyDictionary<string, object> values)
         {
-            // For now, return this without modification
+            // For now, return this without modification.
+            // If VL uses immutability here, we may need to return a cloned instance that preserves state.
             return this;
         }
 
@@ -130,32 +133,42 @@ namespace Nodetool.SDK.VL.Nodes
         {
             try
             {
-                // Check for Execute trigger on rising edge
-                if (_inputPins.TryGetValue("Execute", out var executePin))
+                // Read current control pin states first.
+                var currentExecuteState = _inputPins.TryGetValue("Execute", out var executePin) && executePin.Value is bool bExec && bExec;
+                _autoRunEnabled = _inputPins.TryGetValue("AutoRun", out var autoRunPin) && autoRunPin.Value is bool bAuto && bAuto;
+                _restartOnChangeEnabled = _inputPins.TryGetValue("RestartOnChange", out var restartPin) && restartPin.Value is bool bRestart && bRestart;
+
+                // IMPORTANT: first evaluation after load/save/rewire should not trigger execution.
+                // VL can replay stored pin values (e.g. Execute=true) on a fresh instance, which would look like a rising edge.
+                if (!_hasInitialized)
                 {
-                    bool currentExecuteState = executePin.Value is bool b && b;
-                    
-                    if (currentExecuteState && !_lastExecuteState && !_isRunning)
-                    {
-                        // Rising edge detected - execute the node
-                        // Keep auto-run signature in sync to avoid immediate duplicate run.
-                        _lastInputSignature = ComputeInputSignature();
-                        _ = ExecuteNodeAsync();
-                    }
-                    
                     _lastExecuteState = currentExecuteState;
+                    _lastInputSignature = ComputeInputSignature();
+                    _prevAutoRunEnabled = _autoRunEnabled;
+                    _hasInitialized = true;
+                    UpdateOutputs();
+                    return;
                 }
 
-                // Auto-run toggle
-                if (_inputPins.TryGetValue("AutoRun", out var autoRunPin))
+                // Check for Execute trigger on rising edge
+                if (currentExecuteState && !_lastExecuteState && !_isRunning)
                 {
-                    _autoRunEnabled = autoRunPin.Value is bool b && b;
+                    // Rising edge detected - execute the node
+                    // Keep auto-run signature in sync to avoid immediate duplicate run.
+                    _lastInputSignature = ComputeInputSignature();
+                    _ = ExecuteNodeAsync();
                 }
+                _lastExecuteState = currentExecuteState;
 
-                if (_inputPins.TryGetValue("RestartOnChange", out var restartPin))
+                // When AutoRun is turned on, just "arm" it (capture current signature) instead of running immediately.
+                if (_autoRunEnabled && !_prevAutoRunEnabled)
                 {
-                    _restartOnChangeEnabled = restartPin.Value is bool b && b;
+                    _lastInputSignature = ComputeInputSignature();
+                    _prevAutoRunEnabled = true;
+                    UpdateOutputs();
+                    return;
                 }
+                _prevAutoRunEnabled = _autoRunEnabled;
 
                 if (_autoRunEnabled)
                 {
@@ -617,14 +630,18 @@ namespace Nodetool.SDK.VL.Nodes
                             if (outputsSnapshot.TryGetValue(output.Name, out var value))
                             {
                                 valueToSet = ConvertNodeToolValueToExpectedType(value, expectedType ?? typeof(string));
+                                outputPin.Value = valueToSet;
                             }
                             else
                             {
-                                // Set default value if no output available
-                                valueToSet = defaultValue;
+                                // IMPORTANT: don't overwrite the pin with default when there's no new output.
+                                // VL patches expect "latched" outputs: keep the last value until a new one arrives.
+                                // This also prevents the "one frame goes to 0" flicker at the start of execution.
+                                //
+                                // If this is the first run and nothing has ever been produced, the pin already
+                                // contains its initial default set during node creation.
+                                continue;
                             }
-                            
-                            outputPin.Value = valueToSet;
                         }
                     }
                 }
@@ -948,11 +965,9 @@ namespace Nodetool.SDK.VL.Nodes
         /// </summary>
         public void Dispose()
         {
-            // Clean up any resources
-            lock (_lock)
-            {
-                _lastOutputs.Clear();
-            }
+            // If VL recreates nodes during patch edits, clearing outputs here will look like a "reset"
+            // even though the user didn't change inputs. Keep the instance state intact on dispose.
+            try { _manualCancelCts?.Cancel(); } catch { /* ignore */ }
         }
 
         /// <summary>
