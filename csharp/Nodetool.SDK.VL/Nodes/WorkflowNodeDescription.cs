@@ -21,6 +21,7 @@ namespace Nodetool.SDK.VL.Nodes
 
         // Standard pin names
         public const string TriggerInputName = "Trigger";
+        public const string CancelInputName = "Cancel";
         public const string AutoRunInputName = "AutoRun";
         public const string RestartOnChangeInputName = "RestartOnChange";
         public const string IsRunningOutputName = "IsRunning";
@@ -65,10 +66,17 @@ namespace Nodetool.SDK.VL.Nodes
                 "🚀 Trigger workflow execution on rising edge",
                 "Boolean input - set to true to execute the Nodetool workflow"));
 
+            inputPins.Add(new PinDescription(CancelInputName, typeof(bool), false,
+                "🛑 Cancel execution",
+                "Boolean input - set to true (rising edge) to cancel the current execution.\n\n"
+                + "- If the workflow is not running, this does nothing.\n"
+                + "- Cancellation is best-effort: the server may take a moment to stop.\n"
+                + "- Output pins keep their last values."));
+
             inputPins.Add(new PinDescription(AutoRunInputName, typeof(bool), false,
                 "🔁 Execute on input change",
                 "When enabled, this workflow automatically executes whenever any *workflow input pin* changes.\n\n"
-                + "- This watches all workflow input pins (not Trigger/AutoRun/RestartOnChange).\n"
+                + "- This watches all workflow input pins (not Trigger/Cancel/AutoRun/RestartOnChange).\n"
                 + "- Useful for chaining workflows and building autorun patches.\n"
                 + "- If an input changes while a run is active, behavior depends on RestartOnChange."));
 

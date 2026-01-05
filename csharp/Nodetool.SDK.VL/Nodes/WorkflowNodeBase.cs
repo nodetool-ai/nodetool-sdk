@@ -30,6 +30,7 @@ namespace Nodetool.SDK.VL.Nodes
         private readonly Dictionary<string, IVLPin> _outputPins;
 
         private bool _lastTriggerState = false;
+        private bool _lastCancelState = false;
         private bool _autoRunEnabled = false;
         private bool _restartOnChangeEnabled = false;
         private string _lastInputSignature = "";
@@ -58,6 +59,7 @@ namespace Nodetool.SDK.VL.Nodes
             
             // Add trigger pin
             _inputPins["Trigger"] = new InternalPin("Trigger", typeof(bool), false);
+            _inputPins["Cancel"] = new InternalPin("Cancel", typeof(bool), false);
             _inputPins["AutoRun"] = new InternalPin("AutoRun", typeof(bool), false);
             _inputPins["RestartOnChange"] = new InternalPin("RestartOnChange", typeof(bool), false);
             
@@ -141,6 +143,9 @@ namespace Nodetool.SDK.VL.Nodes
                 var triggerPin = _inputPins["Trigger"];
                 bool currentTriggerState = (bool)(triggerPin.Value ?? false);
 
+                var cancelPin = _inputPins["Cancel"];
+                bool currentCancelState = (bool)(cancelPin.Value ?? false);
+
                 _autoRunEnabled = _inputPins.TryGetValue("AutoRun", out var autoRunPin) && autoRunPin.Value is bool bAuto && bAuto;
                 _restartOnChangeEnabled = _inputPins.TryGetValue("RestartOnChange", out var restartPin) && restartPin.Value is bool bRestart && bRestart;
 
@@ -148,11 +153,20 @@ namespace Nodetool.SDK.VL.Nodes
                 if (!_hasInitialized)
                 {
                     _lastTriggerState = currentTriggerState;
+                    _lastCancelState = currentCancelState;
                     _lastInputSignature = ComputeInputSignature();
                     _prevAutoRunEnabled = _autoRunEnabled;
                     _hasInitialized = true;
                     return;
                 }
+
+                // Cancel on rising edge (false → true)
+                if (currentCancelState && !_lastCancelState)
+                {
+                    AppendDebug("cancel requested");
+                    _ = CancelActiveRunAsync();
+                }
+                _lastCancelState = currentCancelState;
 
                 if (currentTriggerState && !_lastTriggerState)
                 {
@@ -215,6 +229,9 @@ namespace Nodetool.SDK.VL.Nodes
 
                 // Reset per-run chunk buffers so streaming output doesn't accumulate across runs.
                 _chunkBuffers.Clear();
+                _debugLines.Clear();
+                if (_outputPins.TryGetValue("Debug", out var debugPin))
+                    debugPin.Value = "";
                 _rerunRequested = false;
                 _cancelRequestedByRestart = false;
 
@@ -436,7 +453,7 @@ namespace Nodetool.SDK.VL.Nodes
             var sb = new StringBuilder();
             foreach (var kvp in _inputPins.OrderBy(k => k.Key, StringComparer.Ordinal))
             {
-                if (kvp.Key is "Trigger" or "AutoRun" or "RestartOnChange")
+                if (kvp.Key is "Trigger" or "Cancel" or "AutoRun" or "RestartOnChange")
                     continue;
 
                 sb.Append(kvp.Key);
@@ -980,7 +997,7 @@ namespace Nodetool.SDK.VL.Nodes
 
             foreach (var kvp in _inputPins)
             {
-                if (kvp.Key == "Trigger")
+                if (kvp.Key is "Trigger" or "Cancel" or "AutoRun" or "RestartOnChange")
                     continue;
 
                 var raw = kvp.Value.Value;

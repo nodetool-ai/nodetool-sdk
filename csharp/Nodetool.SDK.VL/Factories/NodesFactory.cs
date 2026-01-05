@@ -96,10 +96,17 @@ namespace Nodetool.SDK.VL.Factories
                                         "⚡ Execute node", 
                                         "Boolean input - set to true to execute the Nodetool node"));
 
+                                    inputPins.Add(bc.Pin("Cancel", typeof(bool), false,
+                                        "🛑 Cancel execution",
+                                        "Boolean input - set to true (rising edge) to cancel the current execution.\n\n"
+                                        + "- If the node is not running, this does nothing.\n"
+                                        + "- Cancellation is best-effort: the server may take a moment to stop.\n"
+                                        + "- The node's last outputs stay latched."));
+
                                     inputPins.Add(bc.Pin("AutoRun", typeof(bool), false,
                                         "🔁 Execute on input change",
                                         "When enabled, this node automatically executes whenever any *data input* changes.\n\n"
-                                        + "- This watches all input pins except Execute/AutoRun/RestartOnChange.\n"
+                                        + "- This watches all input pins except Execute/Cancel/AutoRun/RestartOnChange.\n"
                                         + "- Useful for chaining nodes and building autorun patches.\n"
                                         + "- If an input changes while a run is active, behavior depends on RestartOnChange."));
 

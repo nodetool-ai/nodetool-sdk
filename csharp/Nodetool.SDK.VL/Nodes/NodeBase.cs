@@ -40,7 +40,9 @@ namespace Nodetool.SDK.VL.Nodes
         private string _lastError = "";
         private readonly Dictionary<string, NodeToolValue> _lastOutputs = new(StringComparer.Ordinal);
         private bool _lastExecuteState = false;
+        private bool _lastCancelState = false;
         private volatile bool _onUpdatePulse = false;
+        private bool _onUpdateHoldArmed = false;
         private bool _hasInitialized = false;
         private bool _prevAutoRunEnabled = false;
 
@@ -72,6 +74,7 @@ namespace Nodetool.SDK.VL.Nodes
             // Create input pins - VL's factory already created the pin descriptions
             // Add Execute pin
             _inputPins["Execute"] = new InternalPin("Execute", typeof(bool), false);
+            _inputPins["Cancel"] = new InternalPin("Cancel", typeof(bool), false);
             _inputPins["AutoRun"] = new InternalPin("AutoRun", typeof(bool), false);
             _inputPins["RestartOnChange"] = new InternalPin("RestartOnChange", typeof(bool), false);
 
@@ -135,8 +138,29 @@ namespace Nodetool.SDK.VL.Nodes
         {
             try
             {
+                // "On Update" is a VL-style pulse that must be observable in the frame loop.
+                // We implement it as a 1-frame hold:
+                // - when fired, it stays true for the *next* Update() evaluation
+                // - then it resets at the beginning of the subsequent Update()
+                lock (_lock)
+                {
+                    if (_onUpdatePulse)
+                    {
+                        if (_onUpdateHoldArmed)
+                        {
+                            _onUpdatePulse = false;
+                            _onUpdateHoldArmed = false;
+                        }
+                        else
+                        {
+                            _onUpdateHoldArmed = true;
+                        }
+                    }
+                }
+
                 // Read current control pin states first.
                 var currentExecuteState = _inputPins.TryGetValue("Execute", out var executePin) && executePin.Value is bool bExec && bExec;
+                var currentCancelState = _inputPins.TryGetValue("Cancel", out var cancelPin) && cancelPin.Value is bool bCancel && bCancel;
                 _autoRunEnabled = _inputPins.TryGetValue("AutoRun", out var autoRunPin) && autoRunPin.Value is bool bAuto && bAuto;
                 _restartOnChangeEnabled = _inputPins.TryGetValue("RestartOnChange", out var restartPin) && restartPin.Value is bool bRestart && bRestart;
 
@@ -145,12 +169,21 @@ namespace Nodetool.SDK.VL.Nodes
                 if (!_hasInitialized)
                 {
                     _lastExecuteState = currentExecuteState;
+                    _lastCancelState = currentCancelState;
                     _lastInputSignature = ComputeInputSignature();
                     _prevAutoRunEnabled = _autoRunEnabled;
                     _hasInitialized = true;
                     UpdateOutputs();
                     return;
                 }
+
+                // Check for Cancel trigger on rising edge
+                if (currentCancelState && !_lastCancelState)
+                {
+                    AppendDebug("cancel requested");
+                    _ = CancelActiveRunAsync();
+                }
+                _lastCancelState = currentCancelState;
 
                 // Check for Execute trigger on rising edge
                 if (currentExecuteState && !_lastExecuteState && !_isRunning)
@@ -493,28 +526,16 @@ namespace Nodetool.SDK.VL.Nodes
 
         private void FireOnUpdatePulse()
         {
-            _onUpdatePulse = true;
+            lock (_lock)
+            {
+                _onUpdatePulse = true;
+                _onUpdateHoldArmed = false;
+            }
+
+            // Best-effort immediate set + invalidate so VL notices without waiting for the next frame.
             if (_outputPins.TryGetValue("On Update", out var pin))
                 pin.Value = true;
-
-            // VL-style: keep this as a short pulse (true briefly, then false).
-            // We reset asynchronously and invalidate again so downstream edge detectors can pick it up.
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await Task.Delay(1).ConfigureAwait(false);
-                }
-                catch
-                {
-                    // ignore
-                }
-
-                _onUpdatePulse = false;
-                if (_outputPins.TryGetValue("On Update", out var p))
-                    p.Value = false;
-                InvalidateOutputs();
-            });
+            InvalidateOutputs();
         }
 
         private async Task CancelActiveRunAsync()
@@ -552,12 +573,12 @@ namespace Nodetool.SDK.VL.Nodes
         private string ComputeInputSignature()
         {
             // Cheap stable signature (no JSON serialization) to detect input changes.
-            // Excludes Execute/AutoRun/RestartOnChange pins.
+            // Excludes Execute/Cancel/AutoRun/RestartOnChange pins.
             var sb = new StringBuilder();
 
             foreach (var kvp in _inputPins.OrderBy(k => k.Key, StringComparer.Ordinal))
             {
-                if (kvp.Key is "Execute" or "AutoRun" or "RestartOnChange")
+                if (kvp.Key is "Execute" or "Cancel" or "AutoRun" or "RestartOnChange")
                     continue;
 
                 sb.Append(kvp.Key);
