@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class GetRequestBinary
 {
     [Key(0)]
-    public string url { get; set; } = "";
+    public string url { get; set; } = @"";
 
     public byte[] Process()
     {

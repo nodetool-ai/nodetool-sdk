@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class SaveAudio
 {
     [Key(0)]
-    public Nodetool.Types.AudioRef audio { get; set; } = new Nodetool.Types.AudioRef();
+    public Nodetool.Types.Core.AudioRef audio { get; set; } = new Nodetool.Types.Core.AudioRef();
     [Key(1)]
-    public Nodetool.Types.FolderRef folder { get; set; } = new Nodetool.Types.FolderRef();
+    public Nodetool.Types.Core.FolderRef folder { get; set; } = new Nodetool.Types.Core.FolderRef();
     [Key(2)]
-    public string name { get; set; } = "%Y-%m-%d-%H-%M-%S.opus";
+    public string name { get; set; } = @"%Y-%m-%d-%H-%M-%S.opus";
 
-    public Nodetool.Types.AudioRef Process()
+    public Nodetool.Types.Core.AudioRef Process()
     {
-        return default(Nodetool.Types.AudioRef);
+        return default(Nodetool.Types.Core.AudioRef);
     }
 }

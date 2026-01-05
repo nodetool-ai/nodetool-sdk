@@ -8,18 +8,18 @@ namespace Nodetool.Nodes.Base;
 public class Pivot
 {
     [Key(0)]
-    public Nodetool.Types.DataframeRef dataframe { get; set; } = new Nodetool.Types.DataframeRef();
+    public string aggfunc { get; set; } = @"sum";
     [Key(1)]
-    public string index { get; set; } = "";
+    public string columns { get; set; } = @"";
     [Key(2)]
-    public string columns { get; set; } = "";
+    public Nodetool.Types.Core.DataframeRef dataframe { get; set; } = new Nodetool.Types.Core.DataframeRef();
     [Key(3)]
-    public string values { get; set; } = "";
+    public string index { get; set; } = @"";
     [Key(4)]
-    public string aggfunc { get; set; } = "sum";
+    public string values { get; set; } = @"";
 
-    public Nodetool.Types.DataframeRef Process()
+    public Nodetool.Types.Core.DataframeRef Process()
     {
-        return default(Nodetool.Types.DataframeRef);
+        return default(Nodetool.Types.Core.DataframeRef);
     }
 }

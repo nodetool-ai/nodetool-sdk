@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class ExtractLinks
 {
     [Key(0)]
-    public string markdown { get; set; } = "";
-    [Key(1)]
     public bool include_titles { get; set; } = true;
+    [Key(1)]
+    public string markdown { get; set; } = @"";
 
     public object Process()
     {

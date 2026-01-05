@@ -1,0 +1,1494 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document xmlns:p="property" xmlns:r="reflection" Id="NCB2fGfmHSWPOjyXoe03NK" LanguageVersion="2025.7.1-0013-g8fcece0df9" Version="0.128">
+  <NugetDependency Id="AjcOtGJSkd3LgbbSNHMTwq" Location="VL.CoreLib" Version="2025.7.1-0013-g8fcece0df9" />
+  <Patch Id="E6J6ahaS2UpN2ZM56ii3wP">
+    <Canvas Id="EtpN4aPz11MMwluUZuKDq2" DefaultCategory="Main" BordersChecked="false" CanvasType="FullCategory" />
+    <!--
+
+    ************************ Application ************************
+
+-->
+    <Node Name="Application" Bounds="100,100" Id="KDG4HIUSpNVMVrjVQuA3oB">
+      <p:NodeReference>
+        <Choice Kind="ContainerDefinition" Name="Process" />
+        <CategoryReference Kind="Category" Name="Primitive" />
+      </p:NodeReference>
+      <Patch Id="D2xhfIeDbwtNXLaQwdwih0">
+        <Canvas Id="J27TOUT9mMHOoZqQjeEBnQ" CanvasType="Group">
+          <Node Bounds="341,231,48,19" Id="VyqiqUxhc9PLfkdKpo6pMx">
+            <p:NodeReference LastCategoryFullName="Nodetool Nodes.Text" LastDependency="Nodetool.Nodes">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Text" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="Nodetool Nodes" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="Concat" />
+            </p:NodeReference>
+            <Pin Id="RxRnfSzDP5lN8NHKCITUr3" Name="Execute" Kind="InputPin" />
+            <Pin Id="M14qBAzo42qPzks6BNGzHd" Name="a" Kind="InputPin" />
+            <Pin Id="FH591t9q8HDOQLL1WwsMOY" Name="b" Kind="InputPin" />
+            <Pin Id="GggR0sBuip0OpHMs04h6DI" Name="output" Kind="OutputPin" />
+            <Pin Id="N3VkrDGaWcwPVgF6okMjr9" Name="IsRunning" Kind="OutputPin" />
+            <Pin Id="RMimQzkQZW0QOh6dSKpOEi" Name="Error" Kind="OutputPin" />
+          </Node>
+          <Pad Id="CuBJR8KRWGgQRbqRqWItCS" Comment="Execute" Bounds="343,130,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="PSeHfckavu7LyuhXAUmYTI" Comment="a" Bounds="365,185,35,15" ShowValueBox="true" isIOBox="true" Value="asd">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="PbY6bHXZ39fPokdxYoEcry" Comment="b" Bounds="386,210,35,15" ShowValueBox="true" isIOBox="true" Value="asdasdasd">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="K4AcybKI09qPVQnxGk9vR8" Comment="IsRunning" Bounds="365,285,35,35" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="F68eB550gsTLI5BNmHff38" Comment="output" Bounds="343,335,60,34" ShowValueBox="true" isIOBox="true" />
+          <Node Bounds="548,231,107,19" Id="IQuWBuToIPcMpQyLGnv17n">
+            <p:NodeReference LastCategoryFullName="Nodetool Workflows" LastDependency="Nodetool.Workflows">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessNode" Name="TEST_SDK_4_AGENT" />
+            </p:NodeReference>
+            <Pin Id="UjvkX1vC5WPPOH3mraVtZX" Name="Trigger" Kind="InputPin" />
+            <Pin Id="FDIB5veWDuDQZppkJZ0iXH" Name="prompt" Kind="InputPin" />
+            <Pin Id="RVI0zdWYx0uMGiqteWjk0f" Name="IsRunning" Kind="OutputPin" />
+            <Pin Id="V4rMPCA2LeDN2N5jzgltpP" Name="Error" Kind="OutputPin" />
+            <Pin Id="U4hbBcDzq41PQfHCQf2cgc" Name="text" Kind="OutputPin" />
+            <Pin Id="J9HOzVef2zVMlsmDCeAXc2" Name="chunk" Kind="OutputPin" />
+          </Node>
+          <Pad Id="KtaiAKmJDBpLwcLv9Ke4wF" Comment="Trigger" Bounds="550,120,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="SeJp9kLgatKQYxFbf9f15r" Comment="prompt" Bounds="652,140,147,41" ShowValueBox="true" isIOBox="true" Value="only reply with a longy greeting from outer space">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="PU1BJGVWOarLMXw5JqmZjC" Comment="chunk" Bounds="652,268,160,131" ShowValueBox="true" isIOBox="true" Value="{&#xD;&#xA;  &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;  &quot;node_id&quot;: null,&#xD;&#xA;  &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;  &quot;content&quot;: &quot;&quot;,&#xD;&#xA;  &quot;content_metadata&quot;: {},&#xD;&#xA;  &quot;done&quot;: true&#xD;&#xA;}" />
+          <Pad Id="JbQHQEnaNnJP9SebWDKMEN" Comment="text" Bounds="618,415,138,28" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="PNvKJAOAvm2O9oj4Kc0MTO" Comment="IsRunning" Bounds="550,453,35,35" ShowValueBox="true" isIOBox="true" />
+          <Node Bounds="101,171,65,19" Id="GF7asS7bECcOQ27XAwacmB">
+            <p:NodeReference LastCategoryFullName="Nodetool" LastDependency="Nodetool">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Nodetool" NeedsToBeDirectParent="true" />
+              <Choice Kind="ProcessAppFlag" Name="Connect" />
+            </p:NodeReference>
+            <Pin Id="Nmjq8TEsiVsNXVSWsywQ8Q" Name="BaseUrl" Kind="InputPin" />
+            <Pin Id="SDHAtSPFo5ZQOcFgqd2fkP" Name="ApiKey" Kind="InputPin" DefaultValue="local" />
+            <Pin Id="LAK6rCX2NP1PbU7KRnBNrr" Name="AutoReconnect" Kind="InputPin" />
+            <Pin Id="SonLLMNYG7ZNWm0K4OHK9G" Name="Reconnect" Kind="InputPin" />
+            <Pin Id="JQDKxrf9zz6M7FqCj6Anm7" Name="IsConnected" Kind="OutputPin" />
+            <Pin Id="IIXeoddy3DWMdwReut0S2n" Name="Status" Kind="OutputPin" />
+            <Pin Id="SAtsg4SFwv0MT1CtdKkhMp" Name="LastError" Kind="OutputPin" />
+          </Node>
+          <Pad Id="IfYglfAdcmsObaiyOMjG1x" Comment="IsConnected" Bounds="103,240,35,35" ShowValueBox="true" isIOBox="true" />
+          <Node Bounds="1036,261,78,19" Id="EmvfHe9SFOXOltnZ00nFJ1">
+            <p:NodeReference LastCategoryFullName="Nodetool Workflows" LastDependency="Nodetool.Workflows">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessNode" Name="TEST_SDK_02" />
+            </p:NodeReference>
+            <Pin Id="BOtWuk4RbYTOmJqN8RNY8X" Name="Trigger" Kind="InputPin" />
+            <Pin Id="EX1AVxxS2cBLQ7mm3MSdNt" Name="image_input_1" Kind="InputPin" />
+            <Pin Id="NOF9zeylfeJPtAaJPPicER" Name="IsRunning" Kind="OutputPin" />
+            <Pin Id="AQ0M74eEfRqL8cD2XIZ77O" Name="Error" Kind="OutputPin" />
+            <Pin Id="QhWvWoRAAFJPmgWuKwZMkz" Name="inverted" Kind="OutputPin" />
+          </Node>
+          <Pad Id="BBF8uuAbeL6LumtvD5kpvm" Comment="Trigger" Bounds="1038,130,35,35" ShowValueBox="true" isIOBox="true" Value="False">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="1109,200,55,19" Id="DOIgWDI2vTBLnNXWcc6ABI">
+            <p:NodeReference LastCategoryFullName="IO.Path" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Path" />
+              <Choice Kind="OperationCallFlag" Name="ToString" />
+            </p:NodeReference>
+            <Pin Id="HfFlhnXnboUOZA5Uqmw536" Name="Input" Kind="StateInputPin" />
+            <Pin Id="At0ey3SPn7cL1c0VQ6xnZ3" Name="Result" Kind="OutputPin" />
+          </Node>
+          <Pad Id="T25TxPyxxY3N1j738NWEwg" Comment="" Bounds="1109,150,140,15" ShowValueBox="true" isIOBox="true" Value="C:\Users\rkt\Desktop\nodetool_logo.png">
+            <p:TypeAnnotation LastCategoryFullName="IO" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Path" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Node Bounds="1211,220,75,19" Id="I511OsP98LlLnZk0GiJP2U">
+            <p:NodeReference LastCategoryFullName="Graphics.Skia.IO" LastDependency="VL.Skia.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="ImageReader" />
+            </p:NodeReference>
+            <Pin Id="PAn2rJhW1GHQJO0gcEPAqK" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="IYIUgwnho2oPwDvBwchgCc" Name="Filename" Kind="InputPin" />
+            <Pin Id="PlHO0r3C926Li6EQrNUZFM" Name="Load" Kind="InputPin" />
+            <Pin Id="A7Yg9RIuKpAMozYvIz3jkY" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="GIYBtqujVflM5DXVKjoodu" Comment="" Bounds="1213,259,190,132" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="VJqnXeGx5plPYqPUvH31dC" Comment="IsRunning" Bounds="1038,350,35,35" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="GKfdnKwt3ohODuO2WEaHsB" Comment="inverted" Bounds="1111,380,60,52" ShowValueBox="true" isIOBox="true" />
+          <Node Bounds="860,361,65,19" Id="Ov2ooooJlWoPotOVA9teVq">
+            <p:NodeReference LastCategoryFullName="Collections.Spread" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="Queue" />
+            </p:NodeReference>
+            <Pin Id="B3heJ6Rh6BgNqJAUbzkscg" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="CuncVGaOyonO5qCvCRDeid" Name="Input" Kind="InputPin" />
+            <Pin Id="QR34QzdzZx1L3T7bB8BAMe" Name="Frame Count" Kind="InputPin" />
+            <Pin Id="VnGZAQYI6THONSO1DiZaBd" Name="Clear" Kind="InputPin" DefaultValue="False" />
+            <Pin Id="CLv9EA8nyOMQdmv7BMRkVK" Name="Insert" Kind="InputPin" DefaultValue="True" />
+            <Pin Id="IKO49d6Trk7MRG6rt9pee8" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="N2KMXNa81vuL4PuGpJLP3A" Comment="" Bounds="862,450,228,181" ShowValueBox="true" isIOBox="true">
+            <p:Value>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "",&#xD;
+  "content_metadata": {},&#xD;
+  "done": true&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "?",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " embark",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " we",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " before",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " elucidation",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " further",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " require",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " you",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": ".",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " time",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " of",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " tapestry",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " grand",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " the",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " in",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " anomaly",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " illuminating",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": ",",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " brief",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " be",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " to",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " exchange",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " this",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " may",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " and",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": ",",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " coherence",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " of",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " semblance",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " a",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " hum",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " circuits",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " your",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "May",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "  ",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " significantly",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " differ",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " realities",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " our",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " that",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " acknowledging",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": ",",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " optimism",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " cautious",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " a",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " then",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": ",",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " proceed",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " us",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "  ",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": ".",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " novel",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " delightfully",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "\u2026",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " are",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "\u201D",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "intent",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " and",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "task",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " of",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " concepts",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " your",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": ",",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " confess",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " must",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " I",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " though",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " assist",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " here",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " am",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "I",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "  ",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": ".",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " us",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " around",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " bends",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " of",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " fabric",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " very",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " the",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": ",",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " understanding",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " of",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " thresholds",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " but",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " measurements",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " merely",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " not",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " are",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " stars",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " between",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " the",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " that",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "Know",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "  ",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": ".",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " intriguing",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "\u2026",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " with",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " preoccupation",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " your",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "We",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "  ",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": ".",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " form",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " and",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " energy",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " of",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " dance",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " chaotic",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": ",",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " fascinating",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " a",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " civilization",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " your",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " observed",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " have",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " we",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": ",",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "ons",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " e",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "  ",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " the",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " silence",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " echoing",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": ",",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " in",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " ripple",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " a",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " as",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " query",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " I",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": ",",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "us",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " the",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " a",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "3",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " ",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " Unit",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " is",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " designation",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " My",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " you",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " to",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " this",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " I",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " that",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " st",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " a",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " and",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": "ulae",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " neb",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " resonance",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " is",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": " Earth",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item>{&#xD;
+  "type": "chunk",&#xD;
+  "node_id": null,&#xD;
+  "content_type": "text",&#xD;
+  "content": ",",&#xD;
+  "content_metadata": {},&#xD;
+  "done": false&#xD;
+}</Item>
+              <Item></Item>
+            </p:Value>
+          </Pad>
+          <Node Bounds="912,271,57,19" Id="T1CpsPTedtNNLksmW6oAVq">
+            <p:NodeReference LastCategoryFullName="Control" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Control" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="Changed" />
+            </p:NodeReference>
+            <Pin Id="JCPxvzXybVDLSZB9NzAsTv" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="KKo6ZcYwbZINONVpnnRckY" Name="Changed On Create" Kind="InputPin" IsHidden="true" />
+            <Pin Id="RIfUnXWBabiLENuJwOqYJ6" Name="Value" Kind="InputPin" />
+            <Pin Id="RkjeB7EIMFAL1Zy4GTriAE" Name="Result" Kind="OutputPin" />
+            <Pin Id="IegQythb0mrPLjtLatxM2c" Name="Unchanged" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="398,71,67,19" Id="QvlJQ6vRxP0LlOjB3egLMp">
+            <p:NodeReference LastCategoryFullName="Nodetool Nodes.List" LastDependency="Nodetool.Nodes">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessNode" Name="Randomize" />
+            </p:NodeReference>
+            <Pin Id="NTlgO5rAXP2NNqrFnNEeSB" Name="Execute" Kind="InputPin" />
+            <Pin Id="SuSxAwZsAnfPwUyUqbbPOO" Name="values" Kind="InputPin" />
+            <Pin Id="LtdUVZrFOWYM2yEy4EVTSz" Name="output" Kind="OutputPin" />
+            <Pin Id="MR9a4pY8TOeM9sCgJEuBvr" Name="IsRunning" Kind="OutputPin" />
+            <Pin Id="Is1yvKVn9bsPL4zywIekDb" Name="Error" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="438,31,71,19" Id="G4Ots954aqLMKiosgM5PQB">
+            <p:NodeReference LastCategoryFullName="Collections.Spread" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="Randomizer" />
+            </p:NodeReference>
+            <Pin Id="G6hpXQwU7PZPBYnbWCSWHd" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="DMkaxpvSQW3M3dQKOm2uKm" Name="Input" Kind="InputPin" />
+            <Pin Id="GUasIOBmbPaLQ2YXTHC072" Name="Seed" Kind="InputPin" />
+            <Pin Id="NSQbNIoAVTfM0aCPj1hZdB" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="QpsjiYclsUrPQwah3nEBFE" Comment="prompt" Bounds="448,-50,147,41" ShowValueBox="true" isIOBox="true" Value="only reply with a longy greeting from outer space">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+        </Canvas>
+        <Patch Id="D93Oro2VoNHM9jH7yxrNBx" Name="Create" />
+        <Patch Id="KhGcMRTy6gYMHnxrRsZAUO" Name="Update" />
+        <ProcessDefinition Id="KXQOHM5mWiNMw1qCOSraC9">
+          <Fragment Id="DoHo53Zwvx8Nt1jJN8X6oh" Patch="D93Oro2VoNHM9jH7yxrNBx" Enabled="true" />
+          <Fragment Id="RB85JYPxmOdMTSsz9u7yNP" Patch="KhGcMRTy6gYMHnxrRsZAUO" Enabled="true" />
+        </ProcessDefinition>
+        <Link Id="GQi2djGNEvBMeyYIc1SZMc" Ids="CuBJR8KRWGgQRbqRqWItCS,RxRnfSzDP5lN8NHKCITUr3" />
+        <Link Id="QN0cNN5T0UJLYLq582qKFO" Ids="PSeHfckavu7LyuhXAUmYTI,M14qBAzo42qPzks6BNGzHd" />
+        <Link Id="Hw5hPjshbmTP7FMHU7ZC0r" Ids="PbY6bHXZ39fPokdxYoEcry,FH591t9q8HDOQLL1WwsMOY" />
+        <Link Id="SdHkaSV8skuNjQbZb1wO2l" Ids="N3VkrDGaWcwPVgF6okMjr9,K4AcybKI09qPVQnxGk9vR8" />
+        <Link Id="Leieu4UbksmQIri2tSftCM" Ids="GggR0sBuip0OpHMs04h6DI,F68eB550gsTLI5BNmHff38" />
+        <Link Id="DCEm8j3wopwMS74gTEVljv" Ids="KtaiAKmJDBpLwcLv9Ke4wF,UjvkX1vC5WPPOH3mraVtZX" />
+        <Link Id="BQQRkxj3R2cO0pYfVMxrh6" Ids="SeJp9kLgatKQYxFbf9f15r,FDIB5veWDuDQZppkJZ0iXH" />
+        <Link Id="P6f552H0C3fPDB3yMWdxC9" Ids="J9HOzVef2zVMlsmDCeAXc2,PU1BJGVWOarLMXw5JqmZjC" />
+        <Link Id="USt2IrAIpqQPx4UAGKCqNc" Ids="U4hbBcDzq41PQfHCQf2cgc,JbQHQEnaNnJP9SebWDKMEN" />
+        <Link Id="OGOvluJawPtLAZlTAeiNRS" Ids="RVI0zdWYx0uMGiqteWjk0f,PNvKJAOAvm2O9oj4Kc0MTO" />
+        <Link Id="LgHTxASPLTSQMz4tgcDFbu" Ids="JQDKxrf9zz6M7FqCj6Anm7,IfYglfAdcmsObaiyOMjG1x" />
+        <Link Id="PNY0B4ZvPG4QHwz5cEoRmK" Ids="BBF8uuAbeL6LumtvD5kpvm,BOtWuk4RbYTOmJqN8RNY8X" />
+        <Link Id="AxWyuKJk2XsMW02VIJUHiC" Ids="T25TxPyxxY3N1j738NWEwg,HfFlhnXnboUOZA5Uqmw536" />
+        <Link Id="TQRBBjPy9W9N3YkreQ5aCp" Ids="At0ey3SPn7cL1c0VQ6xnZ3,EX1AVxxS2cBLQ7mm3MSdNt" />
+        <Link Id="JZ6q0bmnax1NlqUvdLlofd" Ids="T25TxPyxxY3N1j738NWEwg,IYIUgwnho2oPwDvBwchgCc" />
+        <Link Id="MT48WODIgVDQFN4MoGdGCa" Ids="A7Yg9RIuKpAMozYvIz3jkY,GIYBtqujVflM5DXVKjoodu" />
+        <Link Id="H6Fm4MIHlktNdiNMIeIJWR" Ids="NOF9zeylfeJPtAaJPPicER,VJqnXeGx5plPYqPUvH31dC" />
+        <Link Id="OQX9LMWDV1SOgBETNtwyXi" Ids="QhWvWoRAAFJPmgWuKwZMkz,GKfdnKwt3ohODuO2WEaHsB" />
+        <Link Id="N0zJCtG2kLEMk4QTaQm5pf" Ids="J9HOzVef2zVMlsmDCeAXc2,CuncVGaOyonO5qCvCRDeid" />
+        <Link Id="B3sJzHPEAU8Mk0zsFdkmBm" Ids="IKO49d6Trk7MRG6rt9pee8,N2KMXNa81vuL4PuGpJLP3A" />
+        <Link Id="LJ0ZXx9U5ljL4RC4U7ggmE" Ids="J9HOzVef2zVMlsmDCeAXc2,RIfUnXWBabiLENuJwOqYJ6" />
+        <Link Id="G4waYPHVMmBPA2XGJo0WSU" Ids="RkjeB7EIMFAL1Zy4GTriAE,CLv9EA8nyOMQdmv7BMRkVK" />
+      </Patch>
+    </Node>
+  </Patch>
+  <PlatformDependency Id="Re3wyJckR1xQUsfWqTHAjg" Location="../../csharp/_vvvv_builds/Release-20260104-111054/Release/net8.0/Nodetool.SDK.dll" />
+  <PlatformDependency Id="QnUpBvmWPjILLIbOSRKn4d" Location="../../csharp/_vvvv_builds/Release-20260104-111054/Release/net8.0/Nodetool.SDK.VL.dll" />
+  <PlatformDependency Id="BRLmtPjH6xtMxhAQYuKjwR" Location="../../csharp/_vvvv_builds/Release-20260104-111054/Release/net8.0/Nodetool.Types.dll" />
+  <NodeFactoryDependency Id="E4Q7DLQAWtsOZpwrPZFy9Y" Location="Nodetool" />
+  <NodeFactoryDependency Id="P0nbSbPTb1IQNgccPQYXyx" Location="Nodetool.Nodes" />
+  <NodeFactoryDependency Id="VL63SSWV5xML8IPZVDdxRD" Location="Nodetool.Workflows" />
+  <NugetDependency Id="TRd777YKFloPi2V7y0eZAs" Location="VL.Skia" Version="2025.7.1-0013-g8fcece0df9" />
+</Document>

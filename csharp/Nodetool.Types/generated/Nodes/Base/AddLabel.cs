@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class AddLabel
 {
     [Key(0)]
-    public string message_id { get; set; } = "";
+    public string label { get; set; } = @"";
     [Key(1)]
-    public string label { get; set; } = "";
+    public string message_id { get; set; } = @"";
 
     public bool Process()
     {

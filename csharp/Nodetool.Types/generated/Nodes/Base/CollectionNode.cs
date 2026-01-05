@@ -8,12 +8,12 @@ namespace Nodetool.Nodes.Base;
 public class CollectionNode
 {
     [Key(0)]
-    public string name { get; set; } = "";
+    public Nodetool.Types.Core.LlamaModel embedding_model { get; set; } = new Nodetool.Types.Core.LlamaModel();
     [Key(1)]
-    public Nodetool.Types.LlamaModel embedding_model { get; set; } = new Nodetool.Types.LlamaModel();
+    public string name { get; set; } = @"";
 
-    public Nodetool.Types.Collection Process()
+    public Nodetool.Types.Core.Collection Process()
     {
-        return default(Nodetool.Types.Collection);
+        return default(Nodetool.Types.Core.Collection);
     }
 }

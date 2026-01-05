@@ -8,13 +8,13 @@ namespace Nodetool.Nodes.Base;
 public class RegexReplace
 {
     [Key(0)]
-    public string text { get; set; } = "";
-    [Key(1)]
-    public string pattern { get; set; } = "";
-    [Key(2)]
-    public string replacement { get; set; } = "";
-    [Key(3)]
     public int count { get; set; } = 0;
+    [Key(1)]
+    public string pattern { get; set; } = @"";
+    [Key(2)]
+    public string replacement { get; set; } = @"";
+    [Key(3)]
+    public string text { get; set; } = @"";
 
     public string Process()
     {

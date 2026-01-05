@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class Randomize
 {
     [Key(0)]
-    public object values { get; set; } = new List<object>();
+    public object values { get; set; } = new();
 
     public object Process()
     {

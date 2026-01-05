@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class Resize
 {
     [Key(0)]
-    public Nodetool.Types.ImageRef image { get; set; } = new Nodetool.Types.ImageRef();
-    [Key(1)]
-    public int width { get; set; } = 512;
-    [Key(2)]
     public int height { get; set; } = 512;
+    [Key(1)]
+    public Nodetool.Types.Core.ImageRef image { get; set; } = new Nodetool.Types.Core.ImageRef();
+    [Key(2)]
+    public int width { get; set; } = 512;
 
-    public Nodetool.Types.ImageRef Process()
+    public Nodetool.Types.Core.ImageRef Process()
     {
-        return default(Nodetool.Types.ImageRef);
+        return default(Nodetool.Types.Core.ImageRef);
     }
 }

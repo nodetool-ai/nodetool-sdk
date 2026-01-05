@@ -8,16 +8,16 @@ namespace Nodetool.Nodes.Fal;
 public class Veo2
 {
     [Key(0)]
-    public string prompt { get; set; } = "";
+    public object aspect_ratio { get; set; }
     [Key(1)]
     public object duration { get; set; }
     [Key(2)]
-    public object aspect_ratio { get; set; }
+    public string prompt { get; set; } = @"";
     [Key(3)]
     public int seed { get; set; } = -1;
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

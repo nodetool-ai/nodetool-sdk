@@ -155,7 +155,8 @@ public class NodeToolTypeRegistry
         return type.IsClass && 
                !type.IsAbstract && 
                type.GetCustomAttribute<MessagePackObjectAttribute>() != null &&
-               type.Namespace == "Nodetool.Types";
+               type.Namespace != null &&
+               type.Namespace.StartsWith("Nodetool.Types", StringComparison.Ordinal);
     }
 
     /// <summary>

@@ -8,12 +8,12 @@ namespace Nodetool.Nodes.Base;
 public class SelectColumn
 {
     [Key(0)]
-    public Nodetool.Types.DataframeRef dataframe { get; set; } = new Nodetool.Types.DataframeRef();
+    public string columns { get; set; } = @"";
     [Key(1)]
-    public string columns { get; set; } = "";
+    public Nodetool.Types.Core.DataframeRef dataframe { get; set; } = new Nodetool.Types.Core.DataframeRef();
 
-    public Nodetool.Types.DataframeRef Process()
+    public Nodetool.Types.Core.DataframeRef Process()
     {
-        return default(Nodetool.Types.DataframeRef);
+        return default(Nodetool.Types.Core.DataframeRef);
     }
 }

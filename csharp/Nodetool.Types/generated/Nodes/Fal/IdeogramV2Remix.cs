@@ -8,22 +8,22 @@ namespace Nodetool.Nodes.Fal;
 public class IdeogramV2Remix
 {
     [Key(0)]
-    public string prompt { get; set; } = "";
+    public string aspect_ratio { get; set; } = @"1:1";
     [Key(1)]
-    public Nodetool.Types.ImageRef image { get; set; } = new Nodetool.Types.ImageRef();
-    [Key(2)]
-    public string aspect_ratio { get; set; } = "1:1";
-    [Key(3)]
-    public double strength { get; set; } = 0.8;
-    [Key(4)]
     public bool expand_prompt { get; set; } = true;
-    [Key(5)]
-    public string style { get; set; } = "auto";
-    [Key(6)]
+    [Key(2)]
+    public Nodetool.Types.Core.ImageRef image { get; set; } = new Nodetool.Types.Core.ImageRef();
+    [Key(3)]
+    public string prompt { get; set; } = @"";
+    [Key(4)]
     public int seed { get; set; } = -1;
+    [Key(5)]
+    public double strength { get; set; } = 0.8;
+    [Key(6)]
+    public string style { get; set; } = @"auto";
 
-    public Nodetool.Types.ImageRef Process()
+    public Nodetool.Types.Core.ImageRef Process()
     {
-        return default(Nodetool.Types.ImageRef);
+        return default(Nodetool.Types.Core.ImageRef);
     }
 }

@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class GetRequestDocument
 {
     [Key(0)]
-    public string url { get; set; } = "";
+    public string url { get; set; } = @"";
 
-    public Nodetool.Types.DocumentRef Process()
+    public Nodetool.Types.Core.DocumentRef Process()
     {
-        return default(Nodetool.Types.DocumentRef);
+        return default(Nodetool.Types.Core.DocumentRef);
     }
 }

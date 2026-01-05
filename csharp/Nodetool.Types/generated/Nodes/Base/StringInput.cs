@@ -8,11 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class StringInput
 {
     [Key(0)]
-    public string value { get; set; } = "";
+    public string description { get; set; } = @"";
     [Key(1)]
-    public string name { get; set; } = "";
+    public string name { get; set; } = @"";
     [Key(2)]
-    public string description { get; set; } = "";
+    public string value { get; set; } = @"";
 
     public string Process()
     {

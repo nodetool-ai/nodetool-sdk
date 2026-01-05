@@ -8,12 +8,12 @@ namespace Nodetool.Nodes.Huggingface;
 public class FeatureExtraction
 {
     [Key(0)]
-    public Nodetool.Types.HFFeatureExtraction model { get; set; } = new Nodetool.Types.HFFeatureExtraction();
+    public string inputs { get; set; } = @"";
     [Key(1)]
-    public string inputs { get; set; } = "";
+    public Nodetool.Types.Core.HFFeatureExtraction model { get; set; } = new Nodetool.Types.Core.HFFeatureExtraction();
 
-    public Nodetool.Types.NPArray Process()
+    public Nodetool.Types.Core.NPArray Process()
     {
-        return default(Nodetool.Types.NPArray);
+        return default(Nodetool.Types.Core.NPArray);
     }
 }

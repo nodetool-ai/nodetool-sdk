@@ -7,13 +7,13 @@ namespace Nodetool.Types.Core;
 public class Task
 {
     [Key(0)]
-    public object type { get; set; } = "task";
+    public string description { get; set; } = @"";
     [Key(1)]
-    public string id { get; set; } = "";
+    public string id { get; set; } = @"";
     [Key(2)]
-    public string title { get; set; } = "";
+    public List<Nodetool.Types.Core.SubTask> subtasks { get; set; } = new();
     [Key(3)]
-    public string description { get; set; } = "";
+    public string title { get; set; } = @"";
     [Key(4)]
-    public List<Nodetool.Types.SubTask> subtasks { get; set; } = new List<object>();
+    public object type { get; set; } = @"task";
 }

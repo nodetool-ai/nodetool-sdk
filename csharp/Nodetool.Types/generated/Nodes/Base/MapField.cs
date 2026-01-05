@@ -8,11 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class MapField
 {
     [Key(0)]
-    public object values { get; set; } = new List<object>();
+    public object default_ { get; set; } = null;
     [Key(1)]
-    public string field { get; set; } = "";
+    public string field { get; set; } = @"";
     [Key(2)]
-    public object default { get; set; } = null;
+    public object values { get; set; } = new();
 
     public object Process()
     {

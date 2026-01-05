@@ -8,12 +8,12 @@ namespace Nodetool.Nodes.Base;
 public class ParseDate
 {
     [Key(0)]
-    public string date_string { get; set; } = "";
+    public string date_string { get; set; } = @"";
     [Key(1)]
-    public object input_format { get; set; } = "DateFormat.ISO";
+    public object input_format { get; set; } = @"%Y-%m-%d";
 
-    public Nodetool.Types.Date Process()
+    public Nodetool.Types.Core.Date Process()
     {
-        return default(Nodetool.Types.Date);
+        return default(Nodetool.Types.Core.Date);
     }
 }

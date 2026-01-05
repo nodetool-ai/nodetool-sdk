@@ -8,12 +8,12 @@ namespace Nodetool.Nodes.Base;
 public class Repeat
 {
     [Key(0)]
-    public Nodetool.Types.AudioRef audio { get; set; } = new Nodetool.Types.AudioRef();
+    public Nodetool.Types.Core.AudioRef audio { get; set; } = new Nodetool.Types.Core.AudioRef();
     [Key(1)]
     public int loops { get; set; } = 2;
 
-    public Nodetool.Types.AudioRef Process()
+    public Nodetool.Types.Core.AudioRef Process()
     {
-        return default(Nodetool.Types.AudioRef);
+        return default(Nodetool.Types.Core.AudioRef);
     }
 }

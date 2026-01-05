@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class PathToString
 {
     [Key(0)]
-    public Nodetool.Types.FilePath file_path { get; set; } = new Nodetool.Types.FilePath();
+    public string file_path { get; set; } = @"";
 
     public string Process()
     {

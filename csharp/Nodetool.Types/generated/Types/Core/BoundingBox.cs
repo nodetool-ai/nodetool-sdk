@@ -7,13 +7,13 @@ namespace Nodetool.Types.Core;
 public class BoundingBox
 {
     [Key(0)]
-    public object type { get; set; } = "bounding_box";
+    public object type { get; set; } = @"bounding_box";
     [Key(1)]
-    public double xmin { get; set; }
-    [Key(2)]
-    public double ymin { get; set; }
-    [Key(3)]
     public double xmax { get; set; }
-    [Key(4)]
+    [Key(2)]
+    public double xmin { get; set; }
+    [Key(3)]
     public double ymax { get; set; }
+    [Key(4)]
+    public double ymin { get; set; }
 }

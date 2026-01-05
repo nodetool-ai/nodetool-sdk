@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class Image
 {
     [Key(0)]
-    public Nodetool.Types.ImageRef value { get; set; } = new Nodetool.Types.ImageRef();
+    public Nodetool.Types.Core.ImageRef value { get; set; } = new Nodetool.Types.Core.ImageRef();
 
-    public Nodetool.Types.ImageRef Process()
+    public Nodetool.Types.Core.ImageRef Process()
     {
-        return default(Nodetool.Types.ImageRef);
+        return default(Nodetool.Types.Core.ImageRef);
     }
 }

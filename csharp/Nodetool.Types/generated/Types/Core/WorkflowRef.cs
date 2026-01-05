@@ -7,7 +7,7 @@ namespace Nodetool.Types.Core;
 public class WorkflowRef
 {
     [Key(0)]
-    public object type { get; set; } = "workflow";
+    public string id { get; set; } = @"";
     [Key(1)]
-    public string id { get; set; } = "";
+    public object type { get; set; } = @"workflow";
 }

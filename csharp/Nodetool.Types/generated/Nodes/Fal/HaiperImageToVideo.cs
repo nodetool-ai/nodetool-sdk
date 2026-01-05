@@ -8,18 +8,18 @@ namespace Nodetool.Nodes.Fal;
 public class HaiperImageToVideo
 {
     [Key(0)]
-    public Nodetool.Types.ImageRef image { get; set; } = new Nodetool.Types.ImageRef();
-    [Key(1)]
-    public string prompt { get; set; } = "";
-    [Key(2)]
     public object duration { get; set; }
+    [Key(1)]
+    public Nodetool.Types.Core.ImageRef image { get; set; } = new Nodetool.Types.Core.ImageRef();
+    [Key(2)]
+    public string prompt { get; set; } = @"";
     [Key(3)]
     public bool prompt_enhancer { get; set; } = true;
     [Key(4)]
     public int seed { get; set; } = -1;
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

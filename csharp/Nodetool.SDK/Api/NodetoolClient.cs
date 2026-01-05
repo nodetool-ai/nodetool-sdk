@@ -22,6 +22,7 @@ public class NodetoolClient : INodetoolClient
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true,
             WriteIndented = false
         };
         

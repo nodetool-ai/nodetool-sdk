@@ -10,6 +10,7 @@ using Nodetool.SDK.VL.Services;
 using Nodetool.SDK.VL.Nodes;
 using Nodetool.SDK.Configuration;
 using Microsoft.Extensions.Logging;
+using Nodetool.SDK.VL.Utilities;
 
 namespace Nodetool.SDK.VL.Factories
 {
@@ -36,13 +37,10 @@ namespace Nodetool.SDK.VL.Factories
         /// </summary>
         public static NodeBuilding.FactoryImpl GetFactory(IVLNodeDescriptionFactory vlSelfFactory)
         {
-            Console.WriteLine("=== WorkflowNodeFactory.GetFactory called ===");
-            Console.WriteLine($"WorkflowNodeFactory: vlSelfFactory type: {vlSelfFactory?.GetType().Name ?? "null"}");
-            
             // Add safety check for vlSelfFactory
             if (vlSelfFactory == null)
             {
-                Console.WriteLine("WorkflowNodeFactory: ERROR - vlSelfFactory is null!");
+                VlLog.Error("WorkflowNodeFactory: vlSelfFactory is null");
                 return NodeBuilding.NewFactoryImpl(ImmutableArray<IVLNodeDescription>.Empty);
             }
             
@@ -50,11 +48,8 @@ namespace Nodetool.SDK.VL.Factories
             {
                 if (_isInitialized && _factoryImpl != null)
                 {
-                    Console.WriteLine("WorkflowNodeFactory: Returning cached factory instance");
                     return _factoryImpl;
                 }
-
-                Console.WriteLine("=== WorkflowNodeFactory: Performing one-time initialization ===");
                 
                 try
                 {
@@ -66,8 +61,6 @@ namespace Nodetool.SDK.VL.Factories
                     int successfullyProcessedCount = 0;
                     int failedToProcessCount = 0;
 
-                    Console.WriteLine($"WorkflowNodeFactory: Processing {_fetchedWorkflows.Count} fetched workflow definitions...");
-                    
                     // Process each workflow definition from the metadata
                     foreach (var workflow in _fetchedWorkflows)
                     {
@@ -96,30 +89,24 @@ namespace Nodetool.SDK.VL.Factories
 
                                 allDescriptions.Add(workflowNodeDesc);
                                 successfullyProcessedCount++;
-                                
-                                var inputCount = workflow.GetInputProperties().Count();
-                                var outputCount = workflow.GetOutputProperties().Count();
-                                Console.WriteLine($"✅ WorkflowNodeFactory: Created WorkflowNodeDescription '{vlNodeName}' from '{workflow.Name}' ({inputCount + 1} inputs, {outputCount + 2} outputs)");
                             }
                             catch (Exception ex)
                             {
                                 failedToProcessCount++;
-                                Console.WriteLine($"WorkflowNodeFactory: Error creating WorkflowNodeDescription for '{workflow.Name}': {ex.Message}");
-                                Console.WriteLine($"WorkflowNodeFactory: Stack trace: {ex.StackTrace}");
+                                VlLog.Error($"WorkflowNodeFactory: error creating node for '{workflow.Name}': {ex.Message}");
                             }
                         }
                         catch (Exception ex)
                         {
                             failedToProcessCount++;
-                            Console.WriteLine($"WorkflowNodeFactory: Error processing workflow '{workflow.Name}': {ex.Message}");
+                            VlLog.Error($"WorkflowNodeFactory: error processing workflow '{workflow.Name}': {ex.Message}");
                         }
                     }
 
                     _processingSummary = $"Processed {successfullyProcessedCount} workflows successfully (Failed: {failedToProcessCount}) from {_fetchedWorkflows.Count} total definitions.";
-                    Console.WriteLine($"WorkflowNodeFactory: {_processingSummary}");
+                    VlLog.Info(_processingSummary);
 
                     // Add diagnostic status node using lambda-based factory approach
-                    Console.WriteLine("WorkflowNodeFactory: Creating diagnostic status node...");
                     try
                     {
                         var statusNode = vlSelfFactory?.NewNodeDescription(
@@ -150,42 +137,28 @@ namespace Nodetool.SDK.VL.Factories
                         if (statusNode != null)
                         {
                             allDescriptions.Add(statusNode);
-                            Console.WriteLine("WorkflowNodeFactory: Diagnostic status node created successfully");
                         }
                         else
                         {
-                            Console.WriteLine("WorkflowNodeFactory: Failed to create diagnostic status node - vlSelfFactory returned null");
+                            VlLog.Error("WorkflowNodeFactory: failed to create WorkflowAPIStatus node (vlSelfFactory returned null)");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"WorkflowNodeFactory: Error creating status node: {ex.Message}");
-                        Console.WriteLine($"WorkflowNodeFactory: Status node stack trace: {ex.StackTrace}");
+                        VlLog.Error($"WorkflowNodeFactory: error creating WorkflowAPIStatus node: {ex.Message}");
                     }
 
-                    Console.WriteLine($"WorkflowNodeFactory: Creating factory with {allDescriptions.Count} node descriptions...");
                     _factoryImpl = NodeBuilding.NewFactoryImpl(ImmutableArray.CreateRange(allDescriptions));
                     _isInitialized = true;
-                    Console.WriteLine($"=== WorkflowNodeFactory: Factory created successfully with {allDescriptions.Count} node descriptions ===");
                     return _factoryImpl;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"=== WorkflowNodeFactory: CRITICAL ERROR during factory initialization ===");
-                    Console.WriteLine($"WorkflowNodeFactory: Error message: {ex.Message}");
-                    Console.WriteLine($"WorkflowNodeFactory: Error type: {ex.GetType().Name}");
-                    Console.WriteLine($"WorkflowNodeFactory: Stack trace: {ex.StackTrace}");
-                    
-                    if (ex.InnerException != null)
-                    {
-                        Console.WriteLine($"WorkflowNodeFactory: Inner exception: {ex.InnerException.Message}");
-                        Console.WriteLine($"WorkflowNodeFactory: Inner stack trace: {ex.InnerException.StackTrace}");
-                    }
+                    VlLog.Error($"WorkflowNodeFactory: initialization failed: {ex.GetType().Name}: {ex.Message}");
                     
                     // Return empty factory to prevent VL from considering it "not found"
                     _factoryImpl = NodeBuilding.NewFactoryImpl(ImmutableArray<IVLNodeDescription>.Empty);
                     _isInitialized = true;
-                    Console.WriteLine("WorkflowNodeFactory: Returning empty factory due to initialization error");
                     return _factoryImpl;
                 }
             }
@@ -196,26 +169,27 @@ namespace Nodetool.SDK.VL.Factories
         /// </summary>
         private static void PerformGlobalDataFetchAndStore()
         {
-            Console.WriteLine("=== WorkflowNodeFactory: Fetching workflow metadata from API ===");
-            Console.WriteLine($"WorkflowNodeFactory: Target URL: {NodetoolConstants.Defaults.BaseUrl}{NodetoolConstants.Endpoints.Workflows}");
+            var apiBase = NodeToolClientProvider.CurrentApiBaseUrl?.ToString().TrimEnd('/')
+                          ?? NodetoolConstants.Defaults.BaseUrl;
+            VlLog.Debug($"WorkflowNodeFactory: Target URL: {apiBase}{NodetoolConstants.Endpoints.Workflows}");
             
             try
             {
                 var metadataService = new WorkflowMetadataService();
-                Console.WriteLine("WorkflowNodeFactory: Created WorkflowMetadataService instance");
+
+                // Ensure the metadata service uses the same API base URL as the Connect node.
+                metadataService.Configure(new NodetoolOptions { BaseUrl = apiBase });
                 
                 // Since we can't use async in static constructor context, we need to handle this differently
                 // For now, we'll use Task.Run to block synchronously - this isn't ideal but works for initialization
-                Console.WriteLine("WorkflowNodeFactory: Starting async metadata fetch...");
                 var task = Task.Run(async () => await metadataService.FetchWorkflowMetadataAsync());
                 
-                Console.WriteLine($"WorkflowNodeFactory: Waiting for API response ({NodetoolConstants.Defaults.TimeoutSeconds} second timeout)...");
                 bool completed = task.Wait(TimeSpan.FromSeconds(NodetoolConstants.Defaults.TimeoutSeconds)); // Use constant for timeout
                 
                 if (!completed)
                 {
                     _apiStatusMessage = $"Timeout waiting for API response after {NodetoolConstants.Defaults.TimeoutSeconds} seconds";
-                    Console.WriteLine($"WorkflowNodeFactory: {_apiStatusMessage}");
+                    VlLog.Error($"WorkflowNodeFactory: {_apiStatusMessage}");
                     _fetchedWorkflows = ImmutableList<WorkflowDetail>.Empty;
                     return;
                 }
@@ -223,9 +197,7 @@ namespace Nodetool.SDK.VL.Factories
                 var workflows = task.Result;
                 _fetchedWorkflows = workflows?.ToImmutableList() ?? ImmutableList<WorkflowDetail>.Empty;
                 _apiStatusMessage = metadataService.StatusMessage;
-                
-                Console.WriteLine($"=== WorkflowNodeFactory: Successfully fetched {_fetchedWorkflows.Count} workflow definitions ===");
-                Console.WriteLine($"WorkflowNodeFactory: API Status: {_apiStatusMessage}");
+                VlLog.Debug($"WorkflowNodeFactory: {_apiStatusMessage} ({_fetchedWorkflows.Count} workflows)");
             }
             catch (AggregateException aggEx)
             {
@@ -281,32 +253,38 @@ namespace Nodetool.SDK.VL.Factories
             }
 
             // Log comprehensive error information
-            Console.WriteLine($"");
-            Console.WriteLine($"================= NODETOOL WORKFLOW API ERROR =================");
-            Console.WriteLine($"🚨 WORKFLOW NODES CANNOT BE CREATED - API UNREACHABLE");
-            Console.WriteLine($"");
-            Console.WriteLine($"Error Category: {errorCategory}");
-            Console.WriteLine($"Status: {_apiStatusMessage}");
-            Console.WriteLine($"");
-            Console.WriteLine($"📋 USER ACTION REQUIRED:");
-            Console.WriteLine($"{userGuidance}");
-            Console.WriteLine($"");
-            Console.WriteLine($"🔧 Technical Details:");
-            Console.WriteLine($"   Error Type: {ex.GetType().Name}");
-            Console.WriteLine($"   Message: {ex.Message}");
-            if (ex.InnerException != null)
+            // Keep default startup logs concise; show full troubleshooting only in verbose mode.
+            VlLog.Error($"Workflows API error ({errorCategory}): {_apiStatusMessage}");
+
+            if (VlLog.Verbose)
             {
-                Console.WriteLine($"   Inner Error: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                Console.WriteLine("");
+                Console.WriteLine("================= NODETOOL WORKFLOW API ERROR =================");
+                Console.WriteLine("🚨 WORKFLOW NODES CANNOT BE CREATED - API UNREACHABLE");
+                Console.WriteLine("");
+                Console.WriteLine($"Error Category: {errorCategory}");
+                Console.WriteLine($"Status: {_apiStatusMessage}");
+                Console.WriteLine("");
+                Console.WriteLine("📋 USER ACTION REQUIRED:");
+                Console.WriteLine(userGuidance);
+                Console.WriteLine("");
+                Console.WriteLine("🔧 Technical Details:");
+                Console.WriteLine($"   Error Type: {ex.GetType().Name}");
+                Console.WriteLine($"   Message: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"   Inner Error: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                }
+                Console.WriteLine("");
+                Console.WriteLine("🔍 Troubleshooting Steps:");
+                Console.WriteLine("   1. Verify Nodetool server is running");
+                Console.WriteLine("   2. Check workflow API endpoint accessibility");
+                Console.WriteLine("   3. Verify workflow metadata service configuration");
+                Console.WriteLine("   4. Check firewall/network settings");
+                Console.WriteLine("   5. Verify Nodetool server health");
+                Console.WriteLine("=================================================================");
+                Console.WriteLine("");
             }
-            Console.WriteLine($"");
-            Console.WriteLine($"🔍 Troubleshooting Steps:");
-            Console.WriteLine($"   1. Verify Nodetool server is running");
-            Console.WriteLine($"   2. Check workflow API endpoint accessibility");
-            Console.WriteLine($"   3. Verify workflow metadata service configuration");
-            Console.WriteLine($"   4. Check firewall/network settings");
-            Console.WriteLine($"   5. Verify Nodetool server health");
-            Console.WriteLine($"=================================================================");
-            Console.WriteLine($"");
             
             _fetchedWorkflows = ImmutableList<WorkflowDetail>.Empty;
         }

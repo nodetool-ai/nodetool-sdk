@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class Fps
 {
     [Key(0)]
-    public Nodetool.Types.VideoRef video { get; set; } = new Nodetool.Types.VideoRef();
+    public Nodetool.Types.Core.VideoRef video { get; set; } = new Nodetool.Types.Core.VideoRef();
 
     public double Process()
     {

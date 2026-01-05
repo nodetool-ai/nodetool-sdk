@@ -1,6 +1,7 @@
 """
 Utility functions for C# type generation.
 """
+import json
 from typing import Any, get_origin, get_args
 
 try:
@@ -21,6 +22,47 @@ _PRIMITIVE_TYPE_MAP = {
     object: "object",
 }
 
+CSHARP_KEYWORDS = {
+    "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char",
+    "checked", "class", "const", "continue", "decimal", "default", "delegate",
+    "do", "double", "else", "enum", "event", "explicit", "extern", "false",
+    "finally", "fixed", "float", "for", "foreach", "goto", "if", "implicit",
+    "in", "int", "interface", "internal", "is", "lock", "long", "namespace",
+    "new", "null", "object", "operator", "out", "override", "params", "private",
+    "protected", "public", "readonly", "ref", "return", "sbyte", "sealed",
+    "short", "sizeof", "stackalloc", "static", "string", "struct", "switch",
+    "this", "throw", "true", "try", "typeof", "uint", "ulong", "unchecked",
+    "unsafe", "ushort", "using", "virtual", "void", "volatile", "while",
+}
+
+_KNOWN_CSHARP_TYPE_NAMES: dict[type, str] = {}
+
+def set_known_csharp_type_names(mapping: dict[type, str]) -> None:
+    """
+    Provide a mapping from Python BaseType subclasses to fully-qualified C# type names.
+
+    This is needed to generate correct cross-namespace references for types/nodes.
+    """
+    global _KNOWN_CSHARP_TYPE_NAMES
+    _KNOWN_CSHARP_TYPE_NAMES = dict(mapping)
+
+def csharp_identifier(name: str) -> str:
+    """
+    Return a C# identifier that compiles.
+
+    We intentionally keep the original field name (often snake_case) to
+    preserve wire compatibility for map-keyed formats if/when enabled.
+    """
+    if not name:
+        return "_"
+    if name in CSHARP_KEYWORDS:
+        # Avoid @-escaped identifiers because some source generators (notably MessagePack)
+        # can emit invalid code when the underlying member name is a reserved keyword.
+        return f"{name}_"
+    if name[0].isdigit():
+        return "_" + name
+    return name
+
 def python_type_to_csharp(tp: Any) -> str:
     """Convert a Python type annotation to a C# type string."""
     origin = get_origin(tp)
@@ -31,7 +73,11 @@ def python_type_to_csharp(tp: Any) -> str:
             # Handle BaseType subclasses
             try:
                 if issubclass(tp, BaseType):
-                    return f"Nodetool.Types.{tp.__name__}"
+                    # Prefer fully-qualified names when available (cross-package references).
+                    if tp in _KNOWN_CSHARP_TYPE_NAMES:
+                        return _KNOWN_CSHARP_TYPE_NAMES[tp]
+                    # Fallback: best-effort (works if consumer has a using or types are in base namespace).
+                    return tp.__name__
             except TypeError:
                 pass
         # typing.Any or unknown
@@ -80,17 +126,24 @@ def default_value_to_csharp(value: Any) -> str | None:
     if value is None:
         return "null"
     if isinstance(value, str):
-        return f'"{value}"'
+        # Use a verbatim string literal to safely represent multiline prompts and avoid
+        # needing to escape backslashes. Double quotes must be doubled in verbatim strings.
+        escaped = value.replace('"', '""')
+        return f'@"{escaped}"'
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, (int, float)):
         return str(value)
     if isinstance(value, list):
-        return "new List<object>()"
+        # Caller should use target-typed new() when the property is a generic list.
+        return "new()"
     if isinstance(value, dict):
-        return "new Dictionary<string, object>()"
+        return "new()"
     if isinstance(value, BaseType):
-        return f"new Nodetool.Types.{type(value).__name__}()"
+        tp = type(value)
+        if tp in _KNOWN_CSHARP_TYPE_NAMES:
+            return f"new {_KNOWN_CSHARP_TYPE_NAMES[tp]}()"
+        return f"new {tp.__name__}()"
     return None
 
 def get_package_name(raw_name: str) -> str:

@@ -8,13 +8,13 @@ namespace Nodetool.Nodes.Base;
 public class Slice
 {
     [Key(0)]
-    public string text { get; set; } = "";
+    public int? start { get; set; } = null;
     [Key(1)]
-    public object start { get; set; } = null;
+    public int? step { get; set; } = null;
     [Key(2)]
-    public object stop { get; set; } = null;
+    public int? stop { get; set; } = null;
     [Key(3)]
-    public object step { get; set; } = null;
+    public string text { get; set; } = @"";
 
     public string Process()
     {

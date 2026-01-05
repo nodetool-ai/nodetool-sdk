@@ -7,11 +7,11 @@ namespace Nodetool.Types.Core;
 public class ExcelRef
 {
     [Key(0)]
-    public object type { get; set; } = "excel";
-    [Key(1)]
-    public string uri { get; set; } = "";
-    [Key(2)]
     public object asset_id { get; set; } = null;
-    [Key(3)]
+    [Key(1)]
     public object data { get; set; } = null;
+    [Key(2)]
+    public object type { get; set; } = @"excel";
+    [Key(3)]
+    public string uri { get; set; } = @"";
 }

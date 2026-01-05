@@ -8,16 +8,16 @@ namespace Nodetool.Nodes.Base;
 public class ChromaKey
 {
     [Key(0)]
-    public Nodetool.Types.VideoRef video { get; set; } = new Nodetool.Types.VideoRef();
+    public double blend { get; set; } = 0.1;
     [Key(1)]
-    public Nodetool.Types.ColorRef key_color { get; set; } = new Nodetool.Types.ColorRef();
+    public Nodetool.Types.Core.ColorRef key_color { get; set; } = new Nodetool.Types.Core.ColorRef();
     [Key(2)]
     public double similarity { get; set; } = 0.3;
     [Key(3)]
-    public double blend { get; set; } = 0.1;
+    public Nodetool.Types.Core.VideoRef video { get; set; } = new Nodetool.Types.Core.VideoRef();
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

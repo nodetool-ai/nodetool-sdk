@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class AddColumn
 {
     [Key(0)]
-    public Nodetool.Types.DataframeRef dataframe { get; set; } = new Nodetool.Types.DataframeRef();
+    public string column_name { get; set; } = @"";
     [Key(1)]
-    public string column_name { get; set; } = "";
+    public Nodetool.Types.Core.DataframeRef dataframe { get; set; } = new Nodetool.Types.Core.DataframeRef();
     [Key(2)]
-    public object values { get; set; } = new List<object>();
+    public object values { get; set; } = new();
 
-    public Nodetool.Types.DataframeRef Process()
+    public Nodetool.Types.Core.DataframeRef Process()
     {
-        return default(Nodetool.Types.DataframeRef);
+        return default(Nodetool.Types.Core.DataframeRef);
     }
 }

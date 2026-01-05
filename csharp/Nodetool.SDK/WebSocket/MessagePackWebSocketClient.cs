@@ -2,6 +2,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using MessagePack;
+using MessagePack.Resolvers;
 using Microsoft.Extensions.Logging;
 using Nodetool.SDK.Types;
 
@@ -13,12 +14,12 @@ namespace Nodetool.SDK.WebSocket;
 /// </summary>
 public class MessagePackWebSocketClient : IDisposable
 {
-    private readonly TypeLookupService _typeLookup;
     private readonly ILogger<MessagePackWebSocketClient> _logger;
     private ClientWebSocket? _webSocket;
     private CancellationTokenSource? _cancellationTokenSource;
     private readonly SemaphoreSlim _sendSemaphore = new(1, 1);
     private bool _disposed = false;
+    private readonly MessagePackSerializerOptions _options;
 
     /// <summary>
     /// Event fired when a message is received and deserialized.
@@ -40,12 +41,18 @@ public class MessagePackWebSocketClient : IDisposable
     /// </summary>
     public bool IsConnected => _webSocket?.State == WebSocketState.Open;
 
-    public MessagePackWebSocketClient(
-        TypeLookupService typeLookup,
-        ILogger<MessagePackWebSocketClient>? logger = null)
+    public MessagePackWebSocketClient(ILogger<MessagePackWebSocketClient>? logger = null)
     {
-        _typeLookup = typeLookup;
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<MessagePackWebSocketClient>.Instance;
+
+        // We need to interop with Python msgpack which uses map/dict structures.
+        // Contractless resolver handles Dictionary<string, object> value trees well.
+        _options = MessagePackSerializerOptions.Standard.WithResolver(
+            CompositeResolver.Create(
+                ContractlessStandardResolver.Instance,
+                StandardResolver.Instance
+            )
+        );
     }
 
     /// <summary>
@@ -147,8 +154,8 @@ public class MessagePackWebSocketClient : IDisposable
         await _sendSemaphore.WaitAsync(cancellationToken);
         try
         {
-            // Serialize using MessagePack
-            var data = _typeLookup.Serialize(message);
+            // Serialize using MessagePack (map-based)
+            var data = MessagePackSerializer.Serialize(message, _options);
             
             if (data.Length == 0)
             {
@@ -183,12 +190,14 @@ public class MessagePackWebSocketClient : IDisposable
     /// <param name="jobId">Optional job identifier</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if request was sent successfully</returns>
+    [Obsolete("Legacy message shape. Prefer NodeToolExecutionClient which uses run_job over the worker protocol.")]
     public async Task<bool> ExecuteWorkflowAsync(
         string workflowId, 
         Dictionary<string, object> inputs,
         string? jobId = null,
         CancellationToken cancellationToken = default)
     {
+        // Keep for backwards compatibility, but the canonical protocol is run_job.
         var request = new WorkflowExecuteRequest
         {
             workflow_id = workflowId,
@@ -207,12 +216,14 @@ public class MessagePackWebSocketClient : IDisposable
     /// <param name="nodeId">Optional node identifier</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if request was sent successfully</returns>
+    [Obsolete("Legacy message shape. Prefer NodeToolExecutionClient which uses run_job over the worker protocol.")]
     public async Task<bool> ExecuteNodeAsync(
         string nodeType,
         Dictionary<string, object> inputs,
         string? nodeId = null,
         CancellationToken cancellationToken = default)
     {
+        // Keep for backwards compatibility, but the canonical protocol is run_job with a minimal graph.
         var request = new NodeExecuteRequest
         {
             node_type = nodeType,
@@ -229,8 +240,10 @@ public class MessagePackWebSocketClient : IDisposable
     /// <param name="jobId">Job identifier to cancel</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if cancellation request was sent successfully</returns>
+    [Obsolete("Legacy message shape. Prefer NodeToolExecutionClient which uses cancel_job over the worker protocol.")]
     public async Task<bool> CancelJobAsync(string jobId, CancellationToken cancellationToken = default)
     {
+        // Keep for backwards compatibility, but the canonical protocol is cancel_job.
         var request = new JobCancelRequest { job_id = jobId };
         return await SendMessageAsync(request, cancellationToken);
     }
@@ -306,14 +319,15 @@ public class MessagePackWebSocketClient : IDisposable
             }
             else if (messageType == WebSocketMessageType.Text)
             {
-                // Fallback to JSON
+                // We run MessagePack-only for workflow execution; text frames are unexpected.
                 var jsonText = Encoding.UTF8.GetString(data);
-                message = await TryDeserializeJson(jsonText);
+                _logger.LogWarning("Received unexpected text WebSocket message: {Text}", jsonText);
+                message = new Dictionary<string, object?> { ["type"] = "text", ["text"] = jsonText };
             }
 
             if (message != null)
             {
-                typeName = _typeLookup.GetTypeName(message);
+                typeName = ExtractTypeName(message);
                 
                 OnMessageReceived(new MessageReceivedEventArgs
                 {
@@ -338,64 +352,70 @@ public class MessagePackWebSocketClient : IDisposable
     /// <summary>
     /// Try to deserialize MessagePack data by detecting message type.
     /// </summary>
-    private async Task<object?> TryDeserializeMessagePack(byte[] data)
+    private Task<object?> TryDeserializeMessagePack(byte[] data)
     {
         try
         {
-            // First, try to deserialize as a generic object to peek at the type
-            var tempDict = MessagePackSerializer.Deserialize<Dictionary<string, object>>(data);
-            
-            if (tempDict.TryGetValue("type", out var typeObj) && typeObj is string typeName)
+            // Peek at "type" first
+            var tempDict = MessagePackSerializer.Deserialize<Dictionary<string, object?>>(data, _options);
+
+            if (tempDict.TryGetValue("type", out var typeObj) && typeObj is string typeStr)
             {
-                // Try known message types first
-                return typeName switch
+                object? message;
+                switch (typeStr)
                 {
-                    "job_update" => _typeLookup.Deserialize<JobUpdate>(data),
-                    "node_update" => _typeLookup.Deserialize<NodeUpdate>(data),
-                    "output_update" => _typeLookup.Deserialize<OutputUpdate>(data),
-                    "progress_update" => _typeLookup.Deserialize<ProgressUpdate>(data),
-                    "connection_status" => _typeLookup.Deserialize<ConnectionStatus>(data),
-                    "error" => _typeLookup.Deserialize<ErrorMessage>(data),
-                    _ => _typeLookup.DeserializeByTypeName(data, typeName)
-                };
+                    case "job_update":
+                        message = MessagePackSerializer.Deserialize<JobUpdate>(data, _options);
+                        break;
+                    case "node_update":
+                        message = MessagePackSerializer.Deserialize<NodeUpdate>(data, _options);
+                        break;
+                    case "output_update":
+                        message = MessagePackSerializer.Deserialize<OutputUpdate>(data, _options);
+                        break;
+                    case "preview_update":
+                        message = MessagePackSerializer.Deserialize<PreviewUpdate>(data, _options);
+                        break;
+                    case "progress_update":
+                        message = MessagePackSerializer.Deserialize<ProgressUpdate>(data, _options);
+                        break;
+                    case "node_progress":
+                        message = MessagePackSerializer.Deserialize<NodeProgress>(data, _options);
+                        break;
+                    case "connection_status":
+                        message = MessagePackSerializer.Deserialize<ConnectionStatus>(data, _options);
+                        break;
+                    case "error":
+                        message = MessagePackSerializer.Deserialize<ErrorMessage>(data, _options);
+                        break;
+                    default:
+                        message = tempDict;
+                        break;
+                }
+                return Task.FromResult<object?>(message);
             }
 
-            return tempDict; // Fallback to dictionary if no type detected
+            return Task.FromResult<object?>(tempDict);
         }
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "Failed to deserialize MessagePack data");
-            return null;
+            return Task.FromResult<object?>(null);
         }
     }
 
-    /// <summary>
-    /// Try to deserialize JSON data as fallback.
-    /// </summary>
-    private async Task<object?> TryDeserializeJson(string jsonText)
+    private static string? ExtractTypeName(object message)
     {
-        try
-        {
-            var jsonDoc = JsonDocument.Parse(jsonText);
-            if (jsonDoc.RootElement.TryGetProperty("type", out var typeElement))
-            {
-                var typeName = typeElement.GetString();
-                if (!string.IsNullOrEmpty(typeName))
-                {
-                    // Convert JSON to MessagePack for consistent handling
-                    var jsonBytes = Encoding.UTF8.GetBytes(jsonText);
-                    return _typeLookup.DeserializeByTypeName(jsonBytes, typeName);
-                }
-            }
-
-            // Fallback to generic dictionary
-            return JsonSerializer.Deserialize<Dictionary<string, object>>(jsonText);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Failed to deserialize JSON data");
-            return null;
-        }
+        if (message is JobUpdate ju) return ju.type;
+        if (message is NodeUpdate nu) return nu.type;
+        if (message is OutputUpdate ou) return ou.type;
+        if (message is PreviewUpdate pru) return pru.type;
+        if (message is ProgressUpdate pu) return pu.type;
+        if (message is NodeProgress np) return np.type;
+        if (message is ConnectionStatus cs) return cs.type;
+        if (message is ErrorMessage em) return em.type;
+        if (message is Dictionary<string, object?> dict && dict.TryGetValue("type", out var t) && t is string ts) return ts;
+        return null;
     }
 
     /// <summary>

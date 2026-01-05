@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class JSON
 {
     [Key(0)]
-    public Nodetool.Types.JSONRef value { get; set; } = new Nodetool.Types.JSONRef();
+    public Nodetool.Types.Core.JSONRef value { get; set; } = new Nodetool.Types.Core.JSONRef();
 
-    public Nodetool.Types.JSONRef Process()
+    public Nodetool.Types.Core.JSONRef Process()
     {
-        return default(Nodetool.Types.JSONRef);
+        return default(Nodetool.Types.Core.JSONRef);
     }
 }

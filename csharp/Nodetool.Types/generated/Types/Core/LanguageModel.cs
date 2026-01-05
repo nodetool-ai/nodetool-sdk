@@ -7,11 +7,15 @@ namespace Nodetool.Types.Core;
 public class LanguageModel
 {
     [Key(0)]
-    public object type { get; set; } = "language_model";
+    public string id { get; set; } = @"";
     [Key(1)]
-    public object provider { get; set; } = "Provider.Empty";
+    public string name { get; set; } = @"";
     [Key(2)]
-    public string id { get; set; } = "";
+    public object path { get; set; } = null;
     [Key(3)]
-    public string name { get; set; } = "";
+    public object provider { get; set; } = @"empty";
+    [Key(4)]
+    public List<string> supported_tasks { get; set; }
+    [Key(5)]
+    public object type { get; set; } = @"language_model";
 }

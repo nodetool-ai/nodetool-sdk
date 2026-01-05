@@ -8,11 +8,11 @@ namespace Nodetool.Nodes.Fal;
 public class AnyLLM
 {
     [Key(0)]
-    public string prompt { get; set; } = "";
+    public object model { get; set; } = @"google/gemini-flash-1.5";
     [Key(1)]
-    public string system_prompt { get; set; } = "";
+    public string prompt { get; set; } = @"";
     [Key(2)]
-    public object model { get; set; } = "ModelEnum.GEMINI_FLASH";
+    public string system_prompt { get; set; } = @"";
 
     public string Process()
     {

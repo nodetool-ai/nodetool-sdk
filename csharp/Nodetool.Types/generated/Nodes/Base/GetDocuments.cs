@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class GetDocuments
 {
     [Key(0)]
-    public Nodetool.Types.Collection collection { get; set; } = new Nodetool.Types.Collection();
+    public Nodetool.Types.Core.Collection collection { get; set; } = new Nodetool.Types.Core.Collection();
     [Key(1)]
-    public object ids { get; set; } = new List<object>();
+    public object ids { get; set; } = new();
     [Key(2)]
     public int limit { get; set; } = 100;
     [Key(3)]

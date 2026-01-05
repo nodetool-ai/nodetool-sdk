@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class WebsiteContentExtractor
 {
     [Key(0)]
-    public string html_content { get; set; } = "";
+    public string html_content { get; set; } = @"";
 
     public string Process()
     {

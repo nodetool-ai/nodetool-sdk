@@ -7,13 +7,13 @@ namespace Nodetool.Types.Core;
 public class OpenAIModel
 {
     [Key(0)]
-    public object type { get; set; } = "openai_model";
-    [Key(1)]
-    public string id { get; set; } = "";
-    [Key(2)]
-    public string object { get; set; } = "";
-    [Key(3)]
     public int created { get; set; } = 0;
+    [Key(1)]
+    public string id { get; set; } = @"";
+    [Key(2)]
+    public string object_ { get; set; } = @"";
+    [Key(3)]
+    public string owned_by { get; set; } = @"";
     [Key(4)]
-    public string owned_by { get; set; } = "";
+    public object type { get; set; } = @"openai_model";
 }

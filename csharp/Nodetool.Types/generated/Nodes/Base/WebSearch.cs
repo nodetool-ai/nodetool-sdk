@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class WebSearch
 {
     [Key(0)]
-    public string query { get; set; } = "";
+    public string query { get; set; } = @"";
 
     public string Process()
     {

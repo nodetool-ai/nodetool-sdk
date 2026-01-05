@@ -8,11 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class Replace
 {
     [Key(0)]
-    public string text { get; set; } = "";
+    public string new_ { get; set; } = @"";
     [Key(1)]
-    public string old { get; set; } = "";
+    public string old { get; set; } = @"";
     [Key(2)]
-    public string new { get; set; } = "";
+    public string text { get; set; } = @"";
 
     public string Process()
     {

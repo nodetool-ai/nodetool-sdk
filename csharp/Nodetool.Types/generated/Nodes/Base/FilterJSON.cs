@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class FilterJSON
 {
     [Key(0)]
-    public object array { get; set; } = new List<object>();
+    public object array { get; set; } = new();
     [Key(1)]
-    public string key { get; set; } = "";
+    public string key { get; set; } = @"";
     [Key(2)]
     public object value { get; set; } = null;
 

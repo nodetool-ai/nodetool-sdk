@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Nodetool.SDK.Types;
 
@@ -146,18 +147,78 @@ public class WorkflowResponse
     
     [JsonPropertyName("description")]
     public string Description { get; set; } = string.Empty;
+
+    [JsonPropertyName("tags")]
+    public List<string>? Tags { get; set; }
     
     [JsonPropertyName("input_schema")]
     public SchemaDefinition? InputSchema { get; set; }
     
     [JsonPropertyName("output_schema")]
     public SchemaDefinition? OutputSchema { get; set; }
+
+    // Full workflow graph (present on /api/workflows/{id} in NodeTool)
+    [JsonPropertyName("graph")]
+    public WorkflowGraph? Graph { get; set; }
     
     [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; set; }
     
     [JsonPropertyName("updated_at")]
     public DateTime UpdatedAt { get; set; }
+}
+
+/// <summary>
+/// Workflow graph model (minimal subset used for VL type inference)
+/// </summary>
+public class WorkflowGraph
+{
+    [JsonPropertyName("nodes")]
+    public List<WorkflowGraphNode> Nodes { get; set; } = new();
+
+    [JsonPropertyName("edges")]
+    public List<WorkflowGraphEdge> Edges { get; set; } = new();
+}
+
+public class WorkflowGraphNode
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = string.Empty;
+
+    // We only need node.data.name for output nodes
+    [JsonPropertyName("data")]
+    public JsonElement Data { get; set; }
+}
+
+public class WorkflowGraphEdge
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("source")]
+    public string Source { get; set; } = string.Empty;
+
+    [JsonPropertyName("target")]
+    public string Target { get; set; } = string.Empty;
+
+    [JsonPropertyName("sourceHandle")]
+    public string? SourceHandle { get; set; }
+
+    [JsonPropertyName("targetHandle")]
+    public string? TargetHandle { get; set; }
+
+    // NodeTool edge UI props often include a "className" we can use for type inference ("image", "text", ...)
+    [JsonPropertyName("ui_properties")]
+    public WorkflowGraphEdgeUiProperties? UiProperties { get; set; }
+}
+
+public class WorkflowGraphEdgeUiProperties
+{
+    [JsonPropertyName("className")]
+    public string? ClassName { get; set; }
 }
 
 /// <summary>
@@ -179,6 +240,24 @@ public class SchemaDefinition
 
     [JsonPropertyName("description")]
     public string? Description { get; set; }
+
+    [JsonPropertyName("$ref")]
+    public string? Ref { get; set; }
+
+    [JsonPropertyName("definitions")]
+    public Dictionary<string, PropertyDefinition>? Definitions { get; set; }
+
+    [JsonPropertyName("$defs")]
+    public Dictionary<string, PropertyDefinition>? DollarDefs { get; set; }
+
+    [JsonPropertyName("anyOf")]
+    public List<PropertyDefinition>? AnyOf { get; set; }
+
+    [JsonPropertyName("oneOf")]
+    public List<PropertyDefinition>? OneOf { get; set; }
+
+    [JsonPropertyName("allOf")]
+    public List<PropertyDefinition>? AllOf { get; set; }
 }
 
 /// <summary>
@@ -221,6 +300,21 @@ public class PropertyDefinition
 
     [JsonPropertyName("items")]
     public PropertyDefinition? Items { get; set; }
+
+    [JsonPropertyName("$ref")]
+    public string? Ref { get; set; }
+
+    [JsonPropertyName("anyOf")]
+    public List<PropertyDefinition>? AnyOf { get; set; }
+
+    [JsonPropertyName("oneOf")]
+    public List<PropertyDefinition>? OneOf { get; set; }
+
+    [JsonPropertyName("allOf")]
+    public List<PropertyDefinition>? AllOf { get; set; }
+
+    [JsonPropertyName("label")]
+    public string? Label { get; set; }
 }
 
 /// <summary>

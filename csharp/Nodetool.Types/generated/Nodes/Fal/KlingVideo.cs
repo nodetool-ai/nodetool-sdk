@@ -8,16 +8,16 @@ namespace Nodetool.Nodes.Fal;
 public class KlingVideo
 {
     [Key(0)]
-    public Nodetool.Types.ImageRef image { get; set; } = new Nodetool.Types.ImageRef();
-    [Key(1)]
-    public string prompt { get; set; } = "";
-    [Key(2)]
-    public object duration { get; set; }
-    [Key(3)]
     public object aspect_ratio { get; set; }
+    [Key(1)]
+    public object duration { get; set; }
+    [Key(2)]
+    public Nodetool.Types.Core.ImageRef image { get; set; } = new Nodetool.Types.Core.ImageRef();
+    [Key(3)]
+    public string prompt { get; set; } = @"";
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

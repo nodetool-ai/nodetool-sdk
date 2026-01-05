@@ -20,30 +20,64 @@ except ImportError:
 
 from .utils import get_package_name
 
+def _discover_types_in_package_src(package_src: str) -> List[type[BaseType]]:
+    """
+    Discover BaseType subclasses defined in a given package's src tree.
+
+    We avoid scanning the entire `nodetool` namespace package (which can span many repos)
+    by walking Python files under `package_src/nodetool` and importing them directly.
+    """
+    types: List[type[BaseType]] = []
+    nodetool_dir = os.path.join(package_src, "nodetool")
+    if not os.path.exists(nodetool_dir):
+        return types
+
+    sys.path.insert(0, package_src)
+    try:
+        for root, _, files in os.walk(nodetool_dir):
+            for file in files:
+                if not (file.endswith(".py") and not file.startswith("__")):
+                    continue
+                module_path = os.path.join(root, file)
+                module_name = os.path.relpath(module_path, package_src)
+                module_name = module_name.replace(os.sep, ".")[:-3]  # strip .py
+                try:
+                    module = importlib.import_module(module_name)
+                except Exception:
+                    continue
+
+                for _, obj in inspect.getmembers(module, inspect.isclass):
+                    try:
+                        if (
+                            inspect.isclass(obj)
+                            and issubclass(obj, BaseType)
+                            and obj is not BaseType
+                            and obj.__module__ == module.__name__
+                        ):
+                            types.append(obj)
+                    except Exception:
+                        continue
+    finally:
+        if package_src in sys.path:
+            sys.path.remove(package_src)
+
+    # Deduplicate by (module, class) to be safe
+    unique = {(t.__module__, t.__name__): t for t in types}
+    return [unique[k] for k in sorted(unique.keys(), key=lambda x: (x[0], x[1]))]
+
 def discover_all_base_types() -> Dict[str, List[type[BaseType]]]:
     """Discover all BaseType subclasses from nodetool-core and all packages."""
     all_types = {}
     
-    # 1. Discover types from nodetool-core
+    # 1. Discover types from nodetool-core (only)
     print(">>> Discovering types...")
-    core_types = []
+    core_types: List[type[BaseType]] = []
     try:
-        import nodetool
-        
-        # Walk through nodetool modules
-        for _, module_name, _ in pkgutil.walk_packages(nodetool.__path__, nodetool.__name__ + "."):
-            try:
-                module = importlib.import_module(module_name)
-                for _, obj in inspect.getmembers(module, inspect.isclass):
-                    try:
-                        if (inspect.isclass(obj) and
-                            issubclass(obj, BaseType) and obj is not BaseType and
-                            obj.__module__.startswith("nodetool")):
-                            core_types.append(obj)
-                    except Exception:
-                        continue
-            except Exception:
-                continue
+        # Use the location of nodetool.metadata.types as the anchor for core.
+        import nodetool.metadata.types as core_types_module
+        core_nodetool_dir = os.path.dirname(os.path.dirname(core_types_module.__file__))  # .../nodetool
+        core_src = os.path.dirname(core_nodetool_dir)  # .../src
+        core_types = _discover_types_in_package_src(core_src)
     except ImportError:
         print("[WARNING] nodetool-core not found. Skipping core type discovery.")
 
@@ -52,37 +86,18 @@ def discover_all_base_types() -> Dict[str, List[type[BaseType]]]:
     all_types["Core"] = [unique_core[n] for n in sorted(unique_core.keys())]
     print(f"Found {len(all_types['Core'])} types from Core")
     
-    # 2. Discover types from installed packages
+    # 2. Discover types from installed packages (registry)
     try:
         packages = discover_node_packages()
         for package in packages:
-            package_types = []
+            package_types: List[type[BaseType]] = []
             package_name = get_package_name(package.name)
             
             if package.source_folder and os.path.exists(package.source_folder):
                 # Package has source folder (development install)
                 package_src = os.path.join(package.source_folder, "src")
                 if os.path.exists(package_src):
-                    sys.path.insert(0, package_src)
-                    try:
-                        package_module = importlib.import_module("nodetool")
-                        for _, module_name, _ in pkgutil.walk_packages(package_module.__path__, package_module.__name__ + "."):
-                            try:
-                                module = importlib.import_module(module_name)
-                                for _, obj in inspect.getmembers(module, inspect.isclass):
-                                    try:
-                                        if (inspect.isclass(obj) and
-                                            issubclass(obj, BaseType) and obj is not BaseType and
-                                            obj.__module__.startswith("nodetool")):
-                                            package_types.append(obj)
-                                    except Exception:
-                                        continue
-                            except Exception:
-                                continue
-                    except Exception:
-                        pass
-                    if package_src in sys.path:
-                        sys.path.remove(package_src)
+                    package_types = _discover_types_in_package_src(package_src)
             else:
                 # Package is installed in environment
                 try:
@@ -91,16 +106,25 @@ def discover_all_base_types() -> Dict[str, List[type[BaseType]]]:
                     for _, module_name, _ in pkgutil.walk_packages(package_module.__path__, package_module.__name__ + "."):
                         try:
                             module = importlib.import_module(module_name)
-                            for _, obj in inspect.getmembers(module, inspect.isclass):
-                                try:
-                                    if (inspect.isclass(obj) and
-                                        issubclass(obj, BaseType) and obj is not BaseType and
-                                        obj.__module__.startswith("nodetool")):
-                                        package_types.append(obj)
-                                except Exception:
-                                    continue
                         except Exception:
                             continue
+                        mod_file = getattr(module, "__file__", None)
+                        if not mod_file:
+                            continue
+                        # Filter to modules that live under this package's module path
+                        if not os.path.abspath(mod_file).startswith(os.path.abspath(os.path.dirname(package_module.__file__))):
+                            continue
+                        for _, obj in inspect.getmembers(module, inspect.isclass):
+                            try:
+                                if (
+                                    inspect.isclass(obj)
+                                    and issubclass(obj, BaseType)
+                                    and obj is not BaseType
+                                    and obj.__module__ == module.__name__
+                                ):
+                                    package_types.append(obj)
+                            except Exception:
+                                continue
                 except Exception:
                     pass
             
@@ -113,6 +137,27 @@ def discover_all_base_types() -> Dict[str, List[type[BaseType]]]:
     except Exception as e:
         print(f"[ERROR] Error discovering packages: {e}")
     
+    # 3. Discover types from local workspace repos (best-effort, even if not installed)
+    try:
+        workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".."))
+        for item in os.listdir(workspace_root):
+            if not (item.startswith("nodetool-") and os.path.isdir(os.path.join(workspace_root, item))):
+                continue
+            pkg_src = os.path.join(workspace_root, item, "src")
+            if not os.path.exists(pkg_src):
+                continue
+            pkg_name = get_package_name(item)
+            # Don't re-scan if registry already found it
+            if pkg_name in all_types:
+                continue
+            pkg_types = _discover_types_in_package_src(pkg_src)
+            if pkg_types:
+                unique_pkg = {c.__name__: c for c in pkg_types}
+                all_types[pkg_name] = [unique_pkg[n] for n in sorted(unique_pkg.keys())]
+                print(f"Found {len(all_types[pkg_name])} types from {pkg_name} (workspace)")
+    except Exception as e:
+        print(f"[WARNING] Workspace type discovery skipped: {e}")
+
     return all_types
 
 def discover_all_base_nodes() -> Dict[str, List[type[BaseNode]]]:

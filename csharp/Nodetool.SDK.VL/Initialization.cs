@@ -1,7 +1,11 @@
 using System;
+using System.Linq;
+using System.IO;
+using System.Reflection;
 using VL.Core;
 using VL.Core.CompilerServices;
 using Nodetool.SDK.VL.Factories;
+using Nodetool.SDK.VL.Utilities;
 
 namespace Nodetool.SDK.VL
 {
@@ -12,8 +16,22 @@ namespace Nodetool.SDK.VL
     {
         public Initialization()
         {
-            Console.WriteLine("=== Nodetool.SDK.VL: Assembly initializer created ===");
-            Console.WriteLine($"Nodetool.SDK.VL: Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+            try
+            {
+                var asm = typeof(Initialization).Assembly;
+                var loc = asm.Location;
+                var ver = asm.GetName().Version?.ToString() ?? "unknown";
+                var lastWrite = (!string.IsNullOrWhiteSpace(loc) && File.Exists(loc))
+                    ? File.GetLastWriteTimeUtc(loc).ToString("O")
+                    : "unknown";
+
+                // Keep startup log concise; full dumps are behind NODETOOL_VL_VERBOSE=1.
+                VlLog.Info($"loaded v{ver} from '{loc}' (lastWriteUtc={lastWrite})");
+            }
+            catch
+            {
+                // ignored
+            }
         }
 
         /// <summary>
@@ -22,42 +40,82 @@ namespace Nodetool.SDK.VL
         /// </summary>
         public override void Configure(AppHost appHost)
         {
-            Console.WriteLine("=== Nodetool.SDK.VL: Configure called - registering workflow factory ===");
-            Console.WriteLine($"Nodetool.SDK.VL: AppHost type: {appHost?.GetType().Name ?? "null"}");
+            VlLog.Debug($"Configure() appHost={appHost?.GetType().Name ?? "null"}");
             
             try
             {
-                Console.WriteLine("Nodetool.SDK.VL: About to register factories...");
+                DumpLoadedAssemblies();
+
+                // Register diagnostics first so Connect is always available (even if API calls fail)
+                appHost?.RegisterNodeFactory("Nodetool",
+                    vlSelfFactory => DiagnosticsNodeFactory.GetFactory(vlSelfFactory)
+                );
                 
                 // Register the workflow node factory
-                Console.WriteLine("Nodetool.SDK.VL: Registering WorkflowNodeFactory...");
-                appHost?.RegisterNodeFactory("Nodetool.SDK.VL.Workflows", 
+                appHost?.RegisterNodeFactory("Nodetool.Workflows", 
                     vlSelfFactory => WorkflowNodeFactory.GetFactory(vlSelfFactory)
                 );
-                Console.WriteLine("Nodetool.SDK.VL: WorkflowNodeFactory registered");
                 
                 // Register the individual nodes factory
-                Console.WriteLine("Nodetool.SDK.VL: Registering NodesFactory...");
-                appHost?.RegisterNodeFactory("Nodetool.SDK.VL.Nodes", 
+                appHost?.RegisterNodeFactory("Nodetool.Nodes", 
                     vlSelfFactory => NodesFactory.GetFactory(vlSelfFactory)
                 );
-                Console.WriteLine("Nodetool.SDK.VL: NodesFactory registered");
-                
-                Console.WriteLine("=== Nodetool.SDK.VL: All factories registered successfully ===");
+
+                VlLog.Info("registered factories (Diagnostics, Workflows, Nodes)");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"=== Nodetool.SDK.VL: ERROR registering workflow factory ===");
-                Console.WriteLine($"Nodetool.SDK.VL: Error message: {ex.Message}");
-                Console.WriteLine($"Nodetool.SDK.VL: Error type: {ex.GetType().Name}");
-                Console.WriteLine($"Nodetool.SDK.VL: Stack trace: {ex.StackTrace}");
+                VlLog.Error($"factory registration failed: {ex.GetType().Name}: {ex.Message}");
                 
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"Nodetool.SDK.VL: Inner exception: {ex.InnerException.Message}");
+                    VlLog.Error($"inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
                 }
                 
                 throw;
+            }
+        }
+
+        private static void DumpLoadedAssemblies()
+        {
+            try
+            {
+                if (!VlLog.Verbose)
+                    return;
+
+                var assemblies = AppDomain.CurrentDomain.GetAssemblies()
+                    .Where(a =>
+                    {
+                        var name = a.GetName().Name ?? "";
+                        return name.StartsWith("Nodetool.", StringComparison.OrdinalIgnoreCase)
+                               || name.StartsWith("MessagePack", StringComparison.OrdinalIgnoreCase)
+                               || name.StartsWith("VL.", StringComparison.OrdinalIgnoreCase);
+                    })
+                    .OrderBy(a => a.GetName().Name, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                VlLog.Debug("Loaded assemblies (filtered):");
+                foreach (var a in assemblies)
+                {
+                    var name = a.GetName();
+                    var location = "(dynamic)";
+                    try { location = a.Location; } catch { /* ignored */ }
+
+                    Console.WriteLine($"- {name.Name}, Version={name.Version}, Location={location}");
+                }
+
+                // Extra: explicitly show what 'Nodetool.SDK' the runtime resolved (if any)
+                var sdkAsm = assemblies.FirstOrDefault(a =>
+                    string.Equals(a.GetName().Name, "Nodetool.SDK", StringComparison.OrdinalIgnoreCase));
+                if (sdkAsm != null)
+                {
+                    var hasIExecutionSession = sdkAsm.GetType("Nodetool.SDK.Execution.IExecutionSession", throwOnError: false) != null;
+                    VlLog.Debug($"Nodetool.SDK has IExecutionSession = {hasIExecutionSession}");
+                }
+            }
+            catch (Exception ex)
+            {
+                VlLog.Error($"Failed to dump loaded assemblies: {ex.GetType().Name}: {ex.Message}");
             }
         }
     }

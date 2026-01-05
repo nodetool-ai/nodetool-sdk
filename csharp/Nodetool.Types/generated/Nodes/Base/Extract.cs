@@ -8,11 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class Extract
 {
     [Key(0)]
-    public string text { get; set; } = "";
+    public int end { get; set; } = 0;
     [Key(1)]
     public int start { get; set; } = 0;
     [Key(2)]
-    public int end { get; set; } = 0;
+    public string text { get; set; } = @"";
 
     public string Process()
     {

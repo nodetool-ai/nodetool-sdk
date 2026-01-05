@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class CollectionInput
 {
     [Key(0)]
-    public Nodetool.Types.Collection value { get; set; } = new Nodetool.Types.Collection();
+    public string description { get; set; } = @"";
     [Key(1)]
-    public string name { get; set; } = "";
+    public string name { get; set; } = @"";
     [Key(2)]
-    public string description { get; set; } = "";
+    public Nodetool.Types.Core.Collection value { get; set; } = new Nodetool.Types.Core.Collection();
 
-    public Nodetool.Types.Collection Process()
+    public Nodetool.Types.Core.Collection Process()
     {
-        return default(Nodetool.Types.Collection);
+        return default(Nodetool.Types.Core.Collection);
     }
 }

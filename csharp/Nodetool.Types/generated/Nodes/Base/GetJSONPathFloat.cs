@@ -10,9 +10,9 @@ public class GetJSONPathFloat
     [Key(0)]
     public object data { get; set; } = null;
     [Key(1)]
-    public string path { get; set; } = "";
+    public double default_ { get; set; } = 0.0;
     [Key(2)]
-    public double default { get; set; } = 0.0;
+    public string path { get; set; } = @"";
 
     public double Process()
     {

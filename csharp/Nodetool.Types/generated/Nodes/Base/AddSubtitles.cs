@@ -8,20 +8,20 @@ namespace Nodetool.Nodes.Base;
 public class AddSubtitles
 {
     [Key(0)]
-    public Nodetool.Types.VideoRef video { get; set; } = new Nodetool.Types.VideoRef();
+    public object align { get; set; } = @"bottom";
     [Key(1)]
-    public object chunks { get; set; } = new List<object>();
+    public object chunks { get; set; } = new();
     [Key(2)]
-    public Nodetool.Types.FontRef font { get; set; } = new Nodetool.Types.FontRef();
+    public Nodetool.Types.Core.FontRef font { get; set; } = new Nodetool.Types.Core.FontRef();
     [Key(3)]
-    public object align { get; set; } = "SubtitleTextAlignment.BOTTOM";
+    public Nodetool.Types.Core.ColorRef font_color { get; set; } = new Nodetool.Types.Core.ColorRef();
     [Key(4)]
     public int font_size { get; set; } = 24;
     [Key(5)]
-    public Nodetool.Types.ColorRef font_color { get; set; } = new Nodetool.Types.ColorRef();
+    public Nodetool.Types.Core.VideoRef video { get; set; } = new Nodetool.Types.Core.VideoRef();
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

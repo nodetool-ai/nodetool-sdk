@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class Count
 {
     [Key(0)]
-    public Nodetool.Types.Collection collection { get; set; } = new Nodetool.Types.Collection();
+    public Nodetool.Types.Core.Collection collection { get; set; } = new Nodetool.Types.Core.Collection();
 
     public int Process()
     {

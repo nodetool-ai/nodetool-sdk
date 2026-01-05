@@ -8,20 +8,20 @@ namespace Nodetool.Nodes.Fal;
 public class BriaProductShot
 {
     [Key(0)]
-    public Nodetool.Types.ImageRef image { get; set; } = new Nodetool.Types.ImageRef();
+    public Nodetool.Types.Core.ImageRef image { get; set; } = new Nodetool.Types.Core.ImageRef();
     [Key(1)]
-    public string scene_description { get; set; } = "";
+    public string manual_placement_selection { get; set; } = @"bottom_center";
     [Key(2)]
-    public Nodetool.Types.ImageRef ref_image { get; set; } = new Nodetool.Types.ImageRef();
-    [Key(3)]
     public bool optimize_description { get; set; } = true;
+    [Key(3)]
+    public string placement_type { get; set; } = @"manual_placement";
     [Key(4)]
-    public string placement_type { get; set; } = "manual_placement";
+    public Nodetool.Types.Core.ImageRef ref_image { get; set; } = new Nodetool.Types.Core.ImageRef();
     [Key(5)]
-    public string manual_placement_selection { get; set; } = "bottom_center";
+    public string scene_description { get; set; } = @"";
 
-    public Nodetool.Types.ImageRef Process()
+    public Nodetool.Types.Core.ImageRef Process()
     {
-        return default(Nodetool.Types.ImageRef);
+        return default(Nodetool.Types.Core.ImageRef);
     }
 }

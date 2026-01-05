@@ -7,7 +7,7 @@ namespace Nodetool.Types.Core;
 public class RecordType
 {
     [Key(0)]
-    public object type { get; set; } = "record_type";
+    public List<object> columns { get; set; } = new();
     [Key(1)]
-    public List<object> columns { get; set; } = new List<object>();
+    public object type { get; set; } = @"record_type";
 }

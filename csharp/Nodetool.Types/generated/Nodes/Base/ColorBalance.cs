@@ -8,16 +8,16 @@ namespace Nodetool.Nodes.Base;
 public class ColorBalance
 {
     [Key(0)]
-    public Nodetool.Types.VideoRef video { get; set; } = new Nodetool.Types.VideoRef();
-    [Key(1)]
-    public double red_adjust { get; set; } = 1.0;
-    [Key(2)]
-    public double green_adjust { get; set; } = 1.0;
-    [Key(3)]
     public double blue_adjust { get; set; } = 1.0;
+    [Key(1)]
+    public double green_adjust { get; set; } = 1.0;
+    [Key(2)]
+    public double red_adjust { get; set; } = 1.0;
+    [Key(3)]
+    public Nodetool.Types.Core.VideoRef video { get; set; } = new Nodetool.Types.Core.VideoRef();
 
-    public Nodetool.Types.VideoRef Process()
+    public Nodetool.Types.Core.VideoRef Process()
     {
-        return default(Nodetool.Types.VideoRef);
+        return default(Nodetool.Types.Core.VideoRef);
     }
 }

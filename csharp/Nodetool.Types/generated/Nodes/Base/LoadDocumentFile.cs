@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class LoadDocumentFile
 {
     [Key(0)]
-    public Nodetool.Types.FilePath path { get; set; } = new Nodetool.Types.FilePath();
+    public string path { get; set; } = @"";
 
-    public Nodetool.Types.DocumentRef Process()
+    public Nodetool.Types.Core.DocumentRef Process()
     {
-        return default(Nodetool.Types.DocumentRef);
+        return default(Nodetool.Types.Core.DocumentRef);
     }
 }

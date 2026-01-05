@@ -10,9 +10,9 @@ public class GetJSONPathBool
     [Key(0)]
     public object data { get; set; } = null;
     [Key(1)]
-    public string path { get; set; } = "";
+    public bool default_ { get; set; } = false;
     [Key(2)]
-    public bool default { get; set; } = false;
+    public string path { get; set; } = @"";
 
     public bool Process()
     {

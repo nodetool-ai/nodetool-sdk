@@ -8,12 +8,12 @@ namespace Nodetool.Nodes.Fal;
 public class ClarityUpscaler
 {
     [Key(0)]
-    public Nodetool.Types.ImageRef image { get; set; } = new Nodetool.Types.ImageRef();
+    public Nodetool.Types.Core.ImageRef image { get; set; } = new Nodetool.Types.Core.ImageRef();
     [Key(1)]
     public int scale { get; set; } = 2;
 
-    public Nodetool.Types.ImageRef Process()
+    public Nodetool.Types.Core.ImageRef Process()
     {
-        return default(Nodetool.Types.ImageRef);
+        return default(Nodetool.Types.Core.ImageRef);
     }
 }

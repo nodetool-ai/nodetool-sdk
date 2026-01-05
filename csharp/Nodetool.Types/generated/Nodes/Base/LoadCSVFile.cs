@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class LoadCSVFile
 {
     [Key(0)]
-    public Nodetool.Types.FilePath file_path { get; set; } = new Nodetool.Types.FilePath();
+    public string path { get; set; } = @"";
 
-    public Nodetool.Types.DataframeRef Process()
+    public object Process()
     {
-        return default(Nodetool.Types.DataframeRef);
+        return default(object);
     }
 }

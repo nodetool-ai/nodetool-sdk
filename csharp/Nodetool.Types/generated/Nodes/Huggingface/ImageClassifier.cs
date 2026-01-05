@@ -8,12 +8,7 @@ namespace Nodetool.Nodes.Huggingface;
 public class ImageClassifier
 {
     [Key(0)]
-    public Nodetool.Types.HFImageClassification model { get; set; } = new Nodetool.Types.HFImageClassification();
+    public Nodetool.Types.Core.ImageRef image { get; set; } = new Nodetool.Types.Core.ImageRef();
     [Key(1)]
-    public Nodetool.Types.ImageRef image { get; set; } = new Nodetool.Types.ImageRef();
-
-    public object Process()
-    {
-        return default(object);
-    }
+    public Nodetool.Types.Core.HFImageClassification model { get; set; } = new Nodetool.Types.Core.HFImageClassification();
 }

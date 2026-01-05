@@ -8,11 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class HtmlToText
 {
     [Key(0)]
-    public string html { get; set; } = "";
+    public string base_url { get; set; } = @"";
     [Key(1)]
-    public string base_url { get; set; } = "";
-    [Key(2)]
     public int body_width { get; set; } = 1000;
+    [Key(2)]
+    public string html { get; set; } = @"";
     [Key(3)]
     public bool ignore_images { get; set; } = true;
     [Key(4)]

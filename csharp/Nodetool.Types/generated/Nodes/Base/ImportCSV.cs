@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class ImportCSV
 {
     [Key(0)]
-    public string csv_data { get; set; } = "";
+    public string csv_data { get; set; } = @"";
 
-    public Nodetool.Types.DataframeRef Process()
+    public Nodetool.Types.Core.DataframeRef Process()
     {
-        return default(Nodetool.Types.DataframeRef);
+        return default(Nodetool.Types.Core.DataframeRef);
     }
 }

@@ -8,13 +8,13 @@ namespace Nodetool.Nodes.Base;
 public class FilterDictsByValue
 {
     [Key(0)]
-    public object values { get; set; } = new List<object>();
+    public string criteria { get; set; } = @"";
     [Key(1)]
-    public string key { get; set; } = "";
+    public object filter_type { get; set; } = @"contains";
     [Key(2)]
-    public object filter_type { get; set; } = "FilterType.CONTAINS";
+    public string key { get; set; } = @"";
     [Key(3)]
-    public string criteria { get; set; } = "";
+    public object values { get; set; } = new();
 
     public object Process()
     {

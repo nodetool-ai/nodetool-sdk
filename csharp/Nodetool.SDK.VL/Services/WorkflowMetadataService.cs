@@ -79,10 +79,12 @@ public class WorkflowMetadataService : IDisposable
                         Id = detailedWorkflow.Id,
                         Name = detailedWorkflow.Name,
                         Description = detailedWorkflow.Description,
+                        Tags = detailedWorkflow.Tags,
                         CreatedAt = detailedWorkflow.CreatedAt,
                         UpdatedAt = detailedWorkflow.UpdatedAt,
                         InputSchema = ConvertToWorkflowSchema(detailedWorkflow.InputSchema),
-                        OutputSchema = ConvertToWorkflowSchema(detailedWorkflow.OutputSchema)
+                        OutputSchema = ConvertToWorkflowSchema(detailedWorkflow.OutputSchema),
+                        Graph = detailedWorkflow.Graph
                     };
 
                     workflowDetails.Add(workflowDetail);
@@ -140,10 +142,12 @@ public class WorkflowMetadataService : IDisposable
                 Id = workflow.Id,
                 Name = workflow.Name,
                 Description = workflow.Description,
+            Tags = workflow.Tags,
                 CreatedAt = workflow.CreatedAt,
                 UpdatedAt = workflow.UpdatedAt,
                 InputSchema = ConvertToWorkflowSchema(workflow.InputSchema),
-                OutputSchema = ConvertToWorkflowSchema(workflow.OutputSchema)
+            OutputSchema = ConvertToWorkflowSchema(workflow.OutputSchema),
+            Graph = workflow.Graph,
             };
 
             return workflowDetail;
@@ -186,72 +190,79 @@ public class WorkflowMetadataService : IDisposable
 
     private WorkflowSchemaDefinition? ConvertToWorkflowSchema(Nodetool.SDK.Api.Models.SchemaDefinition? apiSchema)
     {
-        if (apiSchema?.Properties == null || apiSchema.Properties.Count == 0)
+        if (apiSchema == null)
             return null;
 
         var schema = new WorkflowSchemaDefinition
         {
             Type = apiSchema.Type ?? "object",
-            Properties = new Dictionary<string, WorkflowPropertyDefinition>(),
+            Properties = new Dictionary<string, WorkflowPropertyDefinition>(StringComparer.Ordinal),
             Required = apiSchema.Required ?? new List<string>(),
             Title = apiSchema.Title,
-            Description = apiSchema.Description
+            Description = apiSchema.Description,
+            Ref = apiSchema.Ref,
+            Definitions = apiSchema.Definitions != null && apiSchema.Definitions.Count > 0
+                ? apiSchema.Definitions.ToDictionary(kvp => kvp.Key, kvp => ConvertProperty(kvp.Value), StringComparer.Ordinal)
+                : null,
+            Defs = apiSchema.DollarDefs != null && apiSchema.DollarDefs.Count > 0
+                ? apiSchema.DollarDefs.ToDictionary(kvp => kvp.Key, kvp => ConvertProperty(kvp.Value), StringComparer.Ordinal)
+                : null,
+            AnyOf = apiSchema.AnyOf?.Select(ConvertProperty).ToList(),
+            OneOf = apiSchema.OneOf?.Select(ConvertProperty).ToList(),
+            AllOf = apiSchema.AllOf?.Select(ConvertProperty).ToList(),
         };
 
-        foreach (var prop in apiSchema.Properties)
+        // Preserve direct properties if present
+        if (apiSchema.Properties != null)
         {
-            if (string.IsNullOrEmpty(prop.Key) || prop.Value == null)
-                continue;
-
-            var propertyDef = new WorkflowPropertyDefinition
+            foreach (var prop in apiSchema.Properties)
             {
-                Type = prop.Value.Type,
-                Title = prop.Value.Title,
-                Description = prop.Value.Description,
-                Default = prop.Value.Default,
-                Minimum = prop.Value.Minimum,
-                Maximum = prop.Value.Maximum,
-                Format = prop.Value.Format,
-                Enum = prop.Value.Enum,
-                Const = prop.Value.Const
-            };
-
-            // Handle nested properties for object types
-            if (prop.Value.Properties != null && prop.Value.Properties.Count > 0)
-            {
-                propertyDef.Properties = new Dictionary<string, WorkflowPropertyDefinition>();
-                foreach (var nestedProp in prop.Value.Properties)
-                {
-                    if (string.IsNullOrEmpty(nestedProp.Key) || nestedProp.Value == null)
-                        continue;
-
-                    var nestedPropertyDef = new WorkflowPropertyDefinition
-                    {
-                        Type = nestedProp.Value.Type,
-                        Title = nestedProp.Value.Title,
-                        Description = nestedProp.Value.Description,
-                        Default = nestedProp.Value.Default
-                    };
-                    propertyDef.Properties[nestedProp.Key] = nestedPropertyDef;
-                }
+                if (string.IsNullOrEmpty(prop.Key) || prop.Value == null)
+                    continue;
+                schema.Properties[prop.Key] = ConvertProperty(prop.Value);
             }
-
-            // Handle array items
-            if (prop.Value.Items != null)
-            {
-                propertyDef.Items = new WorkflowPropertyDefinition
-                {
-                    Type = prop.Value.Items.Type,
-                    Title = prop.Value.Items.Title,
-                    Description = prop.Value.Items.Description,
-                    Default = prop.Value.Items.Default
-                };
-            }
-
-            schema.Properties[prop.Key] = propertyDef;
         }
 
         return schema;
+    }
+
+    private static WorkflowPropertyDefinition ConvertProperty(Nodetool.SDK.Api.Models.PropertyDefinition apiProp)
+    {
+        var def = new WorkflowPropertyDefinition
+        {
+            Type = apiProp.Type,
+            Title = apiProp.Title,
+            Description = apiProp.Description,
+            Default = apiProp.Default,
+            Minimum = apiProp.Minimum,
+            Maximum = apiProp.Maximum,
+            Format = apiProp.Format,
+            Enum = apiProp.Enum,
+            Const = apiProp.Const,
+            Required = apiProp.Required,
+            Ref = apiProp.Ref,
+            AnyOf = apiProp.AnyOf?.Select(ConvertProperty).ToList(),
+            OneOf = apiProp.OneOf?.Select(ConvertProperty).ToList(),
+            AllOf = apiProp.AllOf?.Select(ConvertProperty).ToList(),
+        };
+
+        if (apiProp.Properties != null && apiProp.Properties.Count > 0)
+        {
+            def.Properties = new Dictionary<string, WorkflowPropertyDefinition>();
+            foreach (var nested in apiProp.Properties)
+            {
+                if (string.IsNullOrEmpty(nested.Key) || nested.Value == null)
+                    continue;
+                def.Properties[nested.Key] = ConvertProperty(nested.Value);
+            }
+        }
+
+        if (apiProp.Items != null)
+        {
+            def.Items = ConvertProperty(apiProp.Items);
+        }
+
+        return def;
     }
 
     public void Dispose()

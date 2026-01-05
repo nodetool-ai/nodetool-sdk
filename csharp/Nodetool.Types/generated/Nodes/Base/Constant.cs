@@ -8,8 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class Constant
 {
 
-    public object Process()
+    public void Process()
     {
-        return default(object);
     }
 }

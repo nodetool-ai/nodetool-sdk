@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class GoogleFinance
 {
     [Key(0)]
-    public string query { get; set; } = "";
+    public string query { get; set; } = @"";
     [Key(1)]
-    public string window { get; set; } = "";
+    public string window { get; set; } = @"";
 
     public object Process()
     {

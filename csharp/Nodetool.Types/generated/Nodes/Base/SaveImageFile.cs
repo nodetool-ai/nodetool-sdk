@@ -8,14 +8,16 @@ namespace Nodetool.Nodes.Base;
 public class SaveImageFile
 {
     [Key(0)]
-    public Nodetool.Types.ImageRef image { get; set; } = new Nodetool.Types.ImageRef();
+    public string filename { get; set; } = @"image.png";
     [Key(1)]
-    public Nodetool.Types.FolderPath folder { get; set; } = new Nodetool.Types.FolderPath();
+    public string folder { get; set; } = @".";
     [Key(2)]
-    public string filename { get; set; } = "";
+    public Nodetool.Types.Core.ImageRef image { get; set; } = new Nodetool.Types.Core.ImageRef();
+    [Key(3)]
+    public bool overwrite { get; set; } = false;
 
-    public Nodetool.Types.ImageRef Process()
+    public Nodetool.Types.Core.ImageRef Process()
     {
-        return default(Nodetool.Types.ImageRef);
+        return default(Nodetool.Types.Core.ImageRef);
     }
 }

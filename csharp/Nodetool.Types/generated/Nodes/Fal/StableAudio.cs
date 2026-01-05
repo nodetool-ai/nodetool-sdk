@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Fal;
 public class StableAudio
 {
     [Key(0)]
-    public string prompt { get; set; } = "";
+    public string prompt { get; set; } = @"";
     [Key(1)]
     public int seconds_start { get; set; } = 0;
     [Key(2)]
@@ -16,8 +16,8 @@ public class StableAudio
     [Key(3)]
     public int steps { get; set; } = 100;
 
-    public Nodetool.Types.AudioRef Process()
+    public Nodetool.Types.Core.AudioRef Process()
     {
-        return default(Nodetool.Types.AudioRef);
+        return default(Nodetool.Types.Core.AudioRef);
     }
 }

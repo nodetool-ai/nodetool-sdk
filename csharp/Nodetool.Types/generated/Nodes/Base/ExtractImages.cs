@@ -8,9 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class ExtractImages
 {
     [Key(0)]
-    public string html { get; set; } = "";
+    public int end_page { get; set; } = 4;
     [Key(1)]
-    public string base_url { get; set; } = "";
+    public Nodetool.Types.Core.DocumentRef pdf { get; set; } = null;
+    [Key(2)]
+    public int start_page { get; set; } = 0;
 
     public object Process()
     {

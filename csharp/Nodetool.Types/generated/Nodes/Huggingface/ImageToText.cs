@@ -8,11 +8,11 @@ namespace Nodetool.Nodes.Huggingface;
 public class ImageToText
 {
     [Key(0)]
-    public Nodetool.Types.HFImageToText model { get; set; } = new Nodetool.Types.HFImageToText();
+    public Nodetool.Types.Core.ImageRef image { get; set; } = new Nodetool.Types.Core.ImageRef();
     [Key(1)]
-    public Nodetool.Types.ImageRef image { get; set; } = new Nodetool.Types.ImageRef();
-    [Key(2)]
     public int max_new_tokens { get; set; } = 50;
+    [Key(2)]
+    public Nodetool.Types.Core.HFImageToText model { get; set; } = new Nodetool.Types.Core.HFImageToText();
 
     public string Process()
     {

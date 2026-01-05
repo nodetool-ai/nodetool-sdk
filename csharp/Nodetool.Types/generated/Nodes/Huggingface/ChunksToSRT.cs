@@ -8,12 +8,7 @@ namespace Nodetool.Nodes.Huggingface;
 public class ChunksToSRT
 {
     [Key(0)]
-    public object chunks { get; set; } = new List<object>();
+    public List<Nodetool.Types.Core.AudioChunk> chunks { get; set; } = new();
     [Key(1)]
     public double time_offset { get; set; } = 0.0;
-
-    public string Process()
-    {
-        return default(string);
-    }
 }

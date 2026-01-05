@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class FetchPage
 {
     [Key(0)]
-    public string url { get; set; } = "";
+    public string url { get; set; } = @"";
     [Key(1)]
     public int wait_time { get; set; } = 10;
 
@@ -16,11 +16,11 @@ public class FetchPage
     public class FetchPageOutput
     {
         [Key(0)]
-        public string html { get; set; }
+        public string error_message { get; set; }
         [Key(1)]
-        public bool success { get; set; }
+        public string html { get; set; }
         [Key(2)]
-        public object error_message { get; set; }
+        public bool success { get; set; }
     }
 
     public FetchPageOutput Process()

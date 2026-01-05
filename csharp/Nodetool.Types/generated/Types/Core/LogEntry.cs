@@ -7,11 +7,11 @@ namespace Nodetool.Types.Core;
 public class LogEntry
 {
     [Key(0)]
-    public object type { get; set; } = "log_entry";
+    public object level { get; set; } = @"info";
     [Key(1)]
-    public string message { get; set; } = "";
+    public string message { get; set; } = @"";
     [Key(2)]
-    public object level { get; set; } = "info";
-    [Key(3)]
     public int timestamp { get; set; } = 0;
+    [Key(3)]
+    public object type { get; set; } = @"log_entry";
 }

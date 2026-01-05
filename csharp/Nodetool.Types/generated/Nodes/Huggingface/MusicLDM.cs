@@ -8,16 +8,11 @@ namespace Nodetool.Nodes.Huggingface;
 public class MusicLDM
 {
     [Key(0)]
-    public Nodetool.Types.HFTextToAudio model { get; set; } = new Nodetool.Types.HFTextToAudio();
+    public double audio_length_in_s { get; set; } = 5.0;
     [Key(1)]
-    public string prompt { get; set; } = "";
+    public Nodetool.Types.Core.HFTextToAudio model { get; set; } = new Nodetool.Types.Core.HFTextToAudio();
     [Key(2)]
     public int num_inference_steps { get; set; } = 10;
     [Key(3)]
-    public double audio_length_in_s { get; set; } = 5.0;
-
-    public Nodetool.Types.AudioRef Process()
-    {
-        return default(Nodetool.Types.AudioRef);
-    }
+    public string prompt { get; set; } = @"";
 }

@@ -7,20 +7,26 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>Nodetool.SDK.VL</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Description>VL/vvvv integration for Nodetool SDK - workflow execution and node management</Description>
     <Authors>Nodetool Contributors</Authors>
     <RepositoryUrl>https://github.com/nodetool-ai/nodetool</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="VL.Core" Version="2024.6.7" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="SkiaSharp" Version="2.88.8" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Nodetool.SDK\Nodetool.SDK.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>

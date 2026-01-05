@@ -7,11 +7,11 @@ namespace Nodetool.Types.Core;
 public class TextChunk
 {
     [Key(0)]
-    public object type { get; set; } = "text_chunk";
+    public string source_id { get; set; } = @"";
     [Key(1)]
-    public string text { get; set; } = "";
-    [Key(2)]
-    public string source_id { get; set; } = "";
-    [Key(3)]
     public int start_index { get; set; } = 0;
+    [Key(2)]
+    public string text { get; set; } = @"";
+    [Key(3)]
+    public object type { get; set; } = @"text_chunk";
 }

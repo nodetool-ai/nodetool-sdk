@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class LoadJSONAssets
 {
     [Key(0)]
-    public Nodetool.Types.FolderRef folder { get; set; } = new Nodetool.Types.FolderRef();
+    public Nodetool.Types.Core.FolderRef folder { get; set; } = new Nodetool.Types.Core.FolderRef();
 
     [MessagePackObject]
     public class LoadJSONAssetsOutput

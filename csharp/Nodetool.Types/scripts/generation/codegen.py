@@ -2,7 +2,31 @@
 C# code generation functions.
 """
 from typing import List
-from .utils import python_type_to_csharp, default_value_to_csharp, get_package_name
+from .utils import python_type_to_csharp, default_value_to_csharp, get_package_name, csharp_identifier
+
+_CSHARP_VALUE_TYPES = {
+    "bool",
+    "byte",
+    "sbyte",
+    "short",
+    "ushort",
+    "int",
+    "uint",
+    "long",
+    "ulong",
+    "float",
+    "double",
+    "decimal",
+}
+
+def _make_nullable_if_null_default(csharp_type: str, default_literal: str | None) -> str:
+    """
+    If the Python model uses default None for a value-type field (common in pydantic),
+    generate a nullable value type in C# so `= null` compiles.
+    """
+    if default_literal == "null" and csharp_type in _CSHARP_VALUE_TYPES:
+        return csharp_type + "?"
+    return csharp_type
 
 try:
     from nodetool.metadata.types import BaseType
@@ -31,13 +55,14 @@ def generate_class_source(cls: type[BaseType], namespace: str) -> str:
     # Use model_fields for pydantic v2
     fields = getattr(cls, 'model_fields', {})
     for name, field in sorted(fields.items()):
-        csharp_type = python_type_to_csharp(field.annotation)
+        prop_name = csharp_identifier(name)
         default = default_value_to_csharp(field.default)
+        csharp_type = _make_nullable_if_null_default(python_type_to_csharp(field.annotation), default)
         lines.append(f"    [Key({index})]")
         if default is not None:
-            lines.append(f"    public {csharp_type} {name} {{ get; set; }} = {default};")
+            lines.append(f"    public {csharp_type} {prop_name} {{ get; set; }} = {default};")
         else:
-            lines.append(f"    public {csharp_type} {name} {{ get; set; }}")
+            lines.append(f"    public {csharp_type} {prop_name} {{ get; set; }}")
         index += 1
     
     lines.append("}")
@@ -70,13 +95,14 @@ def generate_node_class_source(node_cls: type[BaseNode], package_name: str) -> s
         # Add input properties
         for prop in sorted(metadata.properties, key=lambda p: p.name):
             python_type = prop.type.get_python_type()
-            csharp_type = python_type_to_csharp(python_type)
             default = default_value_to_csharp(prop.default)
+            csharp_type = _make_nullable_if_null_default(python_type_to_csharp(python_type), default)
+            prop_name = csharp_identifier(prop.name)
             lines.append(f"    [Key({index})]")
             if default is not None:
-                lines.append(f"    public {csharp_type} {prop.name} {{ get; set; }} = {default};")
+                lines.append(f"    public {csharp_type} {prop_name} {{ get; set; }} = {default};")
             else:
-                lines.append(f"    public {csharp_type} {prop.name} {{ get; set; }}")
+                lines.append(f"    public {csharp_type} {prop_name} {{ get; set; }}")
             index += 1
         
         # Check if we need a return type class for multiple outputs
@@ -94,8 +120,9 @@ def generate_node_class_source(node_cls: type[BaseNode], package_name: str) -> s
             for output in sorted(metadata.outputs, key=lambda o: o.name):
                 python_type = output.type.get_python_type()
                 output_type = python_type_to_csharp(python_type)
+                output_name = csharp_identifier(output.name)
                 lines.append(f"        [Key({output_index})]")
-                lines.append(f"        public {output_type} {output.name} {{ get; set; }}")
+                lines.append(f"        public {output_type} {output_name} {{ get; set; }}")
                 output_index += 1
             
             lines.append("    }")
@@ -164,13 +191,14 @@ def generate_fallback_node_class(node_cls: type[BaseNode], package_name: str) ->
     for name, field in sorted(node_cls.model_fields.items()):
         if name.startswith("_"):  # Skip private fields
             continue
-        csharp_type = python_type_to_csharp(field.annotation)
+        prop_name = csharp_identifier(name)
         default = default_value_to_csharp(field.default)
+        csharp_type = _make_nullable_if_null_default(python_type_to_csharp(field.annotation), default)
         lines.append(f"    [Key({index})]")
         if default is not None:
-            lines.append(f"    public {csharp_type} {name} {{ get; set; }} = {default};")
+            lines.append(f"    public {csharp_type} {prop_name} {{ get; set; }} = {default};")
         else:
-            lines.append(f"    public {csharp_type} {name} {{ get; set; }}")
+            lines.append(f"    public {csharp_type} {prop_name} {{ get; set; }}")
         index += 1
     
     lines.append("}")

@@ -10,6 +10,8 @@ on:
       - main
     paths-ignore:
       - README.md
+      - '**/*.md'
+      - '_agent_planning/**'
 
 jobs:
   build:
@@ -17,25 +19,20 @@ jobs:
     steps:
     - name: Git Checkout
       uses: actions/checkout@master
-#      with:
-#        submodules: 'true'
-#        lfs: 'true'
-    
-    - name: Setup MSBuild.exe
-      uses: microsoft/setup-msbuild@v2
 
-    - name: Setup Nuget.exe
-      uses: nuget/setup-nuget@v2.0.0
-
-    - name: Publish VL Nuget
-      uses: vvvv/PublishVLNuget@1.0.43
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
       with:
-        csproj: src\VL.NewLibrary.Template.csproj
-        nuspec: deployment\VL.NewLibrary.Template.nuspec
+        dotnet-version: '8.0.x'
 
-        # Fill the Icon file
-        icon-src: https://raw.githubusercontent.com/vvvv/PublicContent/master/nugeticon.png
-        icon-dst: ./deployment/nugeticon.png
-        
-        # Provide the nuget key. See: https://thegraybook.vvvv.org/reference/extending/publishing.html#getting-a-nugetorg-api-key
-        nuget-key: ${{ secrets.NUGET_KEY }}
+    - name: Regen + verify + build (C#)
+      shell: pwsh
+      run: |
+        # Regenerates C# types/nodes when Python nodetool is available,
+        # verifies generated output is committed (git diff),
+        # then builds Nodetool.Types + Nodetool.SDK + TestConsole.
+        .\csharp\regen-and-verify.ps1
+
+    # Note: VL.SDK requires VL.Core which needs special setup
+    # - name: Build VL SDK
+    #   run: dotnet build csharp/Nodetool.SDK.VL/Nodetool.SDK.VL.csproj --configuration Release

@@ -8,21 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class GoogleLens
 {
     [Key(0)]
-    public string image_url { get; set; } = "";
+    public string image_url { get; set; } = @"";
     [Key(1)]
     public int num_results { get; set; } = 10;
 
-    [MessagePackObject]
-    public class GoogleLensOutput
+    public void Process()
     {
-        [Key(0)]
-        public object results { get; set; }
-        [Key(1)]
-        public object images { get; set; }
-    }
-
-    public GoogleLensOutput Process()
-    {
-        return new GoogleLensOutput();
     }
 }

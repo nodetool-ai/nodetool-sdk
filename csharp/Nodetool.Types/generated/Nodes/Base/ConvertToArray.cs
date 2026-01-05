@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class ConvertToArray
 {
     [Key(0)]
-    public Nodetool.Types.AudioRef audio { get; set; } = new Nodetool.Types.AudioRef();
+    public Nodetool.Types.Core.AudioRef audio { get; set; } = new Nodetool.Types.Core.AudioRef();
 
-    public Nodetool.Types.NPArray Process()
+    public Nodetool.Types.Core.NPArray Process()
     {
-        return default(Nodetool.Types.NPArray);
+        return default(Nodetool.Types.Core.NPArray);
     }
 }

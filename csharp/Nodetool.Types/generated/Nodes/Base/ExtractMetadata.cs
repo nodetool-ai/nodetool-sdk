@@ -8,10 +8,21 @@ namespace Nodetool.Nodes.Base;
 public class ExtractMetadata
 {
     [Key(0)]
-    public string html { get; set; } = "";
+    public string html { get; set; } = @"";
 
-    public object Process()
+    [MessagePackObject]
+    public class ExtractMetadataOutput
     {
-        return default(object);
+        [Key(0)]
+        public string description { get; set; }
+        [Key(1)]
+        public string keywords { get; set; }
+        [Key(2)]
+        public string title { get; set; }
+    }
+
+    public ExtractMetadataOutput Process()
+    {
+        return new ExtractMetadataOutput();
     }
 }

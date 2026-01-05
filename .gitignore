@@ -6,8 +6,14 @@ src/obj/
 # Dynamic plugins .dll
 bin/
 
+# Nodetool.SDK.VL: never keep loose binaries in the project directory
+csharp/Nodetool.SDK.VL/*.dll
+csharp/Nodetool.SDK.VL/*.pdb
+csharp/Nodetool.SDK.VL/*.deps.json
+
 .vl/
 /lib/
 
-# Agent plans
+# Agent
 __PLANS__/
+__pycache__/

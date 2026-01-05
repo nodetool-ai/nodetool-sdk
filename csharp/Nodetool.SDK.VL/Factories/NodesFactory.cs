@@ -9,6 +9,7 @@ using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.VL.Nodes;
 using Nodetool.SDK.VL.Services;
 using Nodetool.SDK.Configuration;
+using Nodetool.SDK.VL.Utilities;
 
 namespace Nodetool.SDK.VL.Factories
 {
@@ -35,13 +36,10 @@ namespace Nodetool.SDK.VL.Factories
         /// </summary>
         public static NodeBuilding.FactoryImpl GetFactory(IVLNodeDescriptionFactory vlSelfFactory)
         {
-            Console.WriteLine("=== NodesFactory.GetFactory called ===");
-            Console.WriteLine($"NodesFactory: vlSelfFactory type: {vlSelfFactory?.GetType().Name ?? "null"}");
-            
             // Add safety check for vlSelfFactory
             if (vlSelfFactory == null)
             {
-                Console.WriteLine("NodesFactory: ERROR - vlSelfFactory is null!");
+                VlLog.Error("NodesFactory: vlSelfFactory is null");
                 return NodeBuilding.NewFactoryImpl(ImmutableArray<IVLNodeDescription>.Empty);
             }
             
@@ -49,11 +47,8 @@ namespace Nodetool.SDK.VL.Factories
             {
                 if (_isInitialized && _factoryImpl != null)
                 {
-                    Console.WriteLine("NodesFactory: Returning cached factory instance");
                     return _factoryImpl;
                 }
-
-                Console.WriteLine("=== NodesFactory: Performing one-time initialization ===");
                 
                 try
                 {
@@ -65,8 +60,6 @@ namespace Nodetool.SDK.VL.Factories
                     int successfullyProcessedCount = 0;
                     int failedToProcessCount = 0;
 
-                    Console.WriteLine($"NodesFactory: Processing {_fetchedNodes.Count} fetched node definitions...");
-                    
                     // Process each node definition from the metadata
                     foreach (var nodeMetadata in _fetchedNodes)
                     {
@@ -86,7 +79,8 @@ namespace Nodetool.SDK.VL.Factories
                         try
                         {
                             var category = DetermineNodeCategory(nodeMetadata.NodeType);
-                            var summary = nodeMetadata.Description ?? nodeMetadata.Title ?? $"Nodetool {nodeMetadata.NodeType}";
+                            var summary = TextCleanup.StripTrailingPeriodsPerLine(
+                                nodeMetadata.Description ?? nodeMetadata.Title ?? $"Nodetool {nodeMetadata.NodeType}");
                             
                             var nodeDesc = vlSelfFactory?.NewNodeDescription(
                                 name: vlNodeName,
@@ -101,6 +95,30 @@ namespace Nodetool.SDK.VL.Factories
                                     inputPins.Add(bc.Pin("Execute", typeof(bool), false, 
                                         "⚡ Execute node", 
                                         "Boolean input - set to true to execute the Nodetool node"));
+
+                                    inputPins.Add(bc.Pin("Cancel", typeof(bool), false,
+                                        "🛑 Cancel execution",
+                                        "Boolean input - set to true (rising edge) to cancel the current execution.\n\n"
+                                        + "- If the node is not running, this does nothing.\n"
+                                        + "- Cancellation is best-effort: the server may take a moment to stop.\n"
+                                        + "- The node's last outputs stay latched."));
+
+                                    inputPins.Add(bc.Pin("AutoRun", typeof(bool), false,
+                                        "🔁 Execute on input change",
+                                        "When enabled, this node automatically executes whenever any *data input* changes.\n\n"
+                                        + "- This watches all input pins except Execute/Cancel/AutoRun/RestartOnChange.\n"
+                                        + "- Useful for chaining nodes and building autorun patches.\n"
+                                        + "- If an input changes while a run is active, behavior depends on RestartOnChange."));
+
+                                    inputPins.Add(bc.Pin("RestartOnChange", typeof(bool), false,
+                                        "♻️ Restart on input change",
+                                        "Only relevant when AutoRun is enabled.\n\n"
+                                        + "If true and inputs change while the node is already running:\n"
+                                        + "- the current run is cancelled, and\n"
+                                        + "- the node restarts immediately with the latest inputs.\n\n"
+                                        + "If false:\n"
+                                        + "- the node finishes the current run, then reruns once.\n\n"
+                                        + "Tip: enable this for interactive tweaking (sliders/knobs). Leave it off for expensive or non-cancellable nodes."));
                                     
                                     // Add input pins from node properties with documentation
                                     if (nodeMetadata.Properties != null)
@@ -108,10 +126,12 @@ namespace Nodetool.SDK.VL.Factories
                                         foreach (var property in nodeMetadata.Properties)
                                         {
                                             var (vlType, defaultValue) = MapNodeType(property.Type);
-                                            var pinSummary = property.Description ?? property.Title ?? property.Name;
+                                            var targetType = vlType ?? typeof(string);
+                                            var initial = VlValueConversion.ConvertOrFallback(property.Default, targetType, defaultValue);
+                                            var pinSummary = TextCleanup.StripTrailingPeriod(property.Description ?? property.Title ?? property.Name);
                                             var pinRemarks = BuildPinRemarks(property);
                                             
-                                            inputPins.Add(bc.Pin(property.Name, vlType ?? typeof(string), defaultValue, pinSummary, pinRemarks));
+                                            inputPins.Add(bc.Pin(property.Name, targetType, initial, pinSummary, pinRemarks));
                                         }
                                     }
 
@@ -135,9 +155,18 @@ namespace Nodetool.SDK.VL.Factories
                                     outputPins.Add(bc.Pin("IsRunning", typeof(bool), false,
                                         "⏳ Execution status", 
                                         "True while the node is processing, false when complete or idle"));
+                                    outputPins.Add(bc.Pin("On Update", typeof(bool), false,
+                                        "⚡ On Update",
+                                        "Pulse: goes true briefly when the node run finishes (success/failed/cancelled).\n\n"
+                                        + "This does not mean the values actually changed—only that the node executed.\n"
+                                        + "Use it to trigger downstream logic."));
                                     outputPins.Add(bc.Pin("Error", typeof(string), "",
                                         "❌ Error message", 
                                         "Contains error details if execution fails, empty string if successful"));
+                                    outputPins.Add(new VlPinDescription("Debug", typeof(string), "",
+                                        summary: "🪵 Debug (last updates)",
+                                        remarks: "Last few runner updates (progress/node_update/output_update). Useful when results are partial or missing",
+                                        isVisible: false));
 
                                     // Build comprehensive node documentation
                                     var nodeRemarks = BuildNodeRemarks(nodeMetadata);
@@ -156,35 +185,30 @@ namespace Nodetool.SDK.VL.Factories
                             {
                                 allDescriptions.Add(nodeDesc);
                                 successfullyProcessedCount++;
-                                var inputCount = nodeMetadata.Properties?.Count ?? 0;
-                                var outputCount = nodeMetadata.Outputs?.Count ?? 0;
-                                Console.WriteLine($"✅ NodesFactory: Created documented VL node '{vlNodeName}' from '{nodeMetadata.NodeType}' ({inputCount + 1} inputs, {outputCount + 2} outputs with tooltips)");
                             }
                             else
                             {
                                 failedToProcessCount++;
-                                Console.WriteLine($"NodesFactory: Failed to create node description for '{nodeMetadata.NodeType}' - vlSelfFactory returned null");
+                                VlLog.Error($"NodesFactory: vlSelfFactory returned null for '{nodeMetadata.NodeType}'");
                             }
                         }
                             catch (Exception ex)
                             {
                                 failedToProcessCount++;
-                                Console.WriteLine($"NodesFactory: Error creating NodeDescription for '{nodeMetadata.NodeType}': {ex.Message}");
-                                Console.WriteLine($"NodesFactory: Stack trace: {ex.StackTrace}");
+                                VlLog.Error($"NodesFactory: error creating VL node '{nodeMetadata.NodeType}': {ex.Message}");
                             }
                         }
                         catch (Exception ex)
                         {
                             failedToProcessCount++;
-                            Console.WriteLine($"NodesFactory: Error processing node '{nodeMetadata.NodeType}': {ex.Message}");
+                            VlLog.Error($"NodesFactory: error processing node '{nodeMetadata.NodeType}': {ex.Message}");
                         }
                     }
 
                     _processingSummary = $"Processed {successfullyProcessedCount} nodes successfully (Failed: {failedToProcessCount}) from {_fetchedNodes.Count} total definitions.";
-                    Console.WriteLine($"NodesFactory: {_processingSummary}");
+                    VlLog.Info(_processingSummary);
 
                     // Add diagnostic status node
-                    Console.WriteLine("NodesFactory: Creating diagnostic status node...");
                     try
                     {
                         var statusNode = vlSelfFactory?.NewNodeDescription(
@@ -215,42 +239,31 @@ namespace Nodetool.SDK.VL.Factories
                         if (statusNode != null)
                         {
                             allDescriptions.Add(statusNode);
-                            Console.WriteLine("NodesFactory: Diagnostic status node created successfully");
                         }
                         else
                         {
-                            Console.WriteLine("NodesFactory: Failed to create diagnostic status node - vlSelfFactory returned null");
+                            VlLog.Error("NodesFactory: failed to create NodesAPIStatus node (vlSelfFactory returned null)");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"NodesFactory: Error creating status node: {ex.Message}");
-                        Console.WriteLine($"NodesFactory: Status node stack trace: {ex.StackTrace}");
+                        VlLog.Error($"NodesFactory: error creating NodesAPIStatus node: {ex.Message}");
                     }
 
-                    Console.WriteLine($"NodesFactory: Creating factory with {allDescriptions.Count} node descriptions...");
+                    // Note: diagnostics nodes (Connect/ConnectionStatus) are provided by DiagnosticsNodeFactory.
+                    // Avoid duplicating them here to prevent duplicate node descriptions under the same category/name.
+
                     _factoryImpl = NodeBuilding.NewFactoryImpl(ImmutableArray.CreateRange(allDescriptions));
                     _isInitialized = true;
-                    Console.WriteLine($"=== NodesFactory: Factory created successfully with {allDescriptions.Count} node descriptions ===");
                     return _factoryImpl;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"=== NodesFactory: CRITICAL ERROR during factory initialization ===");
-                    Console.WriteLine($"NodesFactory: Error message: {ex.Message}");
-                    Console.WriteLine($"NodesFactory: Error type: {ex.GetType().Name}");
-                    Console.WriteLine($"NodesFactory: Stack trace: {ex.StackTrace}");
-                    
-                    if (ex.InnerException != null)
-                    {
-                        Console.WriteLine($"NodesFactory: Inner exception: {ex.InnerException.Message}");
-                        Console.WriteLine($"NodesFactory: Inner stack trace: {ex.InnerException.StackTrace}");
-                    }
+                    VlLog.Error($"NodesFactory: initialization failed: {ex.GetType().Name}: {ex.Message}");
                     
                     // Return empty factory to prevent VL from considering it "not found"
                     _factoryImpl = NodeBuilding.NewFactoryImpl(ImmutableArray<IVLNodeDescription>.Empty);
                     _isInitialized = true;
-                    Console.WriteLine("NodesFactory: Returning empty factory due to initialization error");
                     return _factoryImpl;
                 }
             }
@@ -261,26 +274,23 @@ namespace Nodetool.SDK.VL.Factories
         /// </summary>
         private static void PerformGlobalDataFetchAndStore()
         {
-            Console.WriteLine("=== NodesFactory: Fetching node metadata from API ===");
-            Console.WriteLine($"NodesFactory: Target URL: {NodetoolConstants.Defaults.BaseUrl}{NodetoolConstants.Endpoints.NodesMetadata}");
+            var apiBase = NodeToolClientProvider.CurrentApiBaseUrl?.ToString().TrimEnd('/')
+                          ?? NodetoolConstants.Defaults.BaseUrl;
+            VlLog.Debug($"NodesFactory: Target URL: {apiBase}{NodetoolConstants.Endpoints.NodesMetadata}");
             
             try
             {
                 using var client = new Nodetool.SDK.Api.NodetoolClient();
-                client.Configure(NodetoolConstants.Defaults.BaseUrl);
-                Console.WriteLine("NodesFactory: Created NodetoolClient instance");
-                
-                // Since we can't use async in static constructor context, we need to handle this differently
-                Console.WriteLine("NodesFactory: Starting async metadata fetch...");
+                client.Configure(apiBase);
+                VlLog.Debug("NodesFactory: fetching node metadata...");
                 var task = Task.Run(async () => await client.GetNodeTypesAsync());
                 
-                Console.WriteLine($"NodesFactory: Waiting for API response ({NodetoolConstants.Defaults.TimeoutSeconds} second timeout)...");
                 bool completed = task.Wait(TimeSpan.FromSeconds(NodetoolConstants.Defaults.TimeoutSeconds));
                 
                 if (!completed)
                 {
                     _apiStatusMessage = $"Timeout waiting for API response after {NodetoolConstants.Defaults.TimeoutSeconds} seconds";
-                    Console.WriteLine($"NodesFactory: {_apiStatusMessage}");
+                    VlLog.Error($"NodesFactory: {_apiStatusMessage}");
                     _fetchedNodes = ImmutableList<NodeMetadataResponse>.Empty;
                     return;
                 }
@@ -288,9 +298,7 @@ namespace Nodetool.SDK.VL.Factories
                 var nodes = task.Result;
                 _fetchedNodes = nodes?.ToImmutableList() ?? ImmutableList<NodeMetadataResponse>.Empty;
                 _apiStatusMessage = $"Successfully fetched {_fetchedNodes.Count} node definitions";
-                
-                Console.WriteLine($"=== NodesFactory: Successfully fetched {_fetchedNodes.Count} node definitions ===");
-                Console.WriteLine($"NodesFactory: API Status: {_apiStatusMessage}");
+                VlLog.Debug($"NodesFactory: {_apiStatusMessage}");
             }
             catch (AggregateException aggEx)
             {
@@ -345,35 +353,40 @@ namespace Nodetool.SDK.VL.Factories
                     break;
             }
 
-            // Log comprehensive error information
-            Console.WriteLine($"");
-            Console.WriteLine($"=================== NODETOOL API ERROR ===================");
-            Console.WriteLine($"🚨 NODES CANNOT BE CREATED - API UNREACHABLE");
-            Console.WriteLine($"");
-            Console.WriteLine($"Error Category: {errorCategory}");
-            Console.WriteLine($"API Endpoint: {NodetoolConstants.Defaults.BaseUrl}{NodetoolConstants.Endpoints.NodesMetadata}");
-            Console.WriteLine($"Status: {_apiStatusMessage}");
-            Console.WriteLine($"");
-            Console.WriteLine($"📋 USER ACTION REQUIRED:");
-            Console.WriteLine($"{userGuidance}");
-            Console.WriteLine($"");
-            Console.WriteLine($"🔧 Technical Details:");
-            Console.WriteLine($"   Error Type: {ex.GetType().Name}");
-            Console.WriteLine($"   Message: {ex.Message}");
-            if (ex.InnerException != null)
+            // Keep default startup logs concise; show full troubleshooting only in verbose mode.
+            VlLog.Error($"Nodes API error ({errorCategory}): {_apiStatusMessage}");
+
+            if (VlLog.Verbose)
             {
-                Console.WriteLine($"   Inner Error: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                Console.WriteLine("");
+                Console.WriteLine("=================== NODETOOL API ERROR ===================");
+                Console.WriteLine("🚨 NODES CANNOT BE CREATED - API UNREACHABLE");
+                Console.WriteLine("");
+                Console.WriteLine($"Error Category: {errorCategory}");
+                Console.WriteLine($"API Endpoint: {NodetoolConstants.Defaults.BaseUrl}{NodetoolConstants.Endpoints.NodesMetadata}");
+                Console.WriteLine($"Status: {_apiStatusMessage}");
+                Console.WriteLine("");
+                Console.WriteLine("📋 USER ACTION REQUIRED:");
+                Console.WriteLine(userGuidance);
+                Console.WriteLine("");
+                Console.WriteLine("🔧 Technical Details:");
+                Console.WriteLine($"   Error Type: {ex.GetType().Name}");
+                Console.WriteLine($"   Message: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"   Inner Error: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                }
+                Console.WriteLine($"   Timeout Setting: {NodetoolConstants.Defaults.TimeoutSeconds} seconds");
+                Console.WriteLine("");
+                Console.WriteLine("🔍 Troubleshooting Steps:");
+                Console.WriteLine("   1. Verify Nodetool server is running");
+                Console.WriteLine($"   2. Check API URL: {NodetoolConstants.Defaults.BaseUrl}");
+                Console.WriteLine($"   3. Test API manually: GET {NodetoolConstants.Defaults.BaseUrl}{NodetoolConstants.Endpoints.NodesMetadata}");
+                Console.WriteLine("   4. Check firewall/network settings");
+                Console.WriteLine("   5. Verify Nodetool server health");
+                Console.WriteLine("===========================================================");
+                Console.WriteLine("");
             }
-            Console.WriteLine($"   Timeout Setting: {NodetoolConstants.Defaults.TimeoutSeconds} seconds");
-            Console.WriteLine($"");
-            Console.WriteLine($"🔍 Troubleshooting Steps:");
-            Console.WriteLine($"   1. Verify Nodetool server is running");
-            Console.WriteLine($"   2. Check API URL: {NodetoolConstants.Defaults.BaseUrl}");
-            Console.WriteLine($"   3. Test API manually: GET {NodetoolConstants.Defaults.BaseUrl}{NodetoolConstants.Endpoints.NodesMetadata}");
-            Console.WriteLine($"   4. Check firewall/network settings");
-            Console.WriteLine($"   5. Verify Nodetool server health");
-            Console.WriteLine($"===========================================================");
-            Console.WriteLine($"");
             
             _fetchedNodes = ImmutableList<NodeMetadataResponse>.Empty;
         }
@@ -431,22 +444,7 @@ namespace Nodetool.SDK.VL.Factories
         /// </summary>
         private static (Type?, object?) MapNodeType(NodeTypeDefinition? nodeType)
         {
-            if (nodeType == null || string.IsNullOrEmpty(nodeType.Type))
-                return (typeof(string), "");
-
-            return nodeType.Type.ToLowerInvariant() switch
-            {
-                "str" or "string" => (typeof(string), ""),
-                "int" or "integer" => (typeof(int), 0),
-                "float" or "number" => (typeof(float), 0.0f),
-                "bool" or "boolean" => (typeof(bool), false),
-                "list" or "array" => (typeof(string[]), new string[0]),
-                "dict" or "object" => (typeof(object), null),
-                "image" => (typeof(string), ""), // Image path or base64
-                "audio" => (typeof(string), ""), // Audio path or data
-                "video" => (typeof(string), ""), // Video path or data
-                _ => (typeof(string), "")
-            };
+            return VlTypeMapping.MapNodeType(nodeType);
         }
 
         /// <summary>
@@ -517,21 +515,21 @@ namespace Nodetool.SDK.VL.Factories
         /// </summary>
         private static string BuildNodeRemarks(NodeMetadataResponse nodeMetadata)
         {
-            var parts = new List<string>();
-            parts.Add($"NodeTool Type: {nodeMetadata.NodeType}");
-            
-            if (!string.IsNullOrWhiteSpace(nodeMetadata.Title) && 
-                nodeMetadata.Title != nodeMetadata.NodeType)
-                parts.Add($"Title: {nodeMetadata.Title}");
-                
-            var inputCount = nodeMetadata.Properties?.Count ?? 0;
-            var outputCount = nodeMetadata.Outputs?.Count ?? 0;
-            parts.Add($"📌 {inputCount} inputs, {outputCount} outputs");
-            
-            if (!string.IsNullOrWhiteSpace(nodeMetadata.Description))
-                parts.Add($"Description: {nodeMetadata.Description}");
-            
-            return string.Join("\n", parts);
+            static string TrimTrailingPeriod(string s)
+                => s.EndsWith(".", StringComparison.Ordinal) ? s.TrimEnd('.') : s;
+
+            // vvvv shows Summary + Remarks; keep Remarks short and non-duplicative.
+            // Requested style:
+            // - show namespace (no "NodeTool Type:" label)
+            // - no title
+            // - no "2 inputs, 2 outputs"
+            var ns = (nodeMetadata.Namespace ?? "").Trim();
+            if (!string.IsNullOrWhiteSpace(ns))
+                return TrimTrailingPeriod(ns);
+
+            // Fallback if namespace is missing
+            var nodeType = (nodeMetadata.NodeType ?? "").Trim();
+            return TrimTrailingPeriod(nodeType);
         }
     }
 } 

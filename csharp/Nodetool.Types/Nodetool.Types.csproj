@@ -7,13 +7,27 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>Nodetool.Types</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Description>Clean C# types for NodeTool data structures with MessagePack support</Description>
     <Authors>NodeTool Contributors</Authors>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="MessagePack" Version="3.0.300" />
+  </ItemGroup>
+
+  <!--
+    Only compile the generated DTOs that are valid C#.
+
+    Notes:
+    - The `scripts/**` tree contains generator inputs/outputs and is not meant to compile.
+    - Some files in `generated/**` are stubs/placeholders or contain unescaped identifiers.
+      We exclude those until generation is hardened (keyword escaping, identifier sanitization).
+  -->
+  <ItemGroup>
+    <Compile Remove="scripts\**\*.cs" />
+    <Compile Remove="generated\Types\Core.cs" />
+    <Compile Remove="generated\NodeToolTypes.cs" />
   </ItemGroup>
 
 </Project>

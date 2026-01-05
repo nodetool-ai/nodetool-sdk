@@ -7,7 +7,7 @@ namespace Nodetool.Types.Core;
 public class CLIPVisionOutput
 {
     [Key(0)]
-    public object type { get; set; } = "comfy.clip_vision_output";
-    [Key(1)]
     public object data { get; set; } = null;
+    [Key(1)]
+    public object type { get; set; } = @"comfy.clip_vision_output";
 }

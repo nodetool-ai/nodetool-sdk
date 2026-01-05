@@ -16,9 +16,9 @@ public class If
     public class IfOutput
     {
         [Key(0)]
-        public object if_true { get; set; }
-        [Key(1)]
         public object if_false { get; set; }
+        [Key(1)]
+        public object if_true { get; set; }
     }
 
     public IfOutput Process()

@@ -8,19 +8,19 @@ namespace Nodetool.Nodes.Base;
 public class IndexAggregatedText
 {
     [Key(0)]
-    public Nodetool.Types.Collection collection { get; set; } = new Nodetool.Types.Collection();
-    [Key(1)]
-    public string document { get; set; } = "";
-    [Key(2)]
-    public string document_id { get; set; } = "";
-    [Key(3)]
-    public object metadata { get; set; } = new Dictionary<string, object>();
-    [Key(4)]
-    public object text_chunks { get; set; } = new List<object>();
-    [Key(5)]
-    public int context_window { get; set; } = 4096;
-    [Key(6)]
     public object aggregation { get; set; }
+    [Key(1)]
+    public Nodetool.Types.Core.Collection collection { get; set; } = new Nodetool.Types.Core.Collection();
+    [Key(2)]
+    public int context_window { get; set; } = 4096;
+    [Key(3)]
+    public string document { get; set; } = @"";
+    [Key(4)]
+    public string document_id { get; set; } = @"";
+    [Key(5)]
+    public object metadata { get; set; } = new();
+    [Key(6)]
+    public object text_chunks { get; set; } = new();
 
     public void Process()
     {

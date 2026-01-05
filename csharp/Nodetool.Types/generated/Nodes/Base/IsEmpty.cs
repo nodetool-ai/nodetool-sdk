@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class IsEmpty
 {
     [Key(0)]
-    public string text { get; set; } = "";
+    public string text { get; set; } = @"";
     [Key(1)]
     public bool trim_whitespace { get; set; } = true;
 

@@ -6,6 +6,8 @@ using VL.Core;
 using VL.Core.CompilerServices;
 using VL.Core.Diagnostics;
 using Nodetool.SDK.VL.Models;
+using Nodetool.SDK.VL.Utilities;
+using SkiaSharp;
 
 namespace Nodetool.SDK.VL.Nodes
 {
@@ -19,8 +21,14 @@ namespace Nodetool.SDK.VL.Nodes
 
         // Standard pin names
         public const string TriggerInputName = "Trigger";
+        public const string CancelInputName = "Cancel";
+        public const string AutoRunInputName = "AutoRun";
+        public const string RestartOnChangeInputName = "RestartOnChange";
         public const string IsRunningOutputName = "IsRunning";
         public const string ErrorOutputName = "Error";
+        public const string DebugOutputName = "Debug";
+        public const string InputSchemaJsonOutputName = "InputSchemaJson";
+        public const string OutputSchemaJsonOutputName = "OutputSchemaJson";
 
         public WorkflowNodeDescription(
             WorkflowDetail workflow,
@@ -40,7 +48,7 @@ namespace Nodetool.SDK.VL.Nodes
 
             if (!string.IsNullOrWhiteSpace(description))
             {
-                Summary = description;
+                Summary = TextCleanup.StripTrailingPeriodsPerLine(description);
             }
             else
             {
@@ -57,6 +65,30 @@ namespace Nodetool.SDK.VL.Nodes
             inputPins.Add(new PinDescription(TriggerInputName, typeof(bool), false,
                 "🚀 Trigger workflow execution on rising edge",
                 "Boolean input - set to true to execute the Nodetool workflow"));
+
+            inputPins.Add(new PinDescription(CancelInputName, typeof(bool), false,
+                "🛑 Cancel execution",
+                "Boolean input - set to true (rising edge) to cancel the current execution.\n\n"
+                + "- If the workflow is not running, this does nothing.\n"
+                + "- Cancellation is best-effort: the server may take a moment to stop.\n"
+                + "- Output pins keep their last values."));
+
+            inputPins.Add(new PinDescription(AutoRunInputName, typeof(bool), false,
+                "🔁 Execute on input change",
+                "When enabled, this workflow automatically executes whenever any *workflow input pin* changes.\n\n"
+                + "- This watches all workflow input pins (not Trigger/Cancel/AutoRun/RestartOnChange).\n"
+                + "- Useful for chaining workflows and building autorun patches.\n"
+                + "- If an input changes while a run is active, behavior depends on RestartOnChange."));
+
+            inputPins.Add(new PinDescription(RestartOnChangeInputName, typeof(bool), false,
+                "♻️ Restart on input change",
+                "Only relevant when AutoRun is enabled.\n\n"
+                + "If true and inputs change while the workflow is already running:\n"
+                + "- the current run is cancelled, and\n"
+                + "- the workflow restarts immediately with the latest inputs.\n\n"
+                + "If false:\n"
+                + "- the workflow finishes the current run, then reruns once.\n\n"
+                + "Tip: enable this for interactive tweaking. Leave it off when the workflow is expensive or you prefer stable completion."));
 
             // Add workflow input pins
             foreach (var property in _workflow.GetInputProperties())
@@ -87,6 +119,21 @@ namespace Nodetool.SDK.VL.Nodes
                 "❌ Error message",
                 "Contains error details if execution fails, empty string if successful"));
 
+            outputPins.Add(new PinDescription(DebugOutputName, typeof(string), "",
+                "🪵 Debug (last updates)",
+                "Last few workflow runner updates (progress/node_update/output_update). Useful when results are partial or missing.",
+                isVisible: false));
+
+            outputPins.Add(new PinDescription(InputSchemaJsonOutputName, typeof(string), "",
+                "📄 Input schema (JSON)",
+                "The workflow input_schema as JSON (for debugging/type inspection).",
+                isVisible: false));
+
+            outputPins.Add(new PinDescription(OutputSchemaJsonOutputName, typeof(string), "",
+                "📄 Output schema (JSON)",
+                "The workflow output_schema as JSON (for debugging/type inspection).",
+                isVisible: false));
+
             // Add workflow output pins
             foreach (var property in _workflow.GetOutputProperties())
             {
@@ -109,7 +156,27 @@ namespace Nodetool.SDK.VL.Nodes
         public IReadOnlyList<IVLPinDescription> Outputs { get; }
         public string Summary { get; }
         public string Remarks { get; }
-        public IReadOnlyList<string> Tags => new List<string> { "Nodetool", "Workflow" }.AsReadOnly();
+        public IReadOnlyList<string> Tags
+        {
+            get
+            {
+                var tags = new List<string> { "Nodetool", "Workflow" };
+                if (_workflow.Tags != null)
+                {
+                    foreach (var t in _workflow.Tags)
+                    {
+                        if (string.IsNullOrWhiteSpace(t))
+                            continue;
+                        var trimmed = t.Trim();
+                        if (trimmed.Length == 0)
+                            continue;
+                        if (!tags.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
+                            tags.Add(trimmed);
+                    }
+                }
+                return tags.AsReadOnly();
+            }
+        }
         public IVLNodeDescriptionFactory Factory => _factory;
         public IEnumerable<Message> Messages => Enumerable.Empty<Message>();
 
@@ -131,20 +198,30 @@ namespace Nodetool.SDK.VL.Nodes
 
         private string BuildWorkflowRemarks()
         {
+            static string TrimTrailingPeriod(string s)
+                => s.EndsWith(".", StringComparison.Ordinal) ? s.TrimEnd('.') : s;
+
             var parts = new List<string>();
-            parts.Add($"Nodetool Workflow ID: {_workflow.Id}");
-            parts.Add($"Name: {_workflow.Name}");
-
-            if (!string.IsNullOrWhiteSpace(_workflow.Description) &&
-                _workflow.Description != _workflow.Name)
-                parts.Add($"Description: {_workflow.Description}");
-
-            var inputCount = _workflow.GetInputProperties().Count();
-            var outputCount = _workflow.GetOutputProperties().Count();
-            parts.Add($"📌 {inputCount} inputs, {outputCount} outputs");
+            if (!string.IsNullOrWhiteSpace(_workflow.Id))
+                parts.Add(TrimTrailingPeriod(_workflow.Id.Trim()));
+            // Don't repeat Name/Description here: vvvv shows Summary + Remarks, and Summary already contains the
+            // human-readable description/title.
 
             parts.Add($"Created: {_workflow.CreatedAt:yyyy-MM-dd}");
             parts.Add($"Updated: {_workflow.UpdatedAt:yyyy-MM-dd}");
+
+            if (_workflow.Tags != null && _workflow.Tags.Count > 0)
+            {
+                var shown = _workflow.Tags
+                    .Where(t => !string.IsNullOrWhiteSpace(t))
+                    .Select(t => t.Trim())
+                    .Where(t => t.Length > 0)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Take(12)
+                    .ToList();
+                if (shown.Count > 0)
+                    parts.Add($"Tags: {string.Join(", ", shown)}");
+            }
 
             return string.Join("\n", parts);
         }
@@ -194,6 +271,8 @@ namespace Nodetool.SDK.VL.Nodes
                 "float" or "number" => (typeof(float), 0.0f),
                 "bool" or "boolean" => (typeof(bool), false),
                 "list" or "array" => (typeof(string[]), new string[0]),
+                "any" => (typeof(object), null!),
+                "image" => (typeof(SKImage), null!),
                 _ => (typeof(string), "")
             };
         }
@@ -203,74 +282,44 @@ namespace Nodetool.SDK.VL.Nodes
         /// </summary>
         private static object ConvertToVLType(object? value, Type targetType)
         {
-            if (value == null)
-            {
-                var (_, defaultValue) = GetVLTypeAndDefault(targetType.Name);
-                return defaultValue;
-            }
+            // Important: numbers often come through as JsonElement from System.Text.Json.
+            // Centralize conversion so defaults work for numeric pins.
+            return VlValueConversion.ConvertOrFallback(value, targetType, GetDefaultValueForVLType(targetType))
+                   ?? GetDefaultValueForVLType(targetType);
+        }
 
-            if (targetType.IsAssignableFrom(value.GetType()))
-                return value;
+        private static object GetDefaultValueForVLType(Type vlType)
+        {
+            if (vlType == typeof(string)) return "";
+            if (vlType == typeof(int)) return 0;
+            if (vlType == typeof(float)) return 0.0f;
+            if (vlType == typeof(bool)) return false;
+            if (vlType == typeof(string[])) return Array.Empty<string>();
+            if (vlType == typeof(SKImage)) return null!;
 
             try
             {
-                if (targetType == typeof(string))
-                {
-                    return value.ToString() ?? "";
-                }
-                else if (targetType == typeof(int))
-                {
-                    return Convert.ToInt32(value);
-                }
-                else if (targetType == typeof(float))
-                {
-                    return Convert.ToSingle(value);
-                }
-                else if (targetType == typeof(bool))
-                {
-                    return Convert.ToBoolean(value);
-                }
-                else if (targetType == typeof(string[]))
-                {
-                    if (value is Array array)
-                    {
-                        var stringArray = new string[array.Length];
-                        for (int i = 0; i < array.Length; i++)
-                        {
-                            stringArray[i] = array.GetValue(i)?.ToString() ?? "";
-                        }
-                        return stringArray;
-                    }
-                    else
-                    {
-                        return new string[] { value.ToString() ?? "" };
-                    }
-                }
-                else
-                {
-                    return Convert.ChangeType(value, targetType);
-                }
+                return Activator.CreateInstance(vlType) ?? null!;
             }
             catch
             {
-                // If conversion fails, return default value for the target type
-                var (_, defaultValue) = GetVLTypeAndDefault(targetType.Name);
-                return defaultValue;
+                return null!;
             }
         }
 
         /// <summary>
         /// Internal pin description implementation
         /// </summary>
-        private class PinDescription : IVLPinDescription
+        private class PinDescription : IVLPinDescription, IVLPinDescriptionWithVisibility
         {
-            public PinDescription(string name, Type type, object? defaultValue = null, string summary = "", string remarks = "")
+            public PinDescription(string name, Type type, object? defaultValue = null, string summary = "", string remarks = "", bool isVisible = true)
             {
                 Name = name;
                 Type = type;
                 DefaultValue = defaultValue;
                 Summary = summary;
                 Remarks = remarks;
+                IsVisible = isVisible;
                 Tags = new List<string>().AsReadOnly();
             }
 
@@ -280,6 +329,7 @@ namespace Nodetool.SDK.VL.Nodes
             public string Summary { get; }
             public string Remarks { get; }
             public IReadOnlyList<string> Tags { get; }
+            public bool IsVisible { get; }
         }
     }
 } 

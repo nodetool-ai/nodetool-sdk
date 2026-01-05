@@ -1,5 +1,9 @@
 using Microsoft.Extensions.Logging;
+using Nodetool.SDK.Api;
+using Nodetool.SDK.Configuration;
+using Nodetool.SDK.Execution;
 using Nodetool.SDK.Types;
+using Nodetool.SDK.Values;
 using Nodetool.SDK.WebSocket;
 
 namespace Nodetool.SDK.TestConsole;
@@ -16,6 +20,12 @@ class Program
             builder.AddConsole().SetMinimumLevel(LogLevel.Information));
 
         var logger = loggerFactory.CreateLogger<Program>();
+
+        if (args.Contains("run-workflow", StringComparer.OrdinalIgnoreCase))
+        {
+            await RunWorkflowMode(args, loggerFactory, logger);
+            return;
+        }
 
         logger.LogInformation("🚀 NodeTool SDK Type Registry Test Console");
         logger.LogInformation("========================================");
@@ -76,12 +86,9 @@ class Program
         {
             logger.LogError(ex, "❌ Test failed with error");
         }
-
-        logger.LogInformation("Press any key to exit...");
-        Console.ReadKey();
     }
 
-    static async Task TestTypeLookups(TypeLookupService typeLookup, ILogger logger)
+    static Task TestTypeLookups(TypeLookupService typeLookup, ILogger logger)
     {
         // Test common asset types
         var testTypes = new[] { "image", "audio", "video", "hf.stable_diffusion", "comfy.conditioning" };
@@ -101,9 +108,11 @@ class Program
                 logger.LogWarning("   ⚠️  Type not found: {TypeName}", typeName);
             }
         }
+
+        return Task.CompletedTask;
     }
 
-    static async Task TestWebSocketMessages(TypeLookupService typeLookup, ILogger logger)
+    static Task TestWebSocketMessages(TypeLookupService typeLookup, ILogger logger)
     {
         try
         {
@@ -142,43 +151,61 @@ class Program
 
             typeName = typeLookup.GetTypeName(outputUpdate);
             logger.LogInformation("   ✅ OutputUpdate type name: {TypeName}", typeName);
+
+            // Test PreviewUpdate
+            var previewUpdate = new PreviewUpdate
+            {
+                node_id = "node-101",
+                value = new Dictionary<string, object> { { "type", "image" }, { "uri", "data:..." } }
+            };
+
+            typeName = typeLookup.GetTypeName(previewUpdate);
+            logger.LogInformation("   ✅ PreviewUpdate type name: {TypeName}", typeName);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "   ❌ WebSocket message test failed");
         }
+
+        return Task.CompletedTask;
     }
 
-    static async Task TestMessagePackSerialization(TypeLookupService typeLookup, ILogger logger)
+    static Task TestMessagePackSerialization(TypeLookupService typeLookup, ILogger logger)
     {
         try
         {
             // Test serialization/deserialization round-trip
-            var originalMessage = new WorkflowExecuteRequest
+            var originalMessage = new WebSocketCommand
             {
-                workflow_id = "test-workflow-123",
-                inputs = new Dictionary<string, object>
+                command = "run_job",
+                type = "run_job",
+                data = new RunJobRequest
                 {
-                    { "prompt", "Generate an AI image" },
-                    { "width", 512 },
-                    { "height", 512 }
-                },
-                job_id = Guid.NewGuid().ToString()
+                    WorkflowId = "test-workflow-123",
+                    JobType = "workflow",
+                    Params = new Dictionary<string, object>
+                    {
+                        { "prompt", "Generate an AI image" },
+                        { "width", 512 },
+                        { "height", 512 }
+                    },
+                    ExplicitTypes = true
+                }
             };
 
             // Serialize
             var serializedData = typeLookup.Serialize(originalMessage);
-            logger.LogInformation("   ✅ Serialized WorkflowExecuteRequest: {Size} bytes", serializedData.Length);
+            logger.LogInformation("   ✅ Serialized run_job WebSocketCommand: {Size} bytes", serializedData.Length);
 
             // Deserialize
-            var deserializedMessage = typeLookup.Deserialize<WorkflowExecuteRequest>(serializedData);
+            var deserializedMessage = typeLookup.Deserialize<WebSocketCommand>(serializedData);
             
             if (deserializedMessage != null)
             {
-                logger.LogInformation("   ✅ Deserialized WorkflowExecuteRequest: workflow_id={WorkflowId}", 
-                    deserializedMessage.workflow_id);
+                logger.LogInformation("   ✅ Deserialized WebSocketCommand: command={Command}, type={Type}", 
+                    deserializedMessage.command, deserializedMessage.type);
                 
-                if (deserializedMessage.workflow_id == originalMessage.workflow_id)
+                if (deserializedMessage.command == originalMessage.command)
                 {
                     logger.LogInformation("   ✅ Round-trip serialization successful!");
                 }
@@ -196,5 +223,152 @@ class Program
         {
             logger.LogError(ex, "   ❌ MessagePack serialization test failed");
         }
+
+        return Task.CompletedTask;
+    }
+
+    private static async Task RunWorkflowMode(string[] args, ILoggerFactory loggerFactory, ILogger logger)
+    {
+        var ws = GetArgValue(args, "--ws") ?? Environment.GetEnvironmentVariable("NODETOOL_WORKER_WS");
+        var http = GetArgValue(args, "--http") ?? Environment.GetEnvironmentVariable("NODETOOL_HTTP_API");
+        var workflowName = GetArgValue(args, "--workflow") ?? "TEST_SDK_01";
+        var timeoutSecStr = GetArgValue(args, "--timeout-sec") ?? "30";
+        var timeoutSec = int.TryParse(timeoutSecStr, out var parsedTimeout) ? parsedTimeout : 30;
+
+        if (string.IsNullOrWhiteSpace(ws) || string.IsNullOrWhiteSpace(http))
+        {
+            logger.LogError("Missing required URLs. Provide --ws and --http (or env vars NODETOOL_WORKER_WS and NODETOOL_HTTP_API).");
+            logger.LogInformation("Example:");
+            logger.LogInformation("  dotnet run -c Release -- run-workflow --ws ws://localhost:7777/ws --http http://localhost:7777 --workflow TEST_SDK_01");
+            return;
+        }
+
+        logger.LogInformation("🚀 NodeTool SDK Workflow Runner (WebSocket)");
+        logger.LogInformation("  WS:   {Ws}", ws);
+        logger.LogInformation("  HTTP: {Http}", http);
+        logger.LogInformation("  Workflow: {Workflow}", workflowName);
+
+        var options = new NodeToolClientOptions
+        {
+            WorkerWebSocketUrl = new Uri(ws),
+            ApiBaseUrl = new Uri(http),
+        };
+
+        // Build inputs. Prefer command-line key=value pairs; otherwise seed required inputs with a demo value.
+        var inputs = ParseInputs(args);
+        var seededDefault = inputs.Count == 0;
+        if (seededDefault)
+        {
+            // Seed a helpful default for simple workflows.
+            inputs["string_input_1"] = "hello from c#";
+        }
+
+        logger.LogInformation("Sending inputs: {Inputs}", string.Join(", ", inputs.Select(kvp => $"{kvp.Key}={kvp.Value}")));
+
+        using var exec = new NodeToolExecutionClient(options, logger: loggerFactory.CreateLogger<NodeToolExecutionClient>());
+        if (!await exec.ConnectAsync())
+        {
+            logger.LogError("Failed to connect to worker WS: {Ws}", ws);
+            return;
+        }
+
+        IExecutionSession session;
+        if (seededDefault)
+        {
+            // Demonstrate the convenience overload.
+            session = await exec.ExecuteWorkflowByNameAsync(workflowName, "string_input_1", "hello from c#");
+        }
+        else
+        {
+            session = await exec.ExecuteWorkflowByNameAsync(workflowName, inputs);
+        }
+        session.OutputReceived += update =>
+        {
+            var renderedValue = update.Value.Kind == NodeToolValueKind.String
+                ? (update.Value.AsString() ?? "")
+                : update.Value.ToJsonString();
+            logger.LogInformation("output_update: node={NodeName} output={OutputName} type={OutputType} value={Value}",
+                update.NodeName, update.OutputName, update.OutputType, renderedValue);
+        };
+        session.PreviewReceived += update =>
+        {
+            logger.LogInformation("preview_update: node={NodeId} value={Value}", update.NodeId, update.Value.TypeDiscriminator ?? update.Value.AsString() ?? update.Value.ToJsonString());
+        };
+        session.NodeUpdated += update =>
+        {
+            if (!string.IsNullOrWhiteSpace(update.error))
+            {
+                logger.LogWarning("node_update error: node={NodeName} error={Error}", update.node_name, update.error);
+            }
+        };
+        session.Completed += (ok, msg) =>
+        {
+            logger.LogInformation("completed: ok={Ok} message={Message}", ok, msg ?? "");
+        };
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSec));
+        var ok = await session.WaitForCompletionAsync(cts.Token);
+        if (!ok)
+        {
+            logger.LogWarning("Session did not complete within {Timeout}s (or was cancelled).", timeoutSec);
+        }
+
+        var outputs = session.GetLatestOutputs();
+        if (outputs.Count > 0)
+        {
+            logger.LogInformation("Final outputs ({Count}):", outputs.Count);
+            foreach (var kvp in outputs.OrderBy(k => k.Key, StringComparer.Ordinal))
+            {
+                // Avoid "System.Collections.Generic.Dictionary`2" noise by preferring JSON for non-strings.
+                var rendered = kvp.Value.Kind == NodeToolValueKind.String
+                    ? (kvp.Value.AsString() ?? "")
+                    : kvp.Value.ToJsonString();
+                logger.LogInformation("  {Key} = {Value}", kvp.Key, rendered);
+            }
+        }
+        else
+        {
+            logger.LogInformation("No outputs captured.");
+        }
+
+        await exec.DisconnectAsync();
+    }
+
+    private static string? GetArgValue(string[] args, string name)
+    {
+        for (var i = 0; i < args.Length - 1; i++)
+        {
+            if (string.Equals(args[i], name, StringComparison.OrdinalIgnoreCase))
+            {
+                return args[i + 1];
+            }
+        }
+        return null;
+    }
+
+    private static Dictionary<string, object> ParseInputs(string[] args)
+    {
+        var result = new Dictionary<string, object>(StringComparer.Ordinal);
+
+        // Supports repeated: --input key=value
+        for (var i = 0; i < args.Length - 1; i++)
+        {
+            if (!string.Equals(args[i], "--input", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var token = args[i + 1];
+            var eq = token.IndexOf('=');
+            if (eq <= 0) continue;
+
+            var key = token[..eq].Trim();
+            var val = token[(eq + 1)..];
+            if (key.Length == 0) continue;
+
+            result[key] = val;
+        }
+
+        return result;
     }
 } 

@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class SaveDataframe
 {
     [Key(0)]
-    public Nodetool.Types.DataframeRef df { get; set; } = new Nodetool.Types.DataframeRef();
+    public Nodetool.Types.Core.DataframeRef df { get; set; } = new Nodetool.Types.Core.DataframeRef();
     [Key(1)]
-    public Nodetool.Types.FolderRef folder { get; set; } = new Nodetool.Types.FolderRef();
+    public Nodetool.Types.Core.FolderRef folder { get; set; } = new Nodetool.Types.Core.FolderRef();
     [Key(2)]
-    public string name { get; set; } = "output.csv";
+    public string name { get; set; } = @"output.csv";
 
-    public Nodetool.Types.DataframeRef Process()
+    public Nodetool.Types.Core.DataframeRef Process()
     {
-        return default(Nodetool.Types.DataframeRef);
+        return default(Nodetool.Types.Core.DataframeRef);
     }
 }

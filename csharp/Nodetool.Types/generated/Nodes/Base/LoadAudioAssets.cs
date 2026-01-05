@@ -8,13 +8,13 @@ namespace Nodetool.Nodes.Base;
 public class LoadAudioAssets
 {
     [Key(0)]
-    public Nodetool.Types.FolderRef folder { get; set; } = new Nodetool.Types.FolderRef();
+    public Nodetool.Types.Core.FolderRef folder { get; set; } = new Nodetool.Types.Core.FolderRef();
 
     [MessagePackObject]
     public class LoadAudioAssetsOutput
     {
         [Key(0)]
-        public Nodetool.Types.AudioRef audio { get; set; }
+        public Nodetool.Types.Core.AudioRef audio { get; set; }
         [Key(1)]
         public string name { get; set; }
     }

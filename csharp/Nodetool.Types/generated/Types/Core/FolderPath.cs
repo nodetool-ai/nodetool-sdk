@@ -7,7 +7,7 @@ namespace Nodetool.Types.Core;
 public class FolderPath
 {
     [Key(0)]
-    public object type { get; set; } = "folder_path";
+    public string path { get; set; } = @"";
     [Key(1)]
-    public string path { get; set; } = "";
+    public object type { get; set; } = @"folder_path";
 }

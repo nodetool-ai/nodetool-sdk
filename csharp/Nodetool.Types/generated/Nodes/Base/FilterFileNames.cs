@@ -8,11 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class FilterFileNames
 {
     [Key(0)]
-    public object filenames { get; set; } = new List<object>();
-    [Key(1)]
-    public string pattern { get; set; } = "*";
-    [Key(2)]
     public bool case_sensitive { get; set; } = true;
+    [Key(1)]
+    public object filenames { get; set; } = new();
+    [Key(2)]
+    public string pattern { get; set; } = @"*";
 
     public object Process()
     {

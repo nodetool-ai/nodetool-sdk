@@ -8,11 +8,11 @@ namespace Nodetool.Nodes.Base;
 public class DictionaryOutput
 {
     [Key(0)]
-    public object value { get; set; } = new Dictionary<string, object>();
+    public string description { get; set; } = @"";
     [Key(1)]
-    public string name { get; set; } = "";
+    public string name { get; set; } = @"";
     [Key(2)]
-    public string description { get; set; } = "";
+    public object value { get; set; } = new();
 
     public object Process()
     {

@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Huggingface;
 public class FillMask
 {
     [Key(0)]
-    public Nodetool.Types.HFFillMask model { get; set; } = new Nodetool.Types.HFFillMask();
+    public string inputs { get; set; } = @"The capital of France is [MASK].";
     [Key(1)]
-    public string inputs { get; set; } = "The capital of France is [MASK].";
+    public Nodetool.Types.Core.HFFillMask model { get; set; } = new Nodetool.Types.Core.HFFillMask();
     [Key(2)]
     public int top_k { get; set; } = 5;
 

@@ -13,9 +13,4 @@ public class DanceDiffusion
     public int num_inference_steps { get; set; } = 50;
     [Key(2)]
     public int seed { get; set; } = 0;
-
-    public Nodetool.Types.AudioRef Process()
-    {
-        return default(Nodetool.Types.AudioRef);
-    }
 }

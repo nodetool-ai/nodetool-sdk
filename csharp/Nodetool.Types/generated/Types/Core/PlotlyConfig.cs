@@ -7,7 +7,7 @@ namespace Nodetool.Types.Core;
 public class PlotlyConfig
 {
     [Key(0)]
-    public object type { get; set; } = "plotly_config";
+    public Dictionary<string, object> config { get; set; } = new();
     [Key(1)]
-    public Dictionary<string, object> config { get; set; } = new Dictionary<string, object>();
+    public object type { get; set; } = @"plotly_config";
 }

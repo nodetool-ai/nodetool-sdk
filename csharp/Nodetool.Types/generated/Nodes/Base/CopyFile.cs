@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class CopyFile
 {
     [Key(0)]
-    public Nodetool.Types.FilePath source_path { get; set; } = new Nodetool.Types.FilePath();
+    public string destination_path { get; set; } = @"";
     [Key(1)]
-    public Nodetool.Types.FilePath destination_path { get; set; } = new Nodetool.Types.FilePath();
+    public string source_path { get; set; } = @"";
 
     public void Process()
     {

@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class FormatDateTime
 {
     [Key(0)]
-    public Nodetool.Types.Datetime input_datetime { get; set; } = new Nodetool.Types.Datetime();
+    public Nodetool.Types.Core.Datetime input_datetime { get; set; } = new Nodetool.Types.Core.Datetime();
     [Key(1)]
-    public object output_format { get; set; } = "DateFormat.HUMAN_READABLE";
+    public object output_format { get; set; } = @"%B %d, %Y";
 
     public string Process()
     {

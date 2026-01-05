@@ -8,21 +8,21 @@ namespace Nodetool.Nodes.Base;
 public class EmailFields
 {
     [Key(0)]
-    public Nodetool.Types.Email email { get; set; } = new Nodetool.Types.Email();
+    public Nodetool.Types.Core.Email email { get; set; } = new Nodetool.Types.Core.Email();
 
     [MessagePackObject]
     public class EmailFieldsOutput
     {
         [Key(0)]
-        public string id { get; set; }
-        [Key(1)]
-        public string subject { get; set; }
-        [Key(2)]
-        public string sender { get; set; }
-        [Key(3)]
-        public Nodetool.Types.Datetime date { get; set; }
-        [Key(4)]
         public string body { get; set; }
+        [Key(1)]
+        public Nodetool.Types.Core.Datetime date { get; set; }
+        [Key(2)]
+        public string id { get; set; }
+        [Key(3)]
+        public string sender { get; set; }
+        [Key(4)]
+        public string subject { get; set; }
     }
 
     public EmailFieldsOutput Process()

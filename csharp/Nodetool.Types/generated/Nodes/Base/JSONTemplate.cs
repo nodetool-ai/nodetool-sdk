@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class JSONTemplate
 {
     [Key(0)]
-    public string template { get; set; } = "";
+    public string template { get; set; } = @"";
     [Key(1)]
-    public object values { get; set; } = new Dictionary<string, object>();
+    public object values { get; set; } = new();
 
     public object Process()
     {

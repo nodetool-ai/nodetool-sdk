@@ -8,18 +8,18 @@ namespace Nodetool.Nodes.Fal;
 public class FluxV1ProUltra
 {
     [Key(0)]
-    public string prompt { get; set; } = "";
-    [Key(1)]
-    public object image_size { get; set; } = "ImageSizePreset.SQUARE_HD";
-    [Key(2)]
     public double guidance_scale { get; set; } = 3.5;
-    [Key(3)]
+    [Key(1)]
+    public object image_size { get; set; } = @"square_hd";
+    [Key(2)]
     public int num_inference_steps { get; set; } = 28;
+    [Key(3)]
+    public string prompt { get; set; } = @"";
     [Key(4)]
     public int seed { get; set; } = -1;
 
-    public Nodetool.Types.ImageRef Process()
+    public Nodetool.Types.Core.ImageRef Process()
     {
-        return default(Nodetool.Types.ImageRef);
+        return default(Nodetool.Types.Core.ImageRef);
     }
 }

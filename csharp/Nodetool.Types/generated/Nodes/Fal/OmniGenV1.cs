@@ -8,28 +8,28 @@ namespace Nodetool.Nodes.Fal;
 public class OmniGenV1
 {
     [Key(0)]
-    public string prompt { get; set; } = "";
-    [Key(1)]
-    public Nodetool.Types.ImageRef input_image_1 { get; set; } = new Nodetool.Types.ImageRef();
-    [Key(2)]
-    public Nodetool.Types.ImageRef input_image_2 { get; set; } = new Nodetool.Types.ImageRef();
-    [Key(3)]
-    public object image_size { get; set; } = "ImageSizePreset.SQUARE_HD";
-    [Key(4)]
-    public int num_inference_steps { get; set; } = 50;
-    [Key(5)]
-    public double guidance_scale { get; set; } = 3.0;
-    [Key(6)]
-    public double img_guidance_scale { get; set; } = 1.6;
-    [Key(7)]
-    public int num_images { get; set; } = 1;
-    [Key(8)]
-    public int seed { get; set; } = -1;
-    [Key(9)]
     public bool enable_safety_checker { get; set; } = true;
+    [Key(1)]
+    public double guidance_scale { get; set; } = 3.0;
+    [Key(2)]
+    public object image_size { get; set; } = @"square_hd";
+    [Key(3)]
+    public double img_guidance_scale { get; set; } = 1.6;
+    [Key(4)]
+    public Nodetool.Types.Core.ImageRef input_image_1 { get; set; } = new Nodetool.Types.Core.ImageRef();
+    [Key(5)]
+    public Nodetool.Types.Core.ImageRef input_image_2 { get; set; } = new Nodetool.Types.Core.ImageRef();
+    [Key(6)]
+    public int num_images { get; set; } = 1;
+    [Key(7)]
+    public int num_inference_steps { get; set; } = 50;
+    [Key(8)]
+    public string prompt { get; set; } = @"";
+    [Key(9)]
+    public int seed { get; set; } = -1;
 
-    public Nodetool.Types.ImageRef Process()
+    public Nodetool.Types.Core.ImageRef Process()
     {
-        return default(Nodetool.Types.ImageRef);
+        return default(Nodetool.Types.Core.ImageRef);
     }
 }

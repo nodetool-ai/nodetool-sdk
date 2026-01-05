@@ -8,28 +8,28 @@ namespace Nodetool.Nodes.Fal;
 public class FastSDXL
 {
     [Key(0)]
-    public string prompt { get; set; } = "";
-    [Key(1)]
-    public string negative_prompt { get; set; } = "";
-    [Key(2)]
-    public object image_size { get; set; } = "ImageSizePreset.SQUARE_HD";
-    [Key(3)]
-    public int num_inference_steps { get; set; } = 25;
-    [Key(4)]
-    public double guidance_scale { get; set; } = 7.5;
-    [Key(5)]
-    public int num_images { get; set; } = 1;
-    [Key(6)]
-    public int seed { get; set; } = -1;
-    [Key(7)]
     public bool enable_safety_checker { get; set; } = true;
-    [Key(8)]
+    [Key(1)]
     public bool expand_prompt { get; set; } = false;
+    [Key(2)]
+    public double guidance_scale { get; set; } = 7.5;
+    [Key(3)]
+    public object image_size { get; set; } = @"square_hd";
+    [Key(4)]
+    public object loras { get; set; } = new();
+    [Key(5)]
+    public string negative_prompt { get; set; } = @"";
+    [Key(6)]
+    public int num_images { get; set; } = 1;
+    [Key(7)]
+    public int num_inference_steps { get; set; } = 25;
+    [Key(8)]
+    public string prompt { get; set; } = @"";
     [Key(9)]
-    public object loras { get; set; } = new List<object>();
+    public int seed { get; set; } = -1;
 
-    public Nodetool.Types.ImageRef Process()
+    public Nodetool.Types.Core.ImageRef Process()
     {
-        return default(Nodetool.Types.ImageRef);
+        return default(Nodetool.Types.Core.ImageRef);
     }
 }

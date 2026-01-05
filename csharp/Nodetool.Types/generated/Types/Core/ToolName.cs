@@ -7,7 +7,7 @@ namespace Nodetool.Types.Core;
 public class ToolName
 {
     [Key(0)]
-    public object type { get; set; } = "tool_name";
+    public string name { get; set; } = @"";
     [Key(1)]
-    public string name { get; set; } = "";
+    public object type { get; set; } = @"tool_name";
 }

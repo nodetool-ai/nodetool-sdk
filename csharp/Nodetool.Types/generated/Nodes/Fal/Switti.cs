@@ -8,32 +8,32 @@ namespace Nodetool.Nodes.Fal;
 public class Switti
 {
     [Key(0)]
-    public string prompt { get; set; } = "";
+    public bool enable_safety_checker { get; set; } = true;
     [Key(1)]
-    public string negative_prompt { get; set; } = "";
+    public double guidance_scale { get; set; } = 6.0;
     [Key(2)]
-    public int sampling_top_k { get; set; } = 400;
+    public double last_scale_temp { get; set; } = 0.1;
     [Key(3)]
-    public double sampling_top_p { get; set; } = 0.95;
+    public bool more_diverse { get; set; } = false;
     [Key(4)]
     public bool more_smooth { get; set; } = true;
     [Key(5)]
-    public bool more_diverse { get; set; } = false;
+    public string negative_prompt { get; set; } = @"";
     [Key(6)]
-    public int smooth_start_si { get; set; } = 2;
+    public string prompt { get; set; } = @"";
     [Key(7)]
-    public int turn_off_cfg_start_si { get; set; } = 8;
+    public int sampling_top_k { get; set; } = 400;
     [Key(8)]
-    public double last_scale_temp { get; set; } = 0.1;
+    public double sampling_top_p { get; set; } = 0.95;
     [Key(9)]
     public int seed { get; set; } = -1;
     [Key(10)]
-    public double guidance_scale { get; set; } = 6.0;
+    public int smooth_start_si { get; set; } = 2;
     [Key(11)]
-    public bool enable_safety_checker { get; set; } = true;
+    public int turn_off_cfg_start_si { get; set; } = 8;
 
-    public Nodetool.Types.ImageRef Process()
+    public Nodetool.Types.Core.ImageRef Process()
     {
-        return default(Nodetool.Types.ImageRef);
+        return default(Nodetool.Types.Core.ImageRef);
     }
 }

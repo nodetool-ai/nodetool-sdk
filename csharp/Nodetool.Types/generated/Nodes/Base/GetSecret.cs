@@ -8,12 +8,12 @@ namespace Nodetool.Nodes.Base;
 public class GetSecret
 {
     [Key(0)]
-    public string name { get; set; } = "";
+    public string default_ { get; set; } = null;
     [Key(1)]
-    public object default { get; set; } = null;
+    public string name { get; set; } = @"";
 
-    public object Process()
+    public string Process()
     {
-        return default(object);
+        return default(string);
     }
 }

@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class BooleanOutput
 {
     [Key(0)]
-    public bool value { get; set; } = false;
+    public string description { get; set; } = @"";
     [Key(1)]
-    public string name { get; set; } = "";
+    public string name { get; set; } = @"";
     [Key(2)]
-    public string description { get; set; } = "";
+    public bool value { get; set; } = false;
 
-    public bool Process()
+    public object Process()
     {
-        return default(bool);
+        return default(object);
     }
 }

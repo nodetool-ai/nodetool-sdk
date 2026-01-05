@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class Translate
 {
     [Key(0)]
-    public Nodetool.Types.AudioRef audio { get; set; } = new Nodetool.Types.AudioRef();
+    public Nodetool.Types.Core.AudioRef audio { get; set; } = new Nodetool.Types.Core.AudioRef();
     [Key(1)]
     public double temperature { get; set; } = 0.0;
 

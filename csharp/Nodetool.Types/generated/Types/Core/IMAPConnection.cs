@@ -7,15 +7,15 @@ namespace Nodetool.Types.Core;
 public class IMAPConnection
 {
     [Key(0)]
-    public object type { get; set; } = "imap_connection";
+    public string host { get; set; } = @"";
     [Key(1)]
-    public string host { get; set; } = "";
+    public string password { get; set; } = @"";
     [Key(2)]
     public int port { get; set; } = 993;
     [Key(3)]
-    public string username { get; set; } = "";
+    public object type { get; set; } = @"imap_connection";
     [Key(4)]
-    public string password { get; set; } = "";
-    [Key(5)]
     public bool use_ssl { get; set; } = true;
+    [Key(5)]
+    public string username { get; set; } = @"";
 }

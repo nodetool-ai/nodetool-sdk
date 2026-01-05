@@ -8,7 +8,7 @@ namespace Nodetool.Nodes.Base;
 public class ExtractNumberedLists
 {
     [Key(0)]
-    public string markdown { get; set; } = "";
+    public string markdown { get; set; } = @"";
 
     public object Process()
     {

@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class Embedding
 {
     [Key(0)]
-    public string input { get; set; } = "";
-    [Key(1)]
-    public object model { get; set; } = "EmbeddingModel.TEXT_EMBEDDING_3_SMALL";
-    [Key(2)]
     public int chunk_size { get; set; } = 4096;
+    [Key(1)]
+    public string input { get; set; } = @"";
+    [Key(2)]
+    public object model { get; set; } = @"text-embedding-3-small";
 
-    public Nodetool.Types.NPArray Process()
+    public Nodetool.Types.Core.NPArray Process()
     {
-        return default(Nodetool.Types.NPArray);
+        return default(Nodetool.Types.Core.NPArray);
     }
 }

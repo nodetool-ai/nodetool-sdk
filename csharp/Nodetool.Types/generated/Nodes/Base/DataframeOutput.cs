@@ -8,14 +8,14 @@ namespace Nodetool.Nodes.Base;
 public class DataframeOutput
 {
     [Key(0)]
-    public Nodetool.Types.DataframeRef value { get; set; } = new Nodetool.Types.DataframeRef();
+    public string description { get; set; } = @"";
     [Key(1)]
-    public string name { get; set; } = "";
+    public string name { get; set; } = @"";
     [Key(2)]
-    public string description { get; set; } = "";
+    public Nodetool.Types.Core.DataframeRef value { get; set; } = new Nodetool.Types.Core.DataframeRef();
 
-    public Nodetool.Types.DataframeRef Process()
+    public object Process()
     {
-        return default(Nodetool.Types.DataframeRef);
+        return default(object);
     }
 }

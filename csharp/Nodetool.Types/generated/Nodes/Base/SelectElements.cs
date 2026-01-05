@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class SelectElements
 {
     [Key(0)]
-    public object values { get; set; } = new List<object>();
+    public object indices { get; set; } = new();
     [Key(1)]
-    public object indices { get; set; } = new List<object>();
+    public object values { get; set; } = new();
 
     public object Process()
     {

@@ -8,14 +8,9 @@ namespace Nodetool.Nodes.Huggingface;
 public class ZeroShotAudioClassifier
 {
     [Key(0)]
-    public Nodetool.Types.HFZeroShotAudioClassification model { get; set; } = new Nodetool.Types.HFZeroShotAudioClassification();
+    public Nodetool.Types.Core.AudioRef audio { get; set; } = new Nodetool.Types.Core.AudioRef();
     [Key(1)]
-    public Nodetool.Types.AudioRef audio { get; set; } = new Nodetool.Types.AudioRef();
+    public string candidate_labels { get; set; } = @"";
     [Key(2)]
-    public string candidate_labels { get; set; } = "";
-
-    public object Process()
-    {
-        return default(object);
-    }
+    public Nodetool.Types.Core.HFZeroShotAudioClassification model { get; set; } = new Nodetool.Types.Core.HFZeroShotAudioClassification();
 }

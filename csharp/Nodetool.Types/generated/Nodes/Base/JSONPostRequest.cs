@@ -8,9 +8,9 @@ namespace Nodetool.Nodes.Base;
 public class JSONPostRequest
 {
     [Key(0)]
-    public string url { get; set; } = "";
+    public object data { get; set; } = new();
     [Key(1)]
-    public object data { get; set; } = new Dictionary<string, object>();
+    public string url { get; set; } = @"";
 
     public object Process()
     {

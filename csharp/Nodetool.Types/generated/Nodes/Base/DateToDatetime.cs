@@ -8,10 +8,10 @@ namespace Nodetool.Nodes.Base;
 public class DateToDatetime
 {
     [Key(0)]
-    public Nodetool.Types.Date input_date { get; set; } = new Nodetool.Types.Date();
+    public Nodetool.Types.Core.Date input_date { get; set; } = new Nodetool.Types.Core.Date();
 
-    public Nodetool.Types.Datetime Process()
+    public Nodetool.Types.Core.Datetime Process()
     {
-        return default(Nodetool.Types.Datetime);
+        return default(Nodetool.Types.Core.Datetime);
     }
 }
