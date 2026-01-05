@@ -126,6 +126,19 @@ public sealed class NodeToolValue
 
     public string? AsString()
     {
+        // Unwrap common typed wrappers first: { type:"string", value:"..." }
+        if (TryUnwrapTypedValue(out var inner) && inner != null)
+        {
+            // Only unwrap for actual string wrappers; keep other containers returning null to avoid noisy ToString().
+            if (Kind == NodeToolValueKind.Map &&
+                _map != null &&
+                _map.TryGetValue("type", out var t) &&
+                string.Equals(t.AsString(), "string", StringComparison.OrdinalIgnoreCase))
+            {
+                return inner.AsString() ?? inner.ToJsonString();
+            }
+        }
+
         return Raw switch
         {
             null => null,
@@ -140,6 +153,18 @@ public sealed class NodeToolValue
 
     public bool TryGetBool(out bool value)
     {
+        if (TryUnwrapTypedValue(out var inner) && inner != null)
+        {
+            // Accept {type:"bool"/"boolean", value:true}
+            if (_map != null &&
+                _map.TryGetValue("type", out var t) &&
+                (string.Equals(t.AsString(), "bool", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(t.AsString(), "boolean", StringComparison.OrdinalIgnoreCase)))
+            {
+                return inner.TryGetBool(out value);
+            }
+        }
+
         if (Raw is bool b)
         {
             value = b;
@@ -158,6 +183,18 @@ public sealed class NodeToolValue
     {
         try
         {
+            if (TryUnwrapTypedValue(out var inner) && inner != null)
+            {
+                // Accept {type:"int"/"integer", value:123}
+                if (_map != null &&
+                    _map.TryGetValue("type", out var t) &&
+                    (string.Equals(t.AsString(), "int", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(t.AsString(), "integer", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return inner.TryGetLong(out value);
+                }
+            }
+
             if (Raw == null)
             {
                 value = default;
@@ -192,6 +229,18 @@ public sealed class NodeToolValue
     {
         try
         {
+            if (TryUnwrapTypedValue(out var inner) && inner != null)
+            {
+                // Accept {type:"float"/"number", value:1.23}
+                if (_map != null &&
+                    _map.TryGetValue("type", out var t) &&
+                    (string.Equals(t.AsString(), "float", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(t.AsString(), "number", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return inner.TryGetDouble(out value);
+                }
+            }
+
             if (Raw == null)
             {
                 value = default;
@@ -248,6 +297,20 @@ public sealed class NodeToolValue
 
     private object? ToPlainObject()
     {
+        // Unwrap typed wrappers like {type:"string", value:"..."} or {type:"list", value:[...]}
+        // so JSON output is the value users expect (not the wrapper object).
+        if (Kind == NodeToolValueKind.Map && _map != null &&
+            _map.TryGetValue("type", out var typeVal) &&
+            _map.TryGetValue("value", out var innerVal))
+        {
+            // Only unwrap "simple wrappers" that are exactly {type, value}
+            // (avoid unwrapping ImageRef/etc which carry more fields).
+            if (_map.Count == 2 && typeVal.Kind == NodeToolValueKind.String)
+            {
+                return innerVal.ToPlainObject();
+            }
+        }
+
         // Safety net: if Raw is a container but Kind isn't Map/List for any reason,
         // still normalize it so JSON output is useful.
         if (Raw is IDictionary dict)
@@ -292,6 +355,24 @@ public sealed class NodeToolValue
 
     private static bool IsFloat(object v) =>
         v is float or double or decimal;
+
+    /// <summary>
+    /// If this NodeToolValue is a typed wrapper map that contains a "value" field, returns that inner value.
+    /// Examples: {type:"string", value:"..."}, {type:"float", value:1.23}, {type:"list", value:[...]}.
+    /// </summary>
+    private bool TryUnwrapTypedValue(out NodeToolValue? inner)
+    {
+        inner = null;
+        if (Kind != NodeToolValueKind.Map || _map == null)
+            return false;
+
+        if (_map.TryGetValue("value", out var v))
+        {
+            inner = v;
+            return true;
+        }
+        return false;
+    }
 }
 
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -29,6 +30,14 @@ namespace Nodetool.SDK.VL.Nodes
         private readonly Dictionary<string, IVLPin> _outputPins;
 
         private bool _lastTriggerState = false;
+        private bool _autoRunEnabled = false;
+        private bool _restartOnChangeEnabled = false;
+        private string _lastInputSignature = "";
+        private bool _rerunRequested = false;
+        private bool _cancelRequestedByRestart = false;
+
+        private IExecutionSession? _activeSession = null;
+        private CancellationTokenSource? _manualCancelCts = null;
         private bool _isDisposed = false;
         private bool _isRunning = false;
         private readonly Dictionary<string, StringBuilder> _chunkBuffers = new(StringComparer.Ordinal);
@@ -47,6 +56,8 @@ namespace Nodetool.SDK.VL.Nodes
             
             // Add trigger pin
             _inputPins["Trigger"] = new InternalPin("Trigger", typeof(bool), false);
+            _inputPins["AutoRun"] = new InternalPin("AutoRun", typeof(bool), false);
+            _inputPins["RestartOnChange"] = new InternalPin("RestartOnChange", typeof(bool), false);
             
             // Add workflow input pins
             foreach (var property in _workflow.GetInputProperties())
@@ -131,10 +142,40 @@ namespace Nodetool.SDK.VL.Nodes
                 if (currentTriggerState && !_lastTriggerState)
                 {
                     // Rising edge detected - execute workflow
+                    _lastInputSignature = ComputeInputSignature();
                     ExecuteWorkflowAsync();
                 }
 
                 _lastTriggerState = currentTriggerState;
+
+                // Auto-run toggle
+                if (_inputPins.TryGetValue("AutoRun", out var autoRunPin))
+                    _autoRunEnabled = autoRunPin.Value is bool b && b;
+
+                if (_inputPins.TryGetValue("RestartOnChange", out var restartPin))
+                    _restartOnChangeEnabled = restartPin.Value is bool b2 && b2;
+
+                if (_autoRunEnabled)
+                {
+                    var sig = ComputeInputSignature();
+                    if (!string.Equals(sig, _lastInputSignature, StringComparison.Ordinal))
+                    {
+                        _lastInputSignature = sig;
+                        if (_isRunning)
+                        {
+                            _rerunRequested = true;
+                            if (_restartOnChangeEnabled)
+                            {
+                                _cancelRequestedByRestart = true;
+                                _ = CancelActiveRunAsync();
+                            }
+                        }
+                        else
+                        {
+                            ExecuteWorkflowAsync();
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -157,6 +198,11 @@ namespace Nodetool.SDK.VL.Nodes
 
                 // Reset per-run chunk buffers so streaming output doesn't accumulate across runs.
                 _chunkBuffers.Clear();
+                _rerunRequested = false;
+                _cancelRequestedByRestart = false;
+
+                _manualCancelCts?.Dispose();
+                _manualCancelCts = new CancellationTokenSource();
 
                 SetIsRunning(true);
                 SetError("");
@@ -168,11 +214,13 @@ namespace Nodetool.SDK.VL.Nodes
                 }
 
                 using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(DefaultWorkflowTimeoutSeconds));
+                var localManual = _manualCancelCts;
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, localManual?.Token ?? CancellationToken.None);
 
                 // Ensure connection
                 if (!NodeToolClientProvider.IsConnected)
                 {
-                    var connected = await NodeToolClientProvider.ConnectAsync(timeoutCts.Token);
+                    var connected = await NodeToolClientProvider.ConnectAsync(linked.Token);
                     if (!connected)
                     {
                         throw new InvalidOperationException(NodeToolClientProvider.LastError ?? "Failed to connect to NodeTool server.");
@@ -183,10 +231,11 @@ namespace Nodetool.SDK.VL.Nodes
                 var client = NodeToolClientProvider.GetClient();
 
                 // Collect inputs from pins (excluding Trigger) and adapt values based on workflow schema.
-                var parameters = await BuildWorkflowParametersAsync(timeoutCts.Token);
+                var parameters = await BuildWorkflowParametersAsync(linked.Token);
 
                 // Execute by name (requires ApiBaseUrl on the shared client options)
-                var session = await client.ExecuteWorkflowByNameAsync(_workflow.Name, parameters, timeoutCts.Token);
+                var session = await client.ExecuteWorkflowByNameAsync(_workflow.Name, parameters, linked.Token);
+                _activeSession = session;
 
                 session.ProgressChanged += progress =>
                 {
@@ -287,7 +336,7 @@ namespace Nodetool.SDK.VL.Nodes
                     }
                 };
 
-                var ok = await session.WaitForCompletionAsync(timeoutCts.Token);
+                var ok = await session.WaitForCompletionAsync(linked.Token);
                 if (!ok)
                 {
                     throw new InvalidOperationException(session.ErrorMessage ?? "Workflow execution failed.");
@@ -301,6 +350,20 @@ namespace Nodetool.SDK.VL.Nodes
                 AppendDebug("done");
                 SetIsRunning(false);
             }
+            catch (OperationCanceledException)
+            {
+                if (_cancelRequestedByRestart)
+                {
+                    AppendDebug("cancelled (restart)");
+                    SetIsRunning(false);
+                }
+                else
+                {
+                    SetError("Execution cancelled.");
+                    AppendDebug("cancelled");
+                    SetIsRunning(false);
+                }
+            }
             catch (Exception ex)
             {
                 Console.WriteLine($"WorkflowNodeBase: Error executing workflow '{_workflow.Name}': {ex.Message}");
@@ -310,8 +373,111 @@ namespace Nodetool.SDK.VL.Nodes
             }
             finally
             {
+                _activeSession = null;
                 _isRunning = false;
+
+                // If inputs changed during execution and AutoRun is enabled, run once more.
+                if (_autoRunEnabled && _rerunRequested && !_isDisposed)
+                {
+                    _rerunRequested = false;
+                    AppendDebug("autorun: rerun requested");
+                    ExecuteWorkflowAsync();
+                }
             }
+        }
+
+        private async Task CancelActiveRunAsync()
+        {
+            var session = _activeSession;
+            var cts = _manualCancelCts;
+
+            try
+            {
+                cts?.Cancel();
+            }
+            catch
+            {
+                // ignore
+            }
+
+            if (session != null)
+            {
+                try
+                {
+                    await session.CancelAsync();
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
+        }
+
+        private string ComputeInputSignature()
+        {
+            // Cheap stable signature to detect input changes; excludes Trigger/AutoRun.
+            var sb = new StringBuilder();
+            foreach (var kvp in _inputPins.OrderBy(k => k.Key, StringComparer.Ordinal))
+            {
+                if (kvp.Key is "Trigger" or "AutoRun" or "RestartOnChange")
+                    continue;
+
+                sb.Append(kvp.Key);
+                sb.Append('=');
+                sb.Append(ValueToSignatureFragment(kvp.Value.Value));
+                sb.Append(';');
+            }
+            return sb.ToString();
+        }
+
+        private static string ValueToSignatureFragment(object? value)
+        {
+            if (value == null)
+                return "null";
+
+            switch (value)
+            {
+                case string s:
+                    return $"str:{s}";
+                case bool b:
+                    return b ? "bool:true" : "bool:false";
+                case int i:
+                    return $"int:{i}";
+                case long l:
+                    return $"long:{l}";
+                case float f:
+                    return $"float:{f.ToString(CultureInfo.InvariantCulture)}";
+                case double d:
+                    return $"double:{d.ToString(CultureInfo.InvariantCulture)}";
+                case decimal m:
+                    return $"decimal:{m.ToString(CultureInfo.InvariantCulture)}";
+                case byte[] bytes:
+                    unchecked
+                    {
+                        int hash = 17;
+                        for (int i = 0; i < Math.Min(bytes.Length, 64); i++)
+                            hash = (hash * 31) + bytes[i];
+                        return $"bytes:{bytes.Length}:{hash}";
+                    }
+                case SKImage img:
+                    return $"skimage:{img.Width}x{img.Height}";
+            }
+
+            if (value is System.Collections.IEnumerable enumerable && value is not string)
+            {
+                var items = new List<string>();
+                int count = 0;
+                foreach (var item in enumerable)
+                {
+                    items.Add(ValueToSignatureFragment(item));
+                    count++;
+                    if (count >= 10)
+                        break;
+                }
+                return $"seq:{value.GetType().FullName}:{string.Join(",", items)}";
+            }
+
+            return $"{value.GetType().FullName}:{value}";
         }
 
         private void AppendDebug(string line)
@@ -549,6 +715,9 @@ namespace Nodetool.SDK.VL.Nodes
             // Prefer primitives when possible; fall back to JSON string for complex values.
             if (expectedType == typeof(string))
             {
+                if (TryRenderTypedText(value, out var rendered))
+                    return rendered;
+
                 // Avoid ToString() on dictionaries/lists (it yields "System.Collections.Generic.Dictionary`2[...]").
                 // Prefer common fields first; otherwise fall back to JSON.
                 if (value.Kind == NodeToolValueKind.Map)
@@ -579,7 +748,26 @@ namespace Nodetool.SDK.VL.Nodes
                 }
 
                 if (value.Kind == NodeToolValueKind.List)
+                {
+                    // Common: list of chunk objects -> concatenate content
+                    if (TryConcatChunkList(value, out var text))
+                        return text;
+
+                    // Common: [{ type:"string", value:"..." }] -> unwrap
+                    var first = value.AsListOrEmpty().FirstOrDefault(v => v.Kind == NodeToolValueKind.Map);
+                    if (first != null && first.Kind == NodeToolValueKind.Map)
+                    {
+                        var map = first.AsMapOrEmpty();
+                        if (map.TryGetValue("type", out var t) &&
+                            string.Equals(t.AsString(), "string", StringComparison.OrdinalIgnoreCase) &&
+                            map.TryGetValue("value", out var inner))
+                        {
+                            return inner.AsString() ?? inner.ToJsonString();
+                        }
+                    }
+
                     return value.ToJsonString();
+                }
 
                 return value.AsString() ?? value.ToJsonString();
             }
@@ -628,6 +816,100 @@ namespace Nodetool.SDK.VL.Nodes
             }
 
             return ConvertToExpectedType(value.Raw ?? value.AsString() ?? value.ToJsonString(), expectedType);
+        }
+
+        private static bool TryRenderTypedText(NodeToolValue value, out string text)
+        {
+            text = "";
+            if (value.Kind != NodeToolValueKind.Map)
+                return false;
+
+            var map = value.AsMapOrEmpty();
+            if (!map.TryGetValue("type", out var typeVal))
+                return false;
+
+            var typeStr = typeVal.AsString();
+            if (string.Equals(typeStr, "string", StringComparison.OrdinalIgnoreCase) &&
+                map.TryGetValue("value", out var inner))
+            {
+                text = inner.AsString() ?? inner.ToJsonString();
+                return true;
+            }
+
+            if (string.Equals(typeStr, "list", StringComparison.OrdinalIgnoreCase) &&
+                map.TryGetValue("value", out var innerList))
+            {
+                // A typed list wrapper; handle chunk lists specially.
+                if (TryConcatChunkList(innerList, out var t))
+                {
+                    text = t;
+                    return true;
+                }
+            }
+
+            if (string.Equals(typeStr, "chunk", StringComparison.OrdinalIgnoreCase) &&
+                map.TryGetValue("content", out var content))
+            {
+                text = content.AsString() ?? "";
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryConcatChunkList(NodeToolValue value, out string text)
+        {
+            text = "";
+
+            IReadOnlyList<NodeToolValue> list;
+            if (value.Kind == NodeToolValueKind.List)
+            {
+                list = value.AsListOrEmpty();
+            }
+            else if (value.Kind == NodeToolValueKind.Map)
+            {
+                // typed wrapper {type:"list", value:[...]}
+                var map = value.AsMapOrEmpty();
+                if (map.TryGetValue("type", out var t) &&
+                    string.Equals(t.AsString(), "list", StringComparison.OrdinalIgnoreCase) &&
+                    map.TryGetValue("value", out var v) &&
+                    v.Kind == NodeToolValueKind.List)
+                {
+                    list = v.AsListOrEmpty();
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+
+            var sb = new StringBuilder();
+            var sawChunk = false;
+
+            foreach (var item in list)
+            {
+                if (item.Kind != NodeToolValueKind.Map)
+                    continue;
+
+                var map = item.AsMapOrEmpty();
+                var typeDisc = item.TypeDiscriminator;
+                if (!string.Equals(typeDisc, "chunk", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                sawChunk = true;
+                if (map.TryGetValue("content", out var c) && c.AsString() is string s)
+                    sb.Append(s);
+            }
+
+            if (!sawChunk)
+                return false;
+
+            text = sb.ToString();
+            return true;
         }
 
         private async Task<Dictionary<string, object>> BuildWorkflowParametersAsync(CancellationToken cancellationToken)

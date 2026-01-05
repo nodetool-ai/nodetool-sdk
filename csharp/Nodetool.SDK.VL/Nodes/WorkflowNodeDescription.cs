@@ -20,6 +20,8 @@ namespace Nodetool.SDK.VL.Nodes
 
         // Standard pin names
         public const string TriggerInputName = "Trigger";
+        public const string AutoRunInputName = "AutoRun";
+        public const string RestartOnChangeInputName = "RestartOnChange";
         public const string IsRunningOutputName = "IsRunning";
         public const string ErrorOutputName = "Error";
         public const string DebugOutputName = "Debug";
@@ -61,6 +63,14 @@ namespace Nodetool.SDK.VL.Nodes
             inputPins.Add(new PinDescription(TriggerInputName, typeof(bool), false,
                 "🚀 Trigger workflow execution on rising edge",
                 "Boolean input - set to true to execute the Nodetool workflow"));
+
+            inputPins.Add(new PinDescription(AutoRunInputName, typeof(bool), false,
+                "🔁 Execute on input change",
+                "When enabled, the workflow executes automatically whenever any input changes (useful for chaining/autorun)."));
+
+            inputPins.Add(new PinDescription(RestartOnChangeInputName, typeof(bool), false,
+                "♻️ Restart on input change",
+                "When enabled and AutoRun is on, input changes will cancel the current run and restart with the latest inputs."));
 
             // Add workflow input pins
             foreach (var property in _workflow.GetInputProperties())
@@ -125,7 +135,27 @@ namespace Nodetool.SDK.VL.Nodes
         public IReadOnlyList<IVLPinDescription> Outputs { get; }
         public string Summary { get; }
         public string Remarks { get; }
-        public IReadOnlyList<string> Tags => new List<string> { "Nodetool", "Workflow" }.AsReadOnly();
+        public IReadOnlyList<string> Tags
+        {
+            get
+            {
+                var tags = new List<string> { "Nodetool", "Workflow" };
+                if (_workflow.Tags != null)
+                {
+                    foreach (var t in _workflow.Tags)
+                    {
+                        if (string.IsNullOrWhiteSpace(t))
+                            continue;
+                        var trimmed = t.Trim();
+                        if (trimmed.Length == 0)
+                            continue;
+                        if (!tags.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
+                            tags.Add(trimmed);
+                    }
+                }
+                return tags.AsReadOnly();
+            }
+        }
         public IVLNodeDescriptionFactory Factory => _factory;
         public IEnumerable<Message> Messages => Enumerable.Empty<Message>();
 
@@ -147,17 +177,30 @@ namespace Nodetool.SDK.VL.Nodes
 
         private string BuildWorkflowRemarks()
         {
+            static string TrimTrailingPeriod(string s)
+                => s.EndsWith(".", StringComparison.Ordinal) ? s.TrimEnd('.') : s;
+
             var parts = new List<string>();
-            parts.Add($"Nodetool Workflow ID: {_workflow.Id}");
+            if (!string.IsNullOrWhiteSpace(_workflow.Id))
+                parts.Add(TrimTrailingPeriod(_workflow.Id.Trim()));
             // Don't repeat Name/Description here: vvvv shows Summary + Remarks, and Summary already contains the
             // human-readable description/title.
 
-            var inputCount = _workflow.GetInputProperties().Count();
-            var outputCount = _workflow.GetOutputProperties().Count();
-            parts.Add($"📌 {inputCount} inputs, {outputCount} outputs");
-
             parts.Add($"Created: {_workflow.CreatedAt:yyyy-MM-dd}");
             parts.Add($"Updated: {_workflow.UpdatedAt:yyyy-MM-dd}");
+
+            if (_workflow.Tags != null && _workflow.Tags.Count > 0)
+            {
+                var shown = _workflow.Tags
+                    .Where(t => !string.IsNullOrWhiteSpace(t))
+                    .Select(t => t.Trim())
+                    .Where(t => t.Length > 0)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Take(12)
+                    .ToList();
+                if (shown.Count > 0)
+                    parts.Add($"Tags: {string.Join(", ", shown)}");
+            }
 
             return string.Join("\n", parts);
         }

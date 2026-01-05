@@ -9,6 +9,7 @@ using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.VL.Nodes;
 using Nodetool.SDK.VL.Services;
 using Nodetool.SDK.Configuration;
+using Nodetool.SDK.VL.Utilities;
 
 namespace Nodetool.SDK.VL.Factories
 {
@@ -101,6 +102,14 @@ namespace Nodetool.SDK.VL.Factories
                                     inputPins.Add(bc.Pin("Execute", typeof(bool), false, 
                                         "⚡ Execute node", 
                                         "Boolean input - set to true to execute the Nodetool node"));
+
+                                    inputPins.Add(bc.Pin("AutoRun", typeof(bool), false,
+                                        "🔁 Execute on input change",
+                                        "When enabled, the node executes automatically whenever any input changes (useful for chaining/autorun)."));
+
+                                    inputPins.Add(bc.Pin("RestartOnChange", typeof(bool), false,
+                                        "♻️ Restart on input change",
+                                        "When enabled and AutoRun is on, input changes will cancel the current run and restart with the latest inputs. Useful for long-running nodes."));
                                     
                                     // Add input pins from node properties with documentation
                                     if (nodeMetadata.Properties != null)
@@ -439,22 +448,7 @@ namespace Nodetool.SDK.VL.Factories
         /// </summary>
         private static (Type?, object?) MapNodeType(NodeTypeDefinition? nodeType)
         {
-            if (nodeType == null || string.IsNullOrEmpty(nodeType.Type))
-                return (typeof(string), "");
-
-            return nodeType.Type.ToLowerInvariant() switch
-            {
-                "str" or "string" => (typeof(string), ""),
-                "int" or "integer" => (typeof(int), 0),
-                "float" or "number" => (typeof(float), 0.0f),
-                "bool" or "boolean" => (typeof(bool), false),
-                "list" or "array" => (typeof(string[]), new string[0]),
-                "dict" or "object" => (typeof(object), null),
-                "image" => (typeof(string), ""), // Image path or base64
-                "audio" => (typeof(string), ""), // Audio path or data
-                "video" => (typeof(string), ""), // Video path or data
-                _ => (typeof(string), "")
-            };
+            return VlTypeMapping.MapNodeType(nodeType);
         }
 
         /// <summary>
@@ -525,19 +519,21 @@ namespace Nodetool.SDK.VL.Factories
         /// </summary>
         private static string BuildNodeRemarks(NodeMetadataResponse nodeMetadata)
         {
-            var parts = new List<string>();
-            parts.Add($"NodeTool Type: {nodeMetadata.NodeType}");
-            
-            if (!string.IsNullOrWhiteSpace(nodeMetadata.Title) && 
-                nodeMetadata.Title != nodeMetadata.NodeType)
-                parts.Add($"Title: {nodeMetadata.Title}");
-                
-            var inputCount = nodeMetadata.Properties?.Count ?? 0;
-            var outputCount = nodeMetadata.Outputs?.Count ?? 0;
-            parts.Add($"📌 {inputCount} inputs, {outputCount} outputs");
-            // Don't repeat Description here: vvvv shows Summary + Remarks, and Summary already contains the description/title.
-            
-            return string.Join("\n", parts);
+            static string TrimTrailingPeriod(string s)
+                => s.EndsWith(".", StringComparison.Ordinal) ? s.TrimEnd('.') : s;
+
+            // vvvv shows Summary + Remarks; keep Remarks short and non-duplicative.
+            // Requested style:
+            // - show namespace (no "NodeTool Type:" label)
+            // - no title
+            // - no "2 inputs, 2 outputs"
+            var ns = (nodeMetadata.Namespace ?? "").Trim();
+            if (!string.IsNullOrWhiteSpace(ns))
+                return TrimTrailingPeriod(ns);
+
+            // Fallback if namespace is missing
+            var nodeType = (nodeMetadata.NodeType ?? "").Trim();
+            return TrimTrailingPeriod(nodeType);
         }
     }
 } 

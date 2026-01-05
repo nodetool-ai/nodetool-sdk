@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
 using System.Reactive.Subjects;
 using System.Text;
@@ -14,6 +15,7 @@ using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.Execution;
 using Nodetool.SDK.Values;
 using Nodetool.SDK.VL.Services;
+using Nodetool.SDK.VL.Utilities;
 
 namespace Nodetool.SDK.VL.Nodes
 {
@@ -39,6 +41,16 @@ namespace Nodetool.SDK.VL.Nodes
         private readonly Dictionary<string, NodeToolValue> _lastOutputs = new(StringComparer.Ordinal);
         private bool _lastExecuteState = false;
 
+        // Auto-run on input change
+        private bool _autoRunEnabled = false;
+        private bool _restartOnChangeEnabled = false;
+        private string _lastInputSignature = "";
+        private bool _rerunRequested = false;
+
+        private bool _cancelRequestedByRestart = false;
+        private IExecutionSession? _activeSession = null;
+        private CancellationTokenSource? _manualCancelCts = null;
+
         public NodeBase(NodeContext nodeContext, NodeMetadataResponse nodeMetadata)
         {
             _nodeContext = nodeContext ?? throw new ArgumentNullException(nameof(nodeContext));
@@ -54,6 +66,8 @@ namespace Nodetool.SDK.VL.Nodes
             // Create input pins - VL's factory already created the pin descriptions
             // Add Execute pin
             _inputPins["Execute"] = new InternalPin("Execute", typeof(bool), false);
+            _inputPins["AutoRun"] = new InternalPin("AutoRun", typeof(bool), false);
+            _inputPins["RestartOnChange"] = new InternalPin("RestartOnChange", typeof(bool), false);
 
             // Add input pins from node properties
             if (_nodeMetadata.Properties != null)
@@ -121,10 +135,45 @@ namespace Nodetool.SDK.VL.Nodes
                     if (currentExecuteState && !_lastExecuteState && !_isRunning)
                     {
                         // Rising edge detected - execute the node
+                        // Keep auto-run signature in sync to avoid immediate duplicate run.
+                        _lastInputSignature = ComputeInputSignature();
                         _ = ExecuteNodeAsync();
                     }
                     
                     _lastExecuteState = currentExecuteState;
+                }
+
+                // Auto-run toggle
+                if (_inputPins.TryGetValue("AutoRun", out var autoRunPin))
+                {
+                    _autoRunEnabled = autoRunPin.Value is bool b && b;
+                }
+
+                if (_inputPins.TryGetValue("RestartOnChange", out var restartPin))
+                {
+                    _restartOnChangeEnabled = restartPin.Value is bool b && b;
+                }
+
+                if (_autoRunEnabled)
+                {
+                    var sig = ComputeInputSignature();
+                    if (!string.Equals(sig, _lastInputSignature, StringComparison.Ordinal))
+                    {
+                        _lastInputSignature = sig;
+                        if (_isRunning)
+                        {
+                            _rerunRequested = true;
+                            if (_restartOnChangeEnabled)
+                            {
+                                _cancelRequestedByRestart = true;
+                                _ = CancelActiveRunAsync();
+                            }
+                        }
+                        else
+                        {
+                            _ = ExecuteNodeAsync();
+                        }
+                    }
                 }
 
                 // Update output pins with current state
@@ -149,6 +198,11 @@ namespace Nodetool.SDK.VL.Nodes
                 _lastOutputs.Clear();
                 _chunkBuffers.Clear();
                 _debugLines.Clear();
+                _rerunRequested = false;
+                _cancelRequestedByRestart = false;
+
+                _manualCancelCts?.Dispose();
+                _manualCancelCts = new CancellationTokenSource();
             }
 
             try
@@ -190,13 +244,18 @@ namespace Nodetool.SDK.VL.Nodes
                     }
                 }
 
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(300));
-                using var linked = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(300));
+                var localManual = _manualCancelCts;
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, localManual?.Token ?? CancellationToken.None);
 
                 IExecutionSession? session = null;
                 try
                 {
                     session = await client.ExecuteNodeAsync(_nodeMetadata.NodeType, inputData, linked.Token);
+                    lock (_lock)
+                    {
+                        _activeSession = session;
+                    }
 
                     session.ProgressChanged += p => AppendDebug($"progress={(p * 100):0}%");
                     session.OutputReceived += update =>
@@ -272,7 +331,28 @@ namespace Nodetool.SDK.VL.Nodes
                 }
                 finally
                 {
+                    lock (_lock)
+                    {
+                        if (ReferenceEquals(_activeSession, session))
+                            _activeSession = null;
+                    }
                     session?.Dispose();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // If we cancelled due to RestartOnChange, don't surface an error.
+                if (_cancelRequestedByRestart)
+                {
+                    AppendDebug("cancelled (restart)");
+                }
+                else
+                {
+                    lock (_lock)
+                    {
+                        _lastError = "Execution cancelled.";
+                    }
+                    AppendDebug("cancelled");
                 }
             }
             catch (Exception ex)
@@ -291,7 +371,115 @@ namespace Nodetool.SDK.VL.Nodes
                     _isRunning = false;
                 }
                 AppendDebug("done");
+
+                // If inputs changed during execution and AutoRun is enabled, run once more.
+                if (_autoRunEnabled && _rerunRequested)
+                {
+                    _rerunRequested = false;
+                    AppendDebug("autorun: rerun requested");
+                    _ = ExecuteNodeAsync();
+                }
             }
+        }
+
+        private async Task CancelActiveRunAsync()
+        {
+            IExecutionSession? session;
+            CancellationTokenSource? cts;
+            lock (_lock)
+            {
+                session = _activeSession;
+                cts = _manualCancelCts;
+            }
+
+            try
+            {
+                cts?.Cancel();
+            }
+            catch
+            {
+                // ignore
+            }
+
+            if (session != null)
+            {
+                try
+                {
+                    await session.CancelAsync();
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
+        }
+
+        private string ComputeInputSignature()
+        {
+            // Cheap stable signature (no JSON serialization) to detect input changes.
+            // Excludes Execute/AutoRun/RestartOnChange pins.
+            var sb = new StringBuilder();
+
+            foreach (var kvp in _inputPins.OrderBy(k => k.Key, StringComparer.Ordinal))
+            {
+                if (kvp.Key is "Execute" or "AutoRun" or "RestartOnChange")
+                    continue;
+
+                sb.Append(kvp.Key);
+                sb.Append('=');
+                sb.Append(ValueToSignatureFragment(kvp.Value.Value));
+                sb.Append(';');
+            }
+
+            return sb.ToString();
+        }
+
+        private static string ValueToSignatureFragment(object? value)
+        {
+            if (value == null)
+                return "null";
+
+            switch (value)
+            {
+                case string s:
+                    return $"str:{s}";
+                case bool b:
+                    return b ? "bool:true" : "bool:false";
+                case int i:
+                    return $"int:{i}";
+                case long l:
+                    return $"long:{l}";
+                case float f:
+                    return $"float:{f.ToString(CultureInfo.InvariantCulture)}";
+                case double d:
+                    return $"double:{d.ToString(CultureInfo.InvariantCulture)}";
+                case decimal m:
+                    return $"decimal:{m.ToString(CultureInfo.InvariantCulture)}";
+                case byte[] bytes:
+                    unchecked
+                    {
+                        int hash = 17;
+                        for (int i = 0; i < Math.Min(bytes.Length, 64); i++)
+                            hash = (hash * 31) + bytes[i];
+                        return $"bytes:{bytes.Length}:{hash}";
+                    }
+            }
+
+            if (value is System.Collections.IEnumerable enumerable && value is not string)
+            {
+                var items = new List<string>();
+                int count = 0;
+                foreach (var item in enumerable)
+                {
+                    items.Add(ValueToSignatureFragment(item));
+                    count++;
+                    if (count >= 10)
+                        break;
+                }
+                return $"seq:{value.GetType().FullName}:{string.Join(",", items)}";
+            }
+
+            return $"{value.GetType().FullName}:{value}";
         }
 
         /// <summary>
@@ -412,6 +600,9 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 if (expectedType == typeof(string))
                 {
+                    if (TryRenderTypedText(value, out var rendered))
+                        return rendered;
+
                     // Avoid ToString() on dictionaries (it yields "System.Collections.Generic.Dictionary`2[...]").
                     // For refs/typed payloads, try common fields first, otherwise fall back to JSON.
                     if (value.Kind == NodeToolValueKind.Map)
@@ -446,7 +637,25 @@ namespace Nodetool.SDK.VL.Nodes
                     }
 
                     if (value.Kind == NodeToolValueKind.List)
+                    {
+                        if (TryConcatChunkList(value, out var text))
+                            return text;
+
+                        // Common: [{ type:"string", value:"..." }] -> unwrap
+                        var first = value.AsListOrEmpty().FirstOrDefault(v => v.Kind == NodeToolValueKind.Map);
+                        if (first != null && first.Kind == NodeToolValueKind.Map)
+                        {
+                            var map = first.AsMapOrEmpty();
+                            if (map.TryGetValue("type", out var t) &&
+                                string.Equals(t.AsString(), "string", StringComparison.OrdinalIgnoreCase) &&
+                                map.TryGetValue("value", out var inner))
+                            {
+                                return inner.AsString() ?? inner.ToJsonString();
+                            }
+                        }
+
                         return value.ToJsonString();
+                    }
 
                     return value.AsString() ?? value.ToJsonString();
                 }
@@ -505,6 +714,98 @@ namespace Nodetool.SDK.VL.Nodes
             }
         }
 
+        private static bool TryRenderTypedText(NodeToolValue value, out string text)
+        {
+            text = "";
+            if (value.Kind != NodeToolValueKind.Map)
+                return false;
+
+            var map = value.AsMapOrEmpty();
+            if (!map.TryGetValue("type", out var typeVal))
+                return false;
+
+            var typeStr = typeVal.AsString();
+            if (string.Equals(typeStr, "string", StringComparison.OrdinalIgnoreCase) &&
+                map.TryGetValue("value", out var inner))
+            {
+                text = inner.AsString() ?? inner.ToJsonString();
+                return true;
+            }
+
+            if (string.Equals(typeStr, "list", StringComparison.OrdinalIgnoreCase) &&
+                map.TryGetValue("value", out var innerList))
+            {
+                if (TryConcatChunkList(innerList, out var t))
+                {
+                    text = t;
+                    return true;
+                }
+            }
+
+            if (string.Equals(typeStr, "chunk", StringComparison.OrdinalIgnoreCase) &&
+                map.TryGetValue("content", out var content))
+            {
+                text = content.AsString() ?? "";
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryConcatChunkList(NodeToolValue value, out string text)
+        {
+            text = "";
+
+            IReadOnlyList<NodeToolValue> list;
+            if (value.Kind == NodeToolValueKind.List)
+            {
+                list = value.AsListOrEmpty();
+            }
+            else if (value.Kind == NodeToolValueKind.Map)
+            {
+                var map = value.AsMapOrEmpty();
+                if (map.TryGetValue("type", out var t) &&
+                    string.Equals(t.AsString(), "list", StringComparison.OrdinalIgnoreCase) &&
+                    map.TryGetValue("value", out var v) &&
+                    v.Kind == NodeToolValueKind.List)
+                {
+                    list = v.AsListOrEmpty();
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+
+            var sb = new StringBuilder();
+            var sawChunk = false;
+
+            foreach (var item in list)
+            {
+                if (item.Kind != NodeToolValueKind.Map)
+                    continue;
+
+                var typeDisc = item.TypeDiscriminator;
+                if (!string.Equals(typeDisc, "chunk", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                sawChunk = true;
+                var map = item.AsMapOrEmpty();
+                if (map.TryGetValue("content", out var c) && c.AsString() is string s)
+                    sb.Append(s);
+            }
+
+            if (!sawChunk)
+                return false;
+
+            text = sb.ToString();
+            return true;
+        }
+
         /// <summary>
         /// Dispose resources when node is removed
         /// </summary>
@@ -522,22 +823,7 @@ namespace Nodetool.SDK.VL.Nodes
         /// </summary>
         private static (Type?, object?) MapNodeType(NodeTypeDefinition? nodeType)
         {
-            if (nodeType == null || string.IsNullOrEmpty(nodeType.Type))
-                return (typeof(string), "");
-
-            return nodeType.Type.ToLowerInvariant() switch
-            {
-                "str" or "string" => (typeof(string), ""),
-                "int" or "integer" => (typeof(int), 0),
-                "float" or "number" => (typeof(float), 0.0f),
-                "bool" or "boolean" => (typeof(bool), false),
-                "list" or "array" => (typeof(string[]), new string[0]),
-                "dict" or "object" => (typeof(object), null),
-                "image" => (typeof(string), ""), // Image path or base64
-                "audio" => (typeof(string), ""), // Audio path or data
-                "video" => (typeof(string), ""), // Video path or data
-                _ => (typeof(string), "")
-            };
+            return VlTypeMapping.MapNodeType(nodeType);
         }
 
         /// <summary>
@@ -571,7 +857,10 @@ namespace Nodetool.SDK.VL.Nodes
                 Name = _nodeMetadata.NodeType ?? "Unknown";
                 Category = "Nodetool Nodes.General";
                 Summary = _nodeMetadata.Description ?? _nodeMetadata.Title ?? Name;
-                Remarks = $"NodeTool Type: {_nodeMetadata.NodeType}";
+                // Keep Remarks consistent with factory tooltips (short; prefer namespace).
+                Remarks = !string.IsNullOrWhiteSpace(_nodeMetadata.Namespace)
+                    ? _nodeMetadata.Namespace.Trim()
+                    : (_nodeMetadata.NodeType ?? "").Trim();
                 
                 // Create minimal pin descriptions - the factory handles the real documentation
                 Inputs = CreateInputDescriptions();
