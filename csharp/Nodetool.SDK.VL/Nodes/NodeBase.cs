@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Reactive.Subjects;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Reflection;
+using SkiaSharp;
 using VL.Core;
 using VL.Core.CompilerServices;
 using VL.Core.Diagnostics;
@@ -32,6 +34,7 @@ namespace Nodetool.SDK.VL.Nodes
 
         private readonly object _lock = new();
         private readonly Dictionary<string, StringBuilder> _chunkBuffers = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, SKImage> _latestImages = new(StringComparer.Ordinal);
         private readonly Queue<string> _debugLines = new();
         private const int DebugMaxLines = 30;
         
@@ -285,6 +288,10 @@ namespace Nodetool.SDK.VL.Nodes
 
                 var client = NodeToolClientProvider.GetClient();
 
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(300));
+                var localManual = _manualCancelCts;
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, localManual?.Token ?? CancellationToken.None);
+
                 // Collect input values
                 var inputData = new Dictionary<string, object>(StringComparer.Ordinal);
                 
@@ -294,18 +301,15 @@ namespace Nodetool.SDK.VL.Nodes
                     {
                         if (_inputPins.TryGetValue(property.Name, out var inputPin))
                         {
-                            inputData[property.Name] = inputPin.Value ?? property.Default ?? "";
+                            var raw = inputPin.Value ?? property.Default ?? "";
+                            inputData[property.Name] = await ConvertInputValueForNodeAsync(property, raw, linked.Token);
                         }
                         else
                         {
-                            inputData[property.Name] = property.Default ?? "";
+                            inputData[property.Name] = await ConvertInputValueForNodeAsync(property, property.Default, linked.Token);
                         }
                     }
                 }
-
-                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(300));
-                var localManual = _manualCancelCts;
-                using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, localManual?.Token ?? CancellationToken.None);
 
                 IExecutionSession? session = null;
                 // For single-node execution, node_update is often the most reliable completion signal.
@@ -621,6 +625,12 @@ namespace Nodetool.SDK.VL.Nodes
                             hash = (hash * 31) + bytes[i];
                         return $"bytes:{bytes.Length}:{hash}";
                     }
+                case SKImage img:
+                    return $"skimage:{img.Width}x{img.Height}";
+                case DateTime dt:
+                    return $"datetime:{dt.ToUniversalTime():O}";
+                case Enum e:
+                    return $"enum:{e.GetType().FullName}:{Convert.ToInt32(e, CultureInfo.InvariantCulture)}";
             }
 
             if (value is System.Collections.IEnumerable enumerable && value is not string)
@@ -683,7 +693,29 @@ namespace Nodetool.SDK.VL.Nodes
                             
                             if (outputsSnapshot.TryGetValue(output.Name, out var value))
                             {
-                                valueToSet = ConvertNodeToolValueToExpectedType(value, expectedType ?? typeof(string));
+                                var targetType = expectedType ?? typeof(string);
+
+                                // Special handling for image outputs: decode once per update and keep the last SKImage.
+                                if (targetType == typeof(SKImage))
+                                {
+                                    if (TryExtractImageBytes(value, out var bytes) && bytes.Length > 0)
+                                    {
+                                        var img = SKImage.FromEncodedData(bytes);
+                                        if (img != null)
+                                        {
+                                            if (_latestImages.TryGetValue(output.Name, out var prev))
+                                            {
+                                                try { prev.Dispose(); } catch { /* ignore */ }
+                                            }
+                                            _latestImages[output.Name] = img;
+                                            outputPin.Value = img;
+                                        }
+                                    }
+                                    // Keep last value if decode failed.
+                                    continue;
+                                }
+
+                                valueToSet = ConvertNodeToolValueToExpectedType(value, targetType);
                                 outputPin.Value = valueToSet;
                             }
                             else
@@ -742,6 +774,8 @@ namespace Nodetool.SDK.VL.Nodes
             if (pinType == typeof(bool)) return false;
             if (pinType == typeof(string[])) return new string[0];
             if (pinType == typeof(object)) return null;
+            if (pinType == typeof(SKImage)) return null;
+            if (pinType == typeof(DateTime)) return default(DateTime);
             
             // For other types, try to create an instance
             try
@@ -752,6 +786,297 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 return null;
             }
+        }
+
+        private async Task<object> ConvertInputValueForNodeAsync(NodeProperty property, object? rawValue, CancellationToken cancellationToken)
+        {
+            var t = property.Type?.Type?.Trim().ToLowerInvariant() ?? "any";
+            var optional = property.Type?.Optional ?? false;
+
+            if (rawValue == null)
+                return optional ? null! : "";
+
+            if (t == "datetime")
+            {
+                if (rawValue is DateTime dt)
+                    return ToNodeToolDateTime(dt);
+
+                if (rawValue is DateTimeOffset dto)
+                    return ToNodeToolDateTime(dto.UtcDateTime);
+
+                if (rawValue is string s &&
+                    DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed))
+                {
+                    return ToNodeToolDateTime(DateTime.SpecifyKind(parsed.ToUniversalTime(), DateTimeKind.Utc));
+                }
+
+                return rawValue.ToString() ?? "";
+            }
+
+            if (t == "enum")
+            {
+                if (rawValue is Enum e && DynamicEnumFactory.TryToNodeToolLiteral(e, out var lit))
+                    return lit ?? "";
+                return rawValue;
+            }
+
+            if (t == "image")
+            {
+                // Accept SKImage directly: encode to PNG.
+                if (rawValue is SKImage skImage)
+                {
+                    using var data = skImage.Encode(SKEncodedImageFormat.Png, 100);
+                    var bytes = data?.ToArray() ?? Array.Empty<byte>();
+                    return new Dictionary<string, object?>
+                    {
+                        ["type"] = "image",
+                        ["asset_id"] = null,
+                        ["uri"] = "",
+                        ["data"] = bytes
+                    };
+                }
+
+                if (rawValue is byte[] bytesDirect)
+                {
+                    return new Dictionary<string, object?>
+                    {
+                        ["type"] = "image",
+                        ["asset_id"] = null,
+                        ["uri"] = "",
+                        ["data"] = bytesDirect
+                    };
+                }
+
+                // String/URI path: send bytes if local file exists, else send as uri.
+                var s = rawValue switch
+                {
+                    string str => str,
+                    Uri u => u.ToString(),
+                    _ => rawValue.ToString() ?? ""
+                };
+
+                s = s.Trim();
+                if (!string.IsNullOrWhiteSpace(s))
+                {
+                    var fullPath = s;
+                    try { fullPath = Path.GetFullPath(s); } catch { /* ignore */ }
+
+                    if (!string.IsNullOrWhiteSpace(fullPath) && File.Exists(fullPath))
+                    {
+                        var bytes = await File.ReadAllBytesAsync(fullPath, cancellationToken);
+                        return new Dictionary<string, object?>
+                        {
+                            ["type"] = "image",
+                            ["asset_id"] = null,
+                            ["uri"] = new Uri(fullPath).AbsoluteUri,
+                            ["data"] = bytes
+                        };
+                    }
+
+                    if (Uri.TryCreate(s, UriKind.Absolute, out var uri))
+                    {
+                        return new Dictionary<string, object?>
+                        {
+                            ["type"] = "image",
+                            ["asset_id"] = null,
+                            ["uri"] = uri.ToString(),
+                            ["data"] = null
+                        };
+                    }
+
+                    return new Dictionary<string, object?>
+                    {
+                        ["type"] = "image",
+                        ["asset_id"] = null,
+                        ["uri"] = s,
+                        ["data"] = null
+                    };
+                }
+
+                return "";
+            }
+
+            return rawValue;
+        }
+
+        private static IReadOnlyDictionary<string, NodeToolValue>? ExtractFirstMap(NodeToolValue value)
+        {
+            if (value.Kind == NodeToolValueKind.Map)
+                return value.AsMapOrEmpty();
+
+            if (value.Kind == NodeToolValueKind.List)
+            {
+                var firstMap = value.AsListOrEmpty().FirstOrDefault(v => v.Kind == NodeToolValueKind.Map);
+                if (firstMap != null && firstMap.Kind == NodeToolValueKind.Map)
+                    return firstMap.AsMapOrEmpty();
+            }
+
+            return null;
+        }
+
+        private static bool TryExtractImageBytes(NodeToolValue value, out byte[] bytes)
+        {
+            bytes = Array.Empty<byte>();
+
+            var map = ExtractFirstMap(value);
+            if (map == null)
+                return false;
+
+            if (map.TryGetValue("type", out var typeVal) && typeVal.AsString() is string typeStr &&
+                !string.Equals(typeStr, "image", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (!map.TryGetValue("data", out var dataVal))
+                return false;
+
+            if (dataVal.TryGetBytes(out var direct))
+            {
+                bytes = direct;
+                return true;
+            }
+
+            if (dataVal.Kind == NodeToolValueKind.List)
+            {
+                var list = dataVal.AsListOrEmpty();
+                var tmp = new byte[list.Count];
+                for (var i = 0; i < list.Count; i++)
+                {
+                    if (!list[i].TryGetLong(out var l))
+                        return false;
+                    tmp[i] = (byte)l;
+                }
+
+                bytes = tmp;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryExtractDateTimeUtc(NodeToolValue value, out DateTime dtUtc)
+        {
+            dtUtc = default(DateTime);
+
+            var map = ExtractFirstMap(value);
+            if (map != null)
+            {
+                if (map.TryGetValue("type", out var typeVal) &&
+                    typeVal.AsString() is string typeStr &&
+                    !string.Equals(typeStr, "datetime", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                if (TryGetInt(map, "year", out var year) &&
+                    TryGetInt(map, "month", out var month) &&
+                    TryGetInt(map, "day", out var day))
+                {
+                    TryGetInt(map, "hour", out var hour);
+                    TryGetInt(map, "minute", out var minute);
+                    TryGetInt(map, "second", out var second);
+                    TryGetInt(map, "microsecond", out var microsecond);
+
+                    var ticks = microsecond > 0 ? microsecond * 10L : 0L;
+                    dtUtc = new DateTime(year, month, day, hour, minute, second, DateTimeKind.Utc).AddTicks(ticks);
+                    return true;
+                }
+
+                if (map.TryGetValue("value", out var inner) && inner.AsString() is string iso &&
+                    DateTime.TryParse(iso, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed))
+                {
+                    dtUtc = DateTime.SpecifyKind(parsed.ToUniversalTime(), DateTimeKind.Utc);
+                    return true;
+                }
+            }
+
+            if (value.AsString() is string s &&
+                DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt))
+            {
+                dtUtc = DateTime.SpecifyKind(dt.ToUniversalTime(), DateTimeKind.Utc);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetInt(IReadOnlyDictionary<string, NodeToolValue> map, string key, out int i)
+        {
+            i = 0;
+            if (!map.TryGetValue(key, out var v))
+                return false;
+
+            if (v.TryGetLong(out var l))
+            {
+                i = (int)l;
+                return true;
+            }
+
+            if (v.TryGetDouble(out var d))
+            {
+                i = (int)d;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static Dictionary<string, object?> ToNodeToolDateTime(DateTime dt)
+        {
+            var utc = dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime();
+            var microsecond = (int)((utc.Ticks % TimeSpan.TicksPerSecond) / 10);
+
+            return new Dictionary<string, object?>
+            {
+                ["type"] = "datetime",
+                ["year"] = utc.Year,
+                ["month"] = utc.Month,
+                ["day"] = utc.Day,
+                ["hour"] = utc.Hour,
+                ["minute"] = utc.Minute,
+                ["second"] = utc.Second,
+                ["microsecond"] = microsecond,
+                ["tzinfo"] = "UTC",
+                ["utc_offset"] = 0
+            };
+        }
+
+        private static bool TryExtractEnumLiteral(NodeToolValue value, out object? literal)
+        {
+            literal = null;
+
+            if (value.Kind == NodeToolValueKind.String)
+            {
+                literal = value.AsString();
+                return true;
+            }
+
+            if (value.TryGetLong(out var l))
+            {
+                literal = (int)l;
+                return true;
+            }
+
+            if (value.Kind == NodeToolValueKind.Map)
+            {
+                var map = value.AsMapOrEmpty();
+                if (map.TryGetValue("value", out var inner))
+                {
+                    if (inner.Kind == NodeToolValueKind.String)
+                    {
+                        literal = inner.AsString();
+                        return true;
+                    }
+                    if (inner.TryGetLong(out var innerLong))
+                    {
+                        literal = (int)innerLong;
+                        return true;
+                    }
+                    literal = inner.Raw ?? inner.ToJsonString();
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -866,6 +1191,27 @@ namespace Nodetool.SDK.VL.Nodes
                     }
 
                     return value.AsString() ?? value.ToJsonString();
+                }
+                else if (expectedType == typeof(DateTime))
+                {
+                    return TryExtractDateTimeUtc(value, out var dtUtc) ? dtUtc : default(DateTime);
+                }
+                else if (expectedType.IsEnum)
+                {
+                    if (TryExtractEnumLiteral(value, out var literal) &&
+                        DynamicEnumFactory.TryFromNodeToolLiteral(expectedType, literal, out var enumValue) &&
+                        enumValue != null)
+                    {
+                        return enumValue;
+                    }
+
+                    if (value.AsString() is string s && Enum.TryParse(expectedType, s, ignoreCase: true, out var parsed))
+                        return parsed!;
+
+                    if (value.TryGetLong(out var enumLong))
+                        return Enum.ToObject(expectedType, (int)enumLong);
+
+                    return GetDefaultValueForPinType(expectedType);
                 }
                 else if (expectedType == typeof(int))
                 {
@@ -1022,6 +1368,12 @@ namespace Nodetool.SDK.VL.Nodes
             // If VL recreates nodes during patch edits, clearing outputs here will look like a "reset"
             // even though the user didn't change inputs. Keep the instance state intact on dispose.
             try { _manualCancelCts?.Cancel(); } catch { /* ignore */ }
+
+            foreach (var img in _latestImages.Values)
+            {
+                try { img.Dispose(); } catch { /* ignore */ }
+            }
+            _latestImages.Clear();
         }
 
         /// <summary>

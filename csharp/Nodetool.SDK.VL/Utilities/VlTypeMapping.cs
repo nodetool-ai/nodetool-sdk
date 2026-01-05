@@ -1,4 +1,5 @@
 using Nodetool.SDK.Api.Models;
+using SkiaSharp;
 
 namespace Nodetool.SDK.VL.Utilities;
 
@@ -33,12 +34,30 @@ internal static class VlTypeMapping
             "bool" or "boolean" => (typeof(bool), false),
             "list" or "array" => (typeof(string[]), Array.Empty<string>()),
             "dict" or "object" => (typeof(object), null),
-            // Node-level image/audio/video nodes currently use path-or-ref strings in VL.
-            "image" => (typeof(string), ""),
+            "datetime" => (typeof(DateTime), default(DateTime)),
+            "enum" => MapEnumType(nodeType),
+            // Image pins in VL should be SKImage (better UX than string paths).
+            "image" => (typeof(SKImage), null),
             "audio" => (typeof(string), ""),
             "video" => (typeof(string), ""),
             _ => (typeof(string), "")
         };
+    }
+
+    private static (Type?, object?) MapEnumType(NodeTypeDefinition nodeType)
+    {
+        if (nodeType.Values == null || nodeType.Values.Count == 0)
+            return (typeof(string), "");
+
+        var enumType = DynamicEnumFactory.GetOrCreateEnumType(
+            nodeType.TypeName,
+            nodeType.Values,
+            fallbackName: "Enum");
+
+        if (enumType == null)
+            return (typeof(string), "");
+
+        return (enumType, DynamicEnumFactory.GetDefaultValue(enumType));
     }
 
     private enum Kind

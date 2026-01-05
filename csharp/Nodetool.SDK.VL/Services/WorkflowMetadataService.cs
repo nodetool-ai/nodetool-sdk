@@ -137,19 +137,21 @@ public class WorkflowMetadataService : IDisposable
 
             // Fetch from API
             _logger?.LogDebug("Fetching workflow {Id} from API", workflowId);
-            var workflow = await _client.GetWorkflowAsync(workflowId);
+            var workflow = await _client.GetWorkflowAsync(workflowId, includeTypeMetadata: true);
 
             var workflowDetail = new WorkflowDetail
             {
                 Id = workflow.Id,
                 Name = workflow.Name,
                 Description = workflow.Description,
-            Tags = workflow.Tags,
+                Tags = workflow.Tags,
                 CreatedAt = workflow.CreatedAt,
                 UpdatedAt = workflow.UpdatedAt,
                 InputSchema = ConvertToWorkflowSchema(workflow.InputSchema),
-            OutputSchema = ConvertToWorkflowSchema(workflow.OutputSchema),
-            Graph = workflow.Graph,
+                OutputSchema = ConvertToWorkflowSchema(workflow.OutputSchema),
+                Graph = workflow.Graph,
+                InputTypeMetadata = workflow.InputTypeMetadata,
+                OutputTypeMetadata = workflow.OutputTypeMetadata,
             };
 
             return workflowDetail;

@@ -67,11 +67,10 @@ namespace Nodetool.SDK.VL.Nodes
             // Add workflow input pins
             foreach (var property in _workflow.GetInputProperties())
             {
-                // Get consistent VL type and default value
-                var (vlType, typeDefault) = GetVLTypeAndDefault(property.Type.Type);
-                var defaultValue = property.DefaultValue != null 
-                    ? ConvertToExpectedType(property.DefaultValue, vlType) 
-                    : typeDefault;
+                var (vlType, defaultValue) = VlWorkflowTypeMapping.MapWorkflowType(
+                    property.Name,
+                    property.Type,
+                    property.DefaultValue);
                 _inputPins[property.Name] = new InternalPin(property.Name, vlType, defaultValue);
             }
             
@@ -111,8 +110,10 @@ namespace Nodetool.SDK.VL.Nodes
             // Add workflow output pins
             foreach (var property in _workflow.GetOutputProperties())
             {
-                // Get consistent VL type and default value
-                var (vlType, defaultValue) = GetVLTypeAndDefault(property.Type.Type);
+                var (vlType, defaultValue) = VlWorkflowTypeMapping.MapWorkflowType(
+                    property.Name,
+                    property.Type,
+                    schemaDefaultValue: null);
                 _outputPins[property.Name] = new InternalPin(property.Name, vlType, defaultValue);
             }
 
@@ -496,6 +497,10 @@ namespace Nodetool.SDK.VL.Nodes
                     }
                 case SKImage img:
                     return $"skimage:{img.Width}x{img.Height}";
+                case DateTime dt:
+                    return $"datetime:{dt.ToUniversalTime():O}";
+                case Enum e:
+                    return $"enum:{e.GetType().FullName}:{Convert.ToInt32(e, CultureInfo.InvariantCulture)}";
             }
 
             if (value is System.Collections.IEnumerable enumerable && value is not string)
@@ -643,6 +648,136 @@ namespace Nodetool.SDK.VL.Nodes
             return false;
         }
 
+        private static bool TryExtractDateTimeUtc(NodeToolValue value, out DateTime dtUtc)
+        {
+            dtUtc = default(DateTime);
+
+            var map = ExtractFirstMap(value);
+            if (map != null)
+            {
+                if (map.TryGetValue("type", out var typeVal) &&
+                    typeVal.AsString() is string typeStr &&
+                    !string.Equals(typeStr, "datetime", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                if (TryGetInt(map, "year", out var year) &&
+                    TryGetInt(map, "month", out var month) &&
+                    TryGetInt(map, "day", out var day))
+                {
+                    TryGetInt(map, "hour", out var hour);
+                    TryGetInt(map, "minute", out var minute);
+                    TryGetInt(map, "second", out var second);
+                    TryGetInt(map, "microsecond", out var microsecond);
+
+                    var ticks = microsecond > 0 ? microsecond * 10L : 0L; // 1 microsecond = 10 ticks
+                    dtUtc = new DateTime(year, month, day, hour, minute, second, DateTimeKind.Utc).AddTicks(ticks);
+                    return true;
+                }
+
+                // Some server paths may use ISO string wrappers
+                if (map.TryGetValue("value", out var inner) && inner.AsString() is string iso &&
+                    DateTime.TryParse(iso, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed))
+                {
+                    dtUtc = DateTime.SpecifyKind(parsed.ToUniversalTime(), DateTimeKind.Utc);
+                    return true;
+                }
+            }
+
+            // Raw string fallback
+            if (value.AsString() is string s &&
+                DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt))
+            {
+                dtUtc = DateTime.SpecifyKind(dt.ToUniversalTime(), DateTimeKind.Utc);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetInt(IReadOnlyDictionary<string, NodeToolValue> map, string key, out int i)
+        {
+            i = 0;
+            if (!map.TryGetValue(key, out var v))
+                return false;
+
+            if (v.TryGetLong(out var l))
+            {
+                i = (int)l;
+                return true;
+            }
+
+            if (v.TryGetDouble(out var d))
+            {
+                i = (int)d;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static Dictionary<string, object?> ToNodeToolDateTime(DateTime dt)
+        {
+            var utc = dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime();
+
+            // microsecond precision (DateTime ticks are 100ns)
+            var microsecond = (int)((utc.Ticks % TimeSpan.TicksPerSecond) / 10);
+
+            return new Dictionary<string, object?>
+            {
+                ["type"] = "datetime",
+                ["year"] = utc.Year,
+                ["month"] = utc.Month,
+                ["day"] = utc.Day,
+                ["hour"] = utc.Hour,
+                ["minute"] = utc.Minute,
+                ["second"] = utc.Second,
+                ["microsecond"] = microsecond,
+                ["tzinfo"] = "UTC",
+                ["utc_offset"] = 0
+            };
+        }
+
+        private static bool TryExtractEnumLiteral(NodeToolValue value, out object? literal)
+        {
+            literal = null;
+
+            if (value.Kind == NodeToolValueKind.String)
+            {
+                literal = value.AsString();
+                return true;
+            }
+
+            if (value.TryGetLong(out var l))
+            {
+                literal = (int)l;
+                return true;
+            }
+
+            if (value.Kind == NodeToolValueKind.Map)
+            {
+                var map = value.AsMapOrEmpty();
+                if (map.TryGetValue("value", out var inner))
+                {
+                    if (inner.Kind == NodeToolValueKind.String)
+                    {
+                        literal = inner.AsString();
+                        return true;
+                    }
+                    if (inner.TryGetLong(out var innerLong))
+                    {
+                        literal = (int)innerLong;
+                        return true;
+                    }
+                    literal = inner.Raw ?? inner.ToJsonString();
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private void SetIsRunning(bool isRunning)
         {
             if (_outputPins.TryGetValue("IsRunning", out var pin))
@@ -659,23 +794,7 @@ namespace Nodetool.SDK.VL.Nodes
             }
         }
 
-        /// <summary>
-        /// Get VL type and default value that are consistent with each other
-        /// </summary>
-        private static (Type, object) GetVLTypeAndDefault(string? type)
-        {
-            return type?.ToLowerInvariant() switch
-            {
-                "string" or "str" => (typeof(string), ""),
-                "int" or "integer" => (typeof(int), 0),
-                "float" or "number" => (typeof(float), 0.0f),
-                "bool" or "boolean" => (typeof(bool), false),
-                "list" or "array" => (typeof(string[]), new string[0]),
-                "any" => (typeof(object), null!),
-                "image" => (typeof(SKImage), null!),
-                _ => (typeof(string), "")
-            };
-        }
+        // Type mapping is centralized in VlWorkflowTypeMapping (uses backend TypeMetadata).
 
         /// <summary>
         /// Get default value for a specific .NET type to ensure type safety
@@ -813,6 +932,27 @@ namespace Nodetool.SDK.VL.Nodes
                 }
 
                 return value.AsString() ?? value.ToJsonString();
+            }
+
+            if (expectedType == typeof(DateTime))
+            {
+                return TryExtractDateTimeUtc(value, out var dtUtc) ? dtUtc : default(DateTime);
+            }
+
+            if (expectedType.IsEnum)
+            {
+                if (TryExtractEnumLiteral(value, out var literal) &&
+                    DynamicEnumFactory.TryFromNodeToolLiteral(expectedType, literal, out var enumValue) &&
+                    enumValue != null)
+                {
+                    return enumValue;
+                }
+
+                if (value.AsString() is string s && Enum.TryParse(expectedType, s, ignoreCase: true, out var parsed))
+                    return parsed!;
+
+                if (value.TryGetLong(out var enumLong))
+                    return Enum.ToObject(expectedType, (int)enumLong);
             }
 
             if (expectedType == typeof(object))
@@ -978,11 +1118,62 @@ namespace Nodetool.SDK.VL.Nodes
                 ? p
                 : null;
 
+            // Preferred (Phase 2): backend-provided TypeMetadata for runtime conversion.
+            if (_workflow.TryGetInputType(inputName, out var tm))
+            {
+                var tt = (tm.Type ?? "any").Trim().ToLowerInvariant();
+
+                if (tt == "datetime")
+                {
+                    if (rawValue == null)
+                        return tm.Optional ? null! : "";
+
+                    if (rawValue is DateTime dt)
+                        return ToNodeToolDateTime(dt);
+
+                    if (rawValue is DateTimeOffset dto)
+                        return ToNodeToolDateTime(dto.UtcDateTime);
+
+                    if (rawValue is string s &&
+                        DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed))
+                        return ToNodeToolDateTime(DateTime.SpecifyKind(parsed.ToUniversalTime(), DateTimeKind.Utc));
+
+                    return rawValue.ToString() ?? "";
+                }
+
+                if (tt == "enum")
+                {
+                    if (rawValue is Enum e && DynamicEnumFactory.TryToNodeToolLiteral(e, out var lit))
+                        return lit ?? "";
+
+                    return rawValue ?? "";
+                }
+            }
+
             // Schema-based detection only (no name heuristics).
             // This must handle $ref / anyOf / oneOf / allOf properly.
-            if (IsImageSchema(propDef, _workflow.InputSchema))
+            var treatAsImage = (_workflow.TryGetInputType(inputName, out var tm2) &&
+                                string.Equals(tm2.Type, "image", StringComparison.OrdinalIgnoreCase))
+                               || IsImageSchema(propDef, _workflow.InputSchema);
+
+            if (treatAsImage)
             {
                 var rawType = rawValue?.GetType().FullName ?? "<null>";
+
+                // Accept SKImage directly: encode to PNG and send as inline bytes.
+                if (rawValue is SKImage skImage)
+                {
+                    Console.WriteLine($"WorkflowNodeBase: Image input '{inputName}' received SKImage ({skImage.Width}x{skImage.Height})");
+                    using var data = skImage.Encode(SKEncodedImageFormat.Png, 100);
+                    var bytes = data?.ToArray() ?? Array.Empty<byte>();
+                    return new Dictionary<string, object?>
+                    {
+                        ["type"] = "image",
+                        ["asset_id"] = null,
+                        ["uri"] = "",
+                        ["data"] = bytes
+                    };
+                }
 
                 // Accept bytes directly (future: SKImage/Stride can be converted to bytes by helper nodes)
                 if (rawValue is byte[] bytesDirect)

@@ -95,12 +95,11 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 var summary = property.Description ?? property.Name ?? "Workflow input";
                 var remarks = BuildInputRemarks(property);
-                
-                // Get consistent VL type and default value
-                var (vlType, typeDefault) = GetVLTypeAndDefault(property.Type.Type);
-                var defaultValue = property.DefaultValue != null 
-                    ? ConvertToVLType(property.DefaultValue, vlType) 
-                    : typeDefault;
+
+                var (vlType, defaultValue) = VlWorkflowTypeMapping.MapWorkflowType(
+                    property.Name ?? "UnknownInput",
+                    property.Type,
+                    property.DefaultValue);
 
                 inputPins.Add(new PinDescription(property.Name ?? "UnknownInput", vlType, defaultValue, summary, remarks));
             }
@@ -139,9 +138,11 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 var summary = $"📤 {property.Name}";
                 var remarks = BuildOutputRemarks(property);
-                
-                // Get consistent VL type and default value
-                var (vlType, defaultValue) = GetVLTypeAndDefault(property.Type.Type);
+
+                var (vlType, defaultValue) = VlWorkflowTypeMapping.MapWorkflowType(
+                    property.Name,
+                    property.Type,
+                    schemaDefaultValue: null);
 
                 outputPins.Add(new PinDescription(property.Name, vlType, defaultValue, summary, remarks));
             }
@@ -259,53 +260,7 @@ namespace Nodetool.SDK.VL.Nodes
             return string.Join(" | ", parts);
         }
 
-        /// <summary>
-        /// Get VL type and default value that are consistent with each other
-        /// </summary>
-        private static (Type, object) GetVLTypeAndDefault(string? type)
-        {
-            return type?.ToLowerInvariant() switch
-            {
-                "string" or "str" => (typeof(string), ""),
-                "int" or "integer" => (typeof(int), 0),
-                "float" or "number" => (typeof(float), 0.0f),
-                "bool" or "boolean" => (typeof(bool), false),
-                "list" or "array" => (typeof(string[]), new string[0]),
-                "any" => (typeof(object), null!),
-                "image" => (typeof(SKImage), null!),
-                _ => (typeof(string), "")
-            };
-        }
-
-        /// <summary>
-        /// Convert a value to the specified VL type to prevent casting exceptions
-        /// </summary>
-        private static object ConvertToVLType(object? value, Type targetType)
-        {
-            // Important: numbers often come through as JsonElement from System.Text.Json.
-            // Centralize conversion so defaults work for numeric pins.
-            return VlValueConversion.ConvertOrFallback(value, targetType, GetDefaultValueForVLType(targetType))
-                   ?? GetDefaultValueForVLType(targetType);
-        }
-
-        private static object GetDefaultValueForVLType(Type vlType)
-        {
-            if (vlType == typeof(string)) return "";
-            if (vlType == typeof(int)) return 0;
-            if (vlType == typeof(float)) return 0.0f;
-            if (vlType == typeof(bool)) return false;
-            if (vlType == typeof(string[])) return Array.Empty<string>();
-            if (vlType == typeof(SKImage)) return null!;
-
-            try
-            {
-                return Activator.CreateInstance(vlType) ?? null!;
-            }
-            catch
-            {
-                return null!;
-            }
-        }
+        // Type mapping is centralized in VlWorkflowTypeMapping (uses backend TypeMetadata).
 
         /// <summary>
         /// Internal pin description implementation

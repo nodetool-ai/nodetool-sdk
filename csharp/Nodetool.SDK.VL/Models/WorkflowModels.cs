@@ -211,7 +211,7 @@ public class WorkflowDetail
             var schemaProps = InputSchema?.Properties ?? new Dictionary<string, WorkflowPropertyDefinition>(StringComparer.Ordinal);
 
             // Prefer schema ordering when available (stable UX).
-            var names = schemaProps.Count > 0
+            IEnumerable<string> names = schemaProps.Count > 0
                 ? schemaProps.Keys
                 : InputTypeMetadata.Keys;
 
@@ -294,7 +294,7 @@ public class WorkflowDetail
             var schemaProps = OutputSchema?.Properties ?? new Dictionary<string, WorkflowPropertyDefinition>(StringComparer.Ordinal);
 
             // Prefer schema ordering when available.
-            var names = schemaProps.Count > 0
+            IEnumerable<string> names = schemaProps.Count > 0
                 ? schemaProps.Keys
                 : OutputTypeMetadata.Keys;
 
@@ -308,7 +308,7 @@ public class WorkflowDetail
                     yield return (
                         Name: name,
                         Type: tm,
-                        Description: prop.Description ?? prop.Title ?? prop.Label ?? ""
+                        Description: prop.Description ?? prop.Title ?? ""
                     );
                 }
                 else
