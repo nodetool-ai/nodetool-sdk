@@ -121,15 +121,18 @@ namespace Nodetool.SDK.VL.Nodes
 
             outputPins.Add(new PinDescription(DebugOutputName, typeof(string), "",
                 "🪵 Debug (last updates)",
-                "Last few workflow runner updates (progress/node_update/output_update). Useful when results are partial or missing."));
+                "Last few workflow runner updates (progress/node_update/output_update). Useful when results are partial or missing.",
+                isVisible: false));
 
             outputPins.Add(new PinDescription(InputSchemaJsonOutputName, typeof(string), "",
                 "📄 Input schema (JSON)",
-                "The workflow input_schema as JSON (for debugging/type inspection)."));
+                "The workflow input_schema as JSON (for debugging/type inspection).",
+                isVisible: false));
 
             outputPins.Add(new PinDescription(OutputSchemaJsonOutputName, typeof(string), "",
                 "📄 Output schema (JSON)",
-                "The workflow output_schema as JSON (for debugging/type inspection)."));
+                "The workflow output_schema as JSON (for debugging/type inspection).",
+                isVisible: false));
 
             // Add workflow output pins
             foreach (var property in _workflow.GetOutputProperties())
@@ -279,60 +282,10 @@ namespace Nodetool.SDK.VL.Nodes
         /// </summary>
         private static object ConvertToVLType(object? value, Type targetType)
         {
-            if (value == null)
-            {
-                // Return a type-correct default for the VL pin.
-                // Important: for reference types like SKImage, this must be null (not "").
-                return GetDefaultValueForVLType(targetType);
-            }
-
-            if (targetType.IsAssignableFrom(value.GetType()))
-                return value;
-
-            try
-            {
-                if (targetType == typeof(string))
-                {
-                    return value.ToString() ?? "";
-                }
-                else if (targetType == typeof(int))
-                {
-                    return Convert.ToInt32(value);
-                }
-                else if (targetType == typeof(float))
-                {
-                    return Convert.ToSingle(value);
-                }
-                else if (targetType == typeof(bool))
-                {
-                    return Convert.ToBoolean(value);
-                }
-                else if (targetType == typeof(string[]))
-                {
-                    if (value is Array array)
-                    {
-                        var stringArray = new string[array.Length];
-                        for (int i = 0; i < array.Length; i++)
-                        {
-                            stringArray[i] = array.GetValue(i)?.ToString() ?? "";
-                        }
-                        return stringArray;
-                    }
-                    else
-                    {
-                        return new string[] { value.ToString() ?? "" };
-                    }
-                }
-                else
-                {
-                    return Convert.ChangeType(value, targetType);
-                }
-            }
-            catch
-            {
-                // If conversion fails, return default value for the target type
-                return GetDefaultValueForVLType(targetType);
-            }
+            // Important: numbers often come through as JsonElement from System.Text.Json.
+            // Centralize conversion so defaults work for numeric pins.
+            return VlValueConversion.ConvertOrFallback(value, targetType, GetDefaultValueForVLType(targetType))
+                   ?? GetDefaultValueForVLType(targetType);
         }
 
         private static object GetDefaultValueForVLType(Type vlType)
@@ -357,15 +310,16 @@ namespace Nodetool.SDK.VL.Nodes
         /// <summary>
         /// Internal pin description implementation
         /// </summary>
-        private class PinDescription : IVLPinDescription
+        private class PinDescription : IVLPinDescription, IVLPinDescriptionWithVisibility
         {
-            public PinDescription(string name, Type type, object? defaultValue = null, string summary = "", string remarks = "")
+            public PinDescription(string name, Type type, object? defaultValue = null, string summary = "", string remarks = "", bool isVisible = true)
             {
                 Name = name;
                 Type = type;
                 DefaultValue = defaultValue;
                 Summary = summary;
                 Remarks = remarks;
+                IsVisible = isVisible;
                 Tags = new List<string>().AsReadOnly();
             }
 
@@ -375,6 +329,7 @@ namespace Nodetool.SDK.VL.Nodes
             public string Summary { get; }
             public string Remarks { get; }
             public IReadOnlyList<string> Tags { get; }
+            public bool IsVisible { get; }
         }
     }
 } 

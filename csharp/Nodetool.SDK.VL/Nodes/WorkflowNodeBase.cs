@@ -13,6 +13,7 @@ using Nodetool.SDK.Execution;
 using Nodetool.SDK.Values;
 using Nodetool.SDK.VL.Models;
 using Nodetool.SDK.VL.Services;
+using Nodetool.SDK.VL.Utilities;
 
 namespace Nodetool.SDK.VL.Nodes
 {
@@ -703,45 +704,8 @@ namespace Nodetool.SDK.VL.Nodes
         /// </summary>
         private static object ConvertToExpectedType(object? value, Type expectedType)
         {
-            if (value == null)
-                return GetDefaultValueForVLType(expectedType);
-
-            if (expectedType.IsAssignableFrom(value.GetType()))
-                return value;
-
-            try
-            {
-                if (expectedType == typeof(string))
-                    return value.ToString() ?? "";
-                else if (expectedType == typeof(int))
-                    return Convert.ToInt32(value);
-                else if (expectedType == typeof(float))
-                    return Convert.ToSingle(value);
-                else if (expectedType == typeof(bool))
-                    return Convert.ToBoolean(value);
-                else if (expectedType == typeof(string[]))
-                {
-                    if (value is Array array)
-                    {
-                        var stringArray = new string[array.Length];
-                        for (int i = 0; i < array.Length; i++)
-                        {
-                            stringArray[i] = array.GetValue(i)?.ToString() ?? "";
-                        }
-                        return stringArray;
-                    }
-                    else
-                    {
-                        return new string[] { value.ToString() ?? "" };
-                    }
-                }
-                else
-                    return Convert.ChangeType(value, expectedType);
-            }
-            catch
-            {
-                return GetDefaultValueForVLType(expectedType);
-            }
+            return VlValueConversion.ConvertOrFallback(value, expectedType, GetDefaultValueForVLType(expectedType))
+                   ?? GetDefaultValueForVLType(expectedType);
         }
 
         private static object ConvertNodeToolValueToExpectedType(NodeToolValue value, Type expectedType)

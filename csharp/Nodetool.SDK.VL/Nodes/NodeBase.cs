@@ -84,7 +84,9 @@ namespace Nodetool.SDK.VL.Nodes
                 foreach (var property in _nodeMetadata.Properties)
                 {
                     var (vlType, defaultValue) = MapNodeType(property.Type);
-                    var pin = new InternalPin(property.Name, vlType ?? typeof(string), defaultValue);
+                    var targetType = vlType ?? typeof(string);
+                    var initial = VlValueConversion.ConvertOrFallback(property.Default, targetType, defaultValue);
+                    var pin = new InternalPin(property.Name, targetType, initial);
                     _inputPins[property.Name] = pin;
                 }
             }

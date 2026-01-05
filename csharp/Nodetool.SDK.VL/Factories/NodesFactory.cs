@@ -126,10 +126,12 @@ namespace Nodetool.SDK.VL.Factories
                                         foreach (var property in nodeMetadata.Properties)
                                         {
                                             var (vlType, defaultValue) = MapNodeType(property.Type);
+                                            var targetType = vlType ?? typeof(string);
+                                            var initial = VlValueConversion.ConvertOrFallback(property.Default, targetType, defaultValue);
                                             var pinSummary = TextCleanup.StripTrailingPeriod(property.Description ?? property.Title ?? property.Name);
                                             var pinRemarks = BuildPinRemarks(property);
                                             
-                                            inputPins.Add(bc.Pin(property.Name, vlType ?? typeof(string), defaultValue, pinSummary, pinRemarks));
+                                            inputPins.Add(bc.Pin(property.Name, targetType, initial, pinSummary, pinRemarks));
                                         }
                                     }
 
@@ -161,9 +163,10 @@ namespace Nodetool.SDK.VL.Factories
                                     outputPins.Add(bc.Pin("Error", typeof(string), "",
                                         "❌ Error message", 
                                         "Contains error details if execution fails, empty string if successful"));
-                                    outputPins.Add(bc.Pin("Debug", typeof(string), "",
-                                        "🪵 Debug (last updates)",
-                                        "Last few runner updates (progress/node_update/output_update). Useful when results are partial or missing"));
+                                    outputPins.Add(new VlPinDescription("Debug", typeof(string), "",
+                                        summary: "🪵 Debug (last updates)",
+                                        remarks: "Last few runner updates (progress/node_update/output_update). Useful when results are partial or missing",
+                                        isVisible: false));
 
                                     // Build comprehensive node documentation
                                     var nodeRemarks = BuildNodeRemarks(nodeMetadata);
