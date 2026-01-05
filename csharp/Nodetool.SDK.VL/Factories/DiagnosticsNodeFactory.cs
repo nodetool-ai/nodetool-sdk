@@ -124,7 +124,7 @@ internal static class DiagnosticsNodeFactory
                         );
                     },
                     summary: "Connect to NodeTool server",
-                    remarks: "Establishes a WebSocket connection to the NodeTool server. The connection is shared across all NodeTool nodes."
+                    remarks: "Establishes a WebSocket connection to the NodeTool server. The connection is shared across all NodeTool nodes"
                 );
             }
         );
@@ -161,7 +161,7 @@ internal static class DiagnosticsNodeFactory
                         }
                     ),
                     summary: "Get NodeTool connection status",
-                    remarks: "Reports the current connection status of the shared NodeTool client."
+                    remarks: "Reports the current connection status of the shared NodeTool client"
                 );
             }
         );

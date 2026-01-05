@@ -6,6 +6,7 @@ using VL.Core;
 using VL.Core.CompilerServices;
 using VL.Core.Diagnostics;
 using Nodetool.SDK.VL.Models;
+using Nodetool.SDK.VL.Utilities;
 using SkiaSharp;
 
 namespace Nodetool.SDK.VL.Nodes
@@ -46,7 +47,7 @@ namespace Nodetool.SDK.VL.Nodes
 
             if (!string.IsNullOrWhiteSpace(description))
             {
-                Summary = description;
+                Summary = TextCleanup.StripTrailingPeriodsPerLine(description);
             }
             else
             {

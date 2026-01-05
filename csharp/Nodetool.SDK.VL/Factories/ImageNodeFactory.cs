@@ -139,8 +139,8 @@ internal static class ImageNodeFactory
                             }
                         );
                     },
-                    summary: "Decode an ImageRef payload to encoded bytes.",
-                    remarks: "Use this to turn workflow outputs like [{type:\"image\", data:[...]}] into encoded bytes."
+                    summary: "Decode an ImageRef payload to encoded bytes",
+                    remarks: "Use this to turn workflow outputs like [{type:\"image\", data:[...]}] into encoded bytes"
                 );
             }
         );
@@ -246,8 +246,8 @@ internal static class ImageNodeFactory
                             }
                         );
                     },
-                    summary: "Decode an ImageRef payload to a SkiaSharp SKImage.",
-                    remarks: "Uses SkiaSharp.SKImage.FromEncodedData on the encoded bytes from ImageRef.data."
+                    summary: "Decode an ImageRef payload to a SkiaSharp SKImage",
+                    remarks: "Uses SkiaSharp.SKImage.FromEncodedData on the encoded bytes from ImageRef.data"
                 );
             }
         );

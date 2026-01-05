@@ -247,6 +247,9 @@
             <Pin Id="V7SPLWrSD8YMhpWm0OhQuo" Name="Debug" Kind="OutputPin" />
             <Pin Id="J9clUGHeoJ8OmDvrQMeMgr" Name="InputSchemaJson" Kind="OutputPin" />
             <Pin Id="IiyGiga0xY0MQNUbx9TRUu" Name="OutputSchemaJson" Kind="OutputPin" />
+            <Pin Id="GFDnGcVbhskPcZXF1u7O5L" Name="prompt" Kind="InputPin" />
+            <Pin Id="DyPoK3FeckaN9vUeZ7Lf1X" Name="text" Kind="OutputPin" />
+            <Pin Id="Pjuy8ePnaYVPD1gDyRKhns" Name="chunk" Kind="OutputPin" />
           </Node>
           <Pad Id="JIKUGqRpPY6QNl9igp7PVU" Comment="Trigger" Bounds="2384,127,35,35" ShowValueBox="true" isIOBox="true" Value="false">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -464,7 +467,7 @@
           </Node>
           <Pad Id="VZv84EqeireLQGZLj46LVa" Comment="Time" Bounds="3189,450,35,15" ShowValueBox="true" isIOBox="true" />
           <Pad Id="FOIuBC4IdXIOwGlCvd9Sgf" Comment="IsRunning" Bounds="3189,341,35,35" ShowValueBox="true" isIOBox="true" />
-          <Node Bounds="2188,170,107,19" Id="VXeYUXKqkuoOlzlVoHXamy">
+          <Node Bounds="2188,170,125,19" Id="VXeYUXKqkuoOlzlVoHXamy">
             <p:NodeReference LastCategoryFullName="Nodetool Workflows" LastDependency="Nodetool.Workflows">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessNode" Name="TEST_SDK_4_AGENT" />
@@ -477,6 +480,9 @@
             <Pin Id="StFh7fwFJxUOzF9n8P2Id2" Name="Debug" Kind="OutputPin" />
             <Pin Id="RGpcczGNkyEMgwQLafTXGU" Name="InputSchemaJson" Kind="OutputPin" />
             <Pin Id="Gi5fcDWbcExL5eAug7nFoM" Name="OutputSchemaJson" Kind="OutputPin" />
+            <Pin Id="VRB7a2SxgYhNNgpQgX9oNR" Name="prompt" Kind="InputPin" />
+            <Pin Id="KlWTvR1d7UANvU9lXoO0hU" Name="text" Kind="OutputPin" />
+            <Pin Id="AczjVtUlm3tN9Zj2MPOgeB" Name="chunk" Kind="OutputPin" />
           </Node>
           <Node Bounds="589,499,63,19" Id="D7NGJ9iALR9Ng09PdHpHMZ">
             <p:NodeReference LastCategoryFullName="Animation" LastDependency="VL.CoreLib.vl">
@@ -548,6 +554,11 @@
             <Pin Id="KoUyG5JCncLNlHQLxZ7Ffy" Name="Down Edge" Kind="OutputPin" />
           </Node>
           <Pad Id="NCafyRHmDMzLwe3Zb0dWp8" Comment="IsRunning" Bounds="476,240,35,35" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="JpKFxDrxKz8PcwzcJMW03b" Comment="IsRunning" Bounds="2965,290,35,35" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="Ey9K3NqxiWyO9ejWXMeZEi" Comment="" Bounds="3277,230,35,35" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="EG2eG7wEQIdPiw0tH1TtT9" Comment="" Bounds="3370,130,35,35" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="MY44XiQog33QXnaB9rnL1e" Comment="chunk" Bounds="2504,230,200,50" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="BHGwQnOty1KNTFE2h9mgLp" Comment="text" Bounds="2484,290,200,50" ShowValueBox="true" isIOBox="true" />
         </Canvas>
         <Patch Id="BVZk8J8KreGPn6XpAL8K43" Name="Create" />
         <Patch Id="OPRQahXEwooMG9XKpojbFr" Name="Update" />
@@ -601,7 +612,6 @@
         <Link Id="Pu8QeMfwkylNOfhz1q7Myb" Ids="KS4vcwQe9X5MbRyNY34v0L,RTMlW9ku4RULyM3IhPr7Vs" />
         <Link Id="DywQhpGtZoYNyQpkqMDGYl" Ids="IVvVGhLDHj1OBWB5Tgbxlt,LnGmOAlDnUfPAzzSI3XUPe" />
         <Link Id="IdZKvGEsC3IP3vJiZBSK8d" Ids="E4rXGC3ddGQOylCgxDueHo,BI9EdQt01QjOQVUHlWdl32" />
-        <Link Id="Gug3iUVasngLqNWRcnGErt" Ids="UhAfbsnAz3ANOIE4Fm81Im,PAm6pWS4lLnMfQLMfd01uZ" />
         <Link Id="DbIePkIjNadP6RkU9zaYuk" Ids="Sijn8SOdd4SPRbhKgsYQRw,RDKZFisp4m8Pmq44UpkWVE" />
         <Link Id="LKMnDmqLH7VLojO9yP7bAG" Ids="S6sszU7uVanOsznfLVr4B7,KnzCI5AgX54PkabZ8bU8Xx" />
         <Link Id="NdkXQSnWGVVQFxLJEarzeI" Ids="Gaq94qmo4ANLZ8NSNtLhqq,SXopAqlMC59OLkWneXBBND" />
@@ -612,7 +622,6 @@
         <Link Id="RE1M1QByh5vPV5NhaELG5l" Ids="LTt0G6k6mhEOSDbv3S1AJw,VnP3WKsAjFGO9FPKYCLHTh" />
         <Link Id="UOWaUSCUyJOOab1sz0ATHz" Ids="NoATeoRtO7ZLgk94L6yLor,Dg8WKhXwpRuNx6qE2SOATG" />
         <Link Id="N9mYtgiWRieM3JgHpR5QTA" Ids="F67iomR4z5bNe4pw4hkgFK,ODtYeDRCbLUQUWU5LqlmOb" />
-        <Link Id="Rpw9fA37iH9P2JJvKNU8Iv" Ids="UhAfbsnAz3ANOIE4Fm81Im,CgLXjRzdOr4Mfrof2YNW4i" />
         <Link Id="B1GBKzNKCNALiQ6BBtFUpl" Ids="PtzEbXdh7TUQKjFEfayFqp,VZv84EqeireLQGZLj46LVa" />
         <Link Id="IW5tUckAafkMW2MXzUmofd" Ids="CMWeC6CYv5WNk1bR69pmKu,FOIuBC4IdXIOwGlCvd9Sgf" />
         <Link Id="EScKO5YEJSLMLLs0fNDIT9" Ids="FOIuBC4IdXIOwGlCvd9Sgf,BPNiwtXAVRNQKyiDZeqeCz" />
@@ -623,6 +632,13 @@
         <Link Id="Ia3SAP9xILQOnkydjvwxvW" Ids="F4JsEGnoUOfNV0tJUNH4If,IqeP4QArsWfNk4gMytaJmc" />
         <Link Id="AHOb2R68UaENXGK0VUOg19" Ids="Va3F6ByDEFSObVGi5ZH0gY,RtDlMiRUqIGQYFyop3JGGe" />
         <Link Id="AUfWen0gvXcOxxjUDKtpnn" Ids="J1jttW92qGQQPPsefTOPwA,NCafyRHmDMzLwe3Zb0dWp8" />
+        <Link Id="Gfqavzl1hDJMqIUL5pGfEp" Ids="CMWeC6CYv5WNk1bR69pmKu,JpKFxDrxKz8PcwzcJMW03b" />
+        <Link Id="PeNq1febIPiPnIOFx1yxeR" Ids="UhAfbsnAz3ANOIE4Fm81Im,PAm6pWS4lLnMfQLMfd01uZ" />
+        <Link Id="SjPT2bavFB1LCuqNn8ALso" Ids="UhAfbsnAz3ANOIE4Fm81Im,Ey9K3NqxiWyO9ejWXMeZEi" />
+        <Link Id="B9twXySdWdwL7z4VIWVlCP" Ids="UhAfbsnAz3ANOIE4Fm81Im,EG2eG7wEQIdPiw0tH1TtT9" />
+        <Link Id="JEqmJ2gUi9dQbfWK8y5thA" Ids="KKX6fyImEahMqUR5USwpOv,GFDnGcVbhskPcZXF1u7O5L" />
+        <Link Id="RK9f2NskLt9M8fn8ozUoXa" Ids="Pjuy8ePnaYVPD1gDyRKhns,MY44XiQog33QXnaB9rnL1e" />
+        <Link Id="Q3Itse9pkORPmTY3xVfgzq" Ids="DyPoK3FeckaN9vUeZ7Lf1X,BHGwQnOty1KNTFE2h9mgLp" />
       </Patch>
     </Node>
   </Patch>

@@ -257,6 +257,9 @@ namespace Nodetool.SDK.VL.Nodes
                 using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, localManual?.Token ?? CancellationToken.None);
 
                 IExecutionSession? session = null;
+                // For single-node execution, node_update is often the most reliable completion signal.
+                // Some servers may omit job_update in certain edge cases; this prevents IsRunning from hanging.
+                var nodeTerminalTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 try
                 {
                     session = await client.ExecuteNodeAsync(_nodeMetadata.NodeType, inputData, linked.Token);
@@ -310,6 +313,7 @@ namespace Nodetool.SDK.VL.Nodes
                             AppendDebug($"node_error: {update.error}");
                             SetError(_lastError);
                             InvalidateOutputs();
+                            nodeTerminalTcs.TrySetResult(false);
                         }
 
                         if (update.result != null)
@@ -325,20 +329,50 @@ namespace Nodetool.SDK.VL.Nodes
                             }
                             InvalidateOutputs();
                         }
+
+                        // Terminal node statuses for single-node graphs.
+                        // We treat these as completion signals even if job_update is missing.
+                        if (IsTerminalNodeStatus(update.status))
+                        {
+                            var ok = string.IsNullOrWhiteSpace(update.error) &&
+                                     string.Equals(update.status, "completed", StringComparison.OrdinalIgnoreCase);
+                            AppendDebug($"node_status: {update.status}");
+                            nodeTerminalTcs.TrySetResult(ok);
+                        }
                     };
 
-                    var ok = await session.WaitForCompletionAsync(linked.Token);
-                    if (!ok)
+                    var completedTask = await Task.WhenAny(
+                        session.WaitForCompletionAsync(linked.Token),
+                        nodeTerminalTcs.Task);
+
+                    bool ok;
+                    if (ReferenceEquals(completedTask, nodeTerminalTcs.Task))
                     {
-                        lock (_lock)
+                        ok = nodeTerminalTcs.Task.Result;
+                        if (!ok && string.IsNullOrWhiteSpace(_lastError))
                         {
-                            _lastError = session.ErrorMessage ?? _lastError;
+                            lock (_lock)
+                            {
+                                _lastError = _lastError.Length > 0 ? _lastError : "Node execution failed.";
+                            }
                         }
-                        AppendDebug($"completed: failed err='{session.ErrorMessage ?? _lastError}'");
+                        AppendDebug(ok ? "completed: ok (node_update)" : $"completed: failed (node_update) err='{_lastError}'");
                     }
                     else
                     {
-                        AppendDebug("completed: ok");
+                        ok = ((Task<bool>)completedTask).Result;
+                        if (!ok)
+                        {
+                            lock (_lock)
+                            {
+                                _lastError = session.ErrorMessage ?? _lastError;
+                            }
+                            AppendDebug($"completed: failed err='{session.ErrorMessage ?? _lastError}'");
+                        }
+                        else
+                        {
+                            AppendDebug("completed: ok");
+                        }
                     }
                 }
                 finally
@@ -395,6 +429,15 @@ namespace Nodetool.SDK.VL.Nodes
                     _ = ExecuteNodeAsync();
                 }
             }
+        }
+
+        private static bool IsTerminalNodeStatus(string? status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+                return false;
+
+            var s = status.Trim().ToLowerInvariant();
+            return s is "completed" or "failed" or "cancelled" or "canceled" or "error";
         }
 
         private void SetIsRunning(bool isRunning)
@@ -949,11 +992,12 @@ namespace Nodetool.SDK.VL.Nodes
                 _nodeMetadata = nodeMetadata;
                 Name = _nodeMetadata.NodeType ?? "Unknown";
                 Category = "Nodetool Nodes.General";
-                Summary = _nodeMetadata.Description ?? _nodeMetadata.Title ?? Name;
+                Summary = TextCleanup.StripTrailingPeriodsPerLine(_nodeMetadata.Description ?? _nodeMetadata.Title ?? Name);
                 // Keep Remarks consistent with factory tooltips (short; prefer namespace).
-                Remarks = !string.IsNullOrWhiteSpace(_nodeMetadata.Namespace)
-                    ? _nodeMetadata.Namespace.Trim()
-                    : (_nodeMetadata.NodeType ?? "").Trim();
+                Remarks = TextCleanup.StripTrailingPeriodsPerLine(
+                    !string.IsNullOrWhiteSpace(_nodeMetadata.Namespace)
+                        ? _nodeMetadata.Namespace.Trim()
+                        : (_nodeMetadata.NodeType ?? "").Trim());
                 
                 // Create minimal pin descriptions - the factory handles the real documentation
                 Inputs = CreateInputDescriptions();
