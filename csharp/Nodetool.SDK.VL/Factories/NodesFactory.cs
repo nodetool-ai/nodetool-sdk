@@ -105,11 +105,20 @@ namespace Nodetool.SDK.VL.Factories
 
                                     inputPins.Add(bc.Pin("AutoRun", typeof(bool), false,
                                         "🔁 Execute on input change",
-                                        "When enabled, the node executes automatically whenever any input changes (useful for chaining/autorun)."));
+                                        "When enabled, this node automatically executes whenever any *data input* changes.\n\n"
+                                        + "- This watches all input pins except Execute/AutoRun/RestartOnChange.\n"
+                                        + "- Useful for chaining nodes and building autorun patches.\n"
+                                        + "- If an input changes while a run is active, behavior depends on RestartOnChange."));
 
                                     inputPins.Add(bc.Pin("RestartOnChange", typeof(bool), false,
                                         "♻️ Restart on input change",
-                                        "When enabled and AutoRun is on, input changes will cancel the current run and restart with the latest inputs. Useful for long-running nodes."));
+                                        "Only relevant when AutoRun is enabled.\n\n"
+                                        + "If true and inputs change while the node is already running:\n"
+                                        + "- the current run is cancelled, and\n"
+                                        + "- the node restarts immediately with the latest inputs.\n\n"
+                                        + "If false:\n"
+                                        + "- the node finishes the current run, then reruns once.\n\n"
+                                        + "Tip: enable this for interactive tweaking (sliders/knobs). Leave it off for expensive or non-cancellable nodes."));
                                     
                                     // Add input pins from node properties with documentation
                                     if (nodeMetadata.Properties != null)

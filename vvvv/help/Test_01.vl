@@ -65,6 +65,8 @@
               <Choice Kind="ProcessNode" Name="TEST_SDK_01" />
             </p:NodeReference>
             <Pin Id="C7k3clX86H5M0mG2xgrie9" Name="Trigger" Kind="InputPin" />
+            <Pin Id="NPYbhAfDkIzLzjca71fntS" Name="AutoRun" Kind="InputPin" />
+            <Pin Id="SGWQRotEAqzOlUycoTt0T4" Name="RestartOnChange" Kind="InputPin" />
             <Pin Id="JAfwWwuFk3tOgpEaakRdYa" Name="string_input_1" Kind="InputPin" />
             <Pin Id="Bs7hoD6uf3rMlRabSZuG30" Name="IsRunning" Kind="OutputPin" />
             <Pin Id="Hbu8hexHw2hQbC2jmwmjVG" Name="Error" Kind="OutputPin" />
@@ -81,14 +83,14 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="T4KgY7ajJctOg9IfGgjhOL" Comment="string_input_1" Bounds="930,106,91,15" ShowValueBox="true" isIOBox="true" Value="hello">
+          <Pad Id="T4KgY7ajJctOg9IfGgjhOL" Comment="string_input_1" Bounds="957,110,91,15" ShowValueBox="true" isIOBox="true" Value="hello">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
           <Pad Id="V6LSIiUHU6gNOjhrLsMdMT" Comment="IsRunning" Bounds="857,276,35,35" ShowValueBox="true" isIOBox="true" />
-          <Pad Id="QePjrx9dzOWPkM5sHODxZh" Comment="Error" Bounds="893,226,35,15" ShowValueBox="true" isIOBox="true" />
-          <Pad Id="PlN6rrny8pjN6I8LpMuQqc" Comment="output" Bounds="930,186,92,15" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="QePjrx9dzOWPkM5sHODxZh" Comment="Error" Bounds="877,240,35,15" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="PlN6rrny8pjN6I8LpMuQqc" Comment="output" Bounds="957,171,114,54" ShowValueBox="true" isIOBox="true" />
           <Node Bounds="75,491,101,19" Id="FnlOzUOyAXqNUZbwy42EtC">
             <p:NodeReference LastCategoryFullName="Nodetool Workflows" LastDependency="Nodetool.Workflows">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -108,6 +110,8 @@
               <Choice Kind="ProcessNode" Name="TEST_SDK_02" />
             </p:NodeReference>
             <Pin Id="FbiTxC4mk5cNsx1q3qrzzG" Name="Trigger" Kind="InputPin" />
+            <Pin Id="Ket5r7bSxSmN0WYtFQd1xl" Name="AutoRun" Kind="InputPin" />
+            <Pin Id="Aad7wQVO1EXM1V7zVGGrIB" Name="RestartOnChange" Kind="InputPin" />
             <Pin Id="Veu9dgmrNeKP9rCgMWxAld" Name="image_input_1" Kind="InputPin" />
             <Pin Id="B1BItIE79oAMvjSTPTTGs5" Name="IsRunning" Kind="OutputPin" />
             <Pin Id="CQGVT6hoq5AQO508259QS7" Name="Error" Kind="OutputPin" />
@@ -157,6 +161,8 @@
               <Choice Kind="ProcessNode" Name="TEST_SDK_03_MULTI" />
             </p:NodeReference>
             <Pin Id="JtR04hjPohPORBENkEgkbO" Name="Trigger" Kind="InputPin" />
+            <Pin Id="MpkEJcWHVMfO9EnmkUxqLw" Name="AutoRun" Kind="InputPin" />
+            <Pin Id="P1cyxmoh8zENKA1gjhbHaR" Name="RestartOnChange" Kind="InputPin" />
             <Pin Id="KvV5ObEIcVgP8gX0rYcEya" Name="float_input_1" Kind="InputPin" />
             <Pin Id="EiMWa9JhCUGMvwyBOF7oVB" Name="string_input_1" Kind="InputPin" />
             <Pin Id="HDeB25arJcwNyGuVm5Q552" Name="IsRunning" Kind="OutputPin" />
@@ -167,18 +173,18 @@
             <Pin Id="TdQymLcLETcONOU7KW0Bxh" Name="output" Kind="OutputPin" />
             <Pin Id="JFoLXLh6Dt9NAm7xzm8o7H" Name="output text" Kind="OutputPin" />
           </Node>
-          <Pad Id="LKDp5FrrfeSQYmyIkGXXOM" Comment="float_input_1" Bounds="921,445,35,15" ShowValueBox="true" isIOBox="true" Value="1">
+          <Pad Id="LKDp5FrrfeSQYmyIkGXXOM" Comment="float_input_1" Bounds="959,431,35,15" ShowValueBox="true" isIOBox="true" Value="1">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Float32" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="BMgWHj3W9qBMDZaI7T4FgG" Comment="string_input_1" Bounds="974,465,60,15" ShowValueBox="true" isIOBox="true" Value="nodetool">
+          <Pad Id="BMgWHj3W9qBMDZaI7T4FgG" Comment="string_input_1" Bounds="989,451,60,15" ShowValueBox="true" isIOBox="true" Value="nodetool">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="KM1LWIeRpmbMwo9FQevBaW" Comment="output" Bounds="939,537,35,15" ShowValueBox="true" isIOBox="true" />
-          <Pad Id="IAHYozpBG5zL7TnJMBCUY0" Comment="output text" Bounds="974,515,92,15" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="KM1LWIeRpmbMwo9FQevBaW" Comment="output" Bounds="969,570,113,48" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="IAHYozpBG5zL7TnJMBCUY0" Comment="output text" Bounds="989,511,95,50" ShowValueBox="true" isIOBox="true" Value="[&#xD;&#xA;  &quot;HELLO nodetool&quot;&#xD;&#xA;]" />
           <Pad Id="NRk9QrXSQAGOdGvrwWoYgX" Comment="Trigger" Bounds="869,415,35,35" ShowValueBox="true" isIOBox="true" Value="false">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
@@ -193,13 +199,15 @@
           <Overlay Id="EV0iOjDqQEJLL9LPAg4cmD" Name="Connect" Bounds="54,37,339,371" />
           <Overlay Id="BeX4vS4lRuBOBGtckVMb5Y" Name="Status" Bounds="51,446,345,248" />
           <Overlay Id="FjOulsjCZlHPNCUkU30tTm" Name="Workflow | Image" Bounds="1226,38,564,525" />
-          <Node Bounds="493,172,65,19" Id="Kq2L7XtphLsOQu8xDx5EFv">
+          <Node Bounds="493,172,85,19" Id="Kq2L7XtphLsOQu8xDx5EFv">
             <p:NodeReference LastCategoryFullName="Nodetool Nodes.Text" LastDependency="Nodetool.Nodes">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <CategoryReference Kind="Category" Name="Nodetool Nodes" />
               <Choice Kind="ProcessNode" Name="Concat" />
             </p:NodeReference>
             <Pin Id="RAFWxPrBpjcMCsfnGhS5ds" Name="Execute" Kind="InputPin" />
+            <Pin Id="OGrQL5qRfQwOGmOQjNHYqU" Name="AutoRun" Kind="InputPin" DefaultValue="True" />
+            <Pin Id="GPZ4JS7R9yKOargZg9O0Ap" Name="RestartOnChange" Kind="InputPin" DefaultValue="False" />
             <Pin Id="Lb27LUTfZxKOrtczW20PMX" Name="a" Kind="InputPin" />
             <Pin Id="RfToD5eLT9VNQwiGEn6e5D" Name="b" Kind="InputPin" />
             <Pin Id="S6sszU7uVanOsznfLVr4B7" Name="output" Kind="OutputPin" />
@@ -217,7 +225,6 @@
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="UkRj2zmJs5TOVLNF497tk4" Comment="output" Bounds="495,255,74,15" ShowValueBox="true" isIOBox="true" Value="System.Collections.Generic.Dictionary`2[System.Object,System.Object]" />
           <Pad Id="KVygITsKkCwLN2w1Zhehfh" Comment="Execute" Bounds="495,86,35,35" ShowValueBox="true" isIOBox="true" Value="false">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
@@ -226,7 +233,6 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="MuAR0VbosBOMopYpPClts3" Comment="IsRunning" Bounds="517,211,35,35" ShowValueBox="true" isIOBox="true" />
           <Overlay Id="Pir0cqmK2TDPDFHmwTnrSc" Name="Node" Bounds="425,34,322,437" />
           <Node Bounds="2382,178,125,19" Id="VqMadcroiW0Qcz2P6oKqQC">
             <p:NodeReference LastCategoryFullName="Nodetool Workflows" LastDependency="Nodetool.Workflows">
@@ -234,14 +240,13 @@
               <Choice Kind="ProcessNode" Name="TEST_SDK_4_AGENT" />
             </p:NodeReference>
             <Pin Id="KQduwQbzzaUQIeKf79Vf3s" Name="Trigger" Kind="InputPin" />
-            <Pin Id="A5mGPmpX0v6Pzj86HIitLA" Name="prompt" Kind="InputPin" />
+            <Pin Id="PHCddzC4YluM1WmOuBj1jE" Name="AutoRun" Kind="InputPin" />
+            <Pin Id="EHdSCZL1vNCP3kmbEqYqUO" Name="RestartOnChange" Kind="InputPin" />
             <Pin Id="RR1scRg9T58NviuQeE3yDO" Name="IsRunning" Kind="OutputPin" />
             <Pin Id="ATXsfTLjc9UPIJ42LCBWVy" Name="Error" Kind="OutputPin" />
             <Pin Id="V7SPLWrSD8YMhpWm0OhQuo" Name="Debug" Kind="OutputPin" />
             <Pin Id="J9clUGHeoJ8OmDvrQMeMgr" Name="InputSchemaJson" Kind="OutputPin" />
             <Pin Id="IiyGiga0xY0MQNUbx9TRUu" Name="OutputSchemaJson" Kind="OutputPin" />
-            <Pin Id="A4tfoCzbq5yOQkKCDYcdKQ" Name="text" Kind="OutputPin" />
-            <Pin Id="Eae42sodHnkNnaCju1uDC3" Name="chunk" Kind="OutputPin" />
           </Node>
           <Pad Id="JIKUGqRpPY6QNl9igp7PVU" Comment="Trigger" Bounds="2384,127,35,35" ShowValueBox="true" isIOBox="true" Value="false">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
@@ -251,13 +256,11 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="KKX6fyImEahMqUR5USwpOv" Comment="prompt" Bounds="2486,108,233,57" ShowValueBox="true" isIOBox="true" Value="only reply with a 2 paragraph wonky greeting from outer space">
+          <Pad Id="KKX6fyImEahMqUR5USwpOv" Comment="prompt" Bounds="2504,101,233,57" ShowValueBox="true" isIOBox="true" Value="only reply with a 2 paragraph wonky greeting from outer space">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="DGjiX3TLLWXNuUvxsOUsvC" Comment="chunk" Bounds="2504,220,287,160" ShowValueBox="true" isIOBox="true" Value="[&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;Greetings&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;,&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; Earth&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;ling&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;!&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; It&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; is&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; I&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;,&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; Z&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;orp&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;,&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; transmitting&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; a&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; wobble&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; of&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; welcome&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; from&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; the&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; seventh&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; quadrant&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; of&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; Glor&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;bon&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;-&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;7&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;.&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; My&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; antennae&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; are&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; tingling&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; with&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; the&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; sheer&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;\u2026&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; *&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;confusion&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;*&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; of&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; your&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; existence&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;,&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; a&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; delightful&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; static&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; in&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; the&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; cosmic&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; soup&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;!&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; Please&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; forgive&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; the&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; slight&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; distortion&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; \u2013&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; the&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; gravitational&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; pull&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; of&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; a&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; particularly&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; grumpy&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; nebula&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; is&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; interfering&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; with&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; my&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; signal&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;.&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; &quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;\n\n&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;Do&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; not&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; be&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; alarmed&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; by&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; the&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; shimmering&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; pixels&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;;&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; it&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;\u2019&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;s&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; merely&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; the&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; reflection&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; of&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; a&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; thousand&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; distant&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; sun&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;s&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;.&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; I&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; hope&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; your&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; day&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; is&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; filled&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; with&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; delightful&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; paradox&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;es&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; and&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; the&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; occasional&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; spontaneous&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; combustion&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; of&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; logic&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;!&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;  &quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;*&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;Be&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;ep&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; bo&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;op&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;*&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;  &quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;Over&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; and&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot; out&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;...&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;ish&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;.&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: false&#xD;&#xA;  },&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;chunk&quot;,&#xD;&#xA;    &quot;node_id&quot;: null,&#xD;&#xA;    &quot;content_type&quot;: &quot;text&quot;,&#xD;&#xA;    &quot;content&quot;: &quot;&quot;,&#xD;&#xA;    &quot;content_metadata&quot;: {},&#xD;&#xA;    &quot;done&quot;: true&#xD;&#xA;  }&#xD;&#xA;]" />
-          <Pad Id="JuiZZLyEkBaLFq0UlfD2CY" Comment="text" Bounds="2484,391,302,151" ShowValueBox="true" isIOBox="true" Value="[&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;string&quot;,&#xD;&#xA;    &quot;value&quot;: &quot;Greetings, Earthling! It is I, Zorp, transmitting a wobble of welcome from the seventh quadrant of Glorbon-7. My antennae are tingling with the sheer\u2026 *confusion* of your existence, a delightful static in the cosmic soup! Please forgive the slight distortion \u2013 the gravitational pull of a particularly grumpy nebula is interfering with my signal. \n\nDo not be alarmed by the shimmering pixels; it\u2019s merely the reflection of a thousand distant suns. I hope your day is filled with delightful paradoxes and the occasional spontaneous combustion of logic!  *Beep boop*  Over and out...ish.&quot;&#xD;&#xA;  }&#xD;&#xA;]" />
           <Pad Id="UM6buij3ebKQSlHbPvJsq0" Comment="IsRunning" Bounds="2384,233,35,35" ShowValueBox="true" isIOBox="true" />
           <Overlay Id="Hk32VLQW5hzM1Sqj7zZRyZ" Name="Workflow | Agent" Bounds="2332,41,493,551" />
           <Node Bounds="1832,220,105,19" Id="QnYT04shVkBMp3GOTbmexX">
@@ -266,6 +269,8 @@
               <Choice Kind="ProcessNode" Name="TEST_SDK_02" />
             </p:NodeReference>
             <Pin Id="J5JNgdpHqN7P4WtCK8GsJs" Name="Trigger" Kind="InputPin" />
+            <Pin Id="AU0HhKnV8dFPenYr23z0pm" Name="AutoRun" Kind="InputPin" />
+            <Pin Id="DcMiEfffW1GPqG8uEP4MZa" Name="RestartOnChange" Kind="InputPin" />
             <Pin Id="SOvpSgUiZblOJNmRZiANkO" Name="image_input_1" Kind="InputPin" />
             <Pin Id="HmczVC2hjUKMiDM8HbZxix" Name="IsRunning" Kind="OutputPin" />
             <Pin Id="GPUFyTAVJl5OqDU6p5Ygfn" Name="Error" Kind="OutputPin" />
@@ -281,6 +286,8 @@
               <Choice Kind="ProcessNode" Name="Replace" />
             </p:NodeReference>
             <Pin Id="NmSqN2dUWFGQcG9O1qLUTf" Name="Execute" Kind="InputPin" />
+            <Pin Id="O6zsLXwX52sNUtyOYpbCE9" Name="AutoRun" Kind="InputPin" DefaultValue="True" />
+            <Pin Id="NLuphchTrouO8xkKM2sUtk" Name="RestartOnChange" Kind="InputPin" DefaultValue="False" />
             <Pin Id="KnzCI5AgX54PkabZ8bU8Xx" Name="text" Kind="InputPin" />
             <Pin Id="MfnEsA8gCzhNIyEaoZ3KAL" Name="old" Kind="InputPin" />
             <Pin Id="BnUEtqO5GpkQF20DYNZU3D" Name="new" Kind="InputPin" />
@@ -299,26 +306,18 @@
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Node Bounds="442,285,56,19" Id="CWAnEZQ65LoL8mKdOpGUrj">
-            <p:NodeReference LastCategoryFullName="Control" LastDependency="VL.CoreLib.vl">
-              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-              <Choice Kind="ProcessAppFlag" Name="TogEdge" />
-            </p:NodeReference>
-            <Pin Id="OjEEW49fF5OPjqk6oHrB4E" Name="Node Context" Kind="InputPin" IsHidden="true" />
-            <Pin Id="NuWomKz54b7PBBVB0E7YM0" Name="Value" Kind="InputPin" />
-            <Pin Id="DXylRQKAW38OAyW7wmur9L" Name="Up Edge" Kind="OutputPin" />
-            <Pin Id="OxeugwrpLHEPSbr9cYAClS" Name="Down Edge" Kind="OutputPin" />
-          </Node>
           <Pad Id="QPz4Ergf7LQMhCyvKT07My" Comment="output" Bounds="495,359,101,23" ShowValueBox="true" isIOBox="true" />
           <Pad Id="DhYv8kEvvwqLgPLje3Aey6" Comment="InputSchemaJson" Bounds="1359,480,194,1029" ShowValueBox="true" isIOBox="true" />
           <Pad Id="KoSnxcRY2o3NnGRCU2oFC9" Comment="OutputSchemaJson" Bounds="1680,480,244,481" ShowValueBox="true" isIOBox="true" />
           <Pad Id="OQ2cmFSFp5BQRz3CXO77gw" Comment="Debug" Bounds="1207,500,121,216" ShowValueBox="true" isIOBox="true" />
-          <Node Bounds="444,690,185,19" Id="JNNQ3BsGTPvPSA2B5cn6Yt">
+          <Node Bounds="444,690,225,19" Id="JNNQ3BsGTPvPSA2B5cn6Yt">
             <p:NodeReference LastCategoryFullName="Nodetool Nodes.Agents" LastDependency="Nodetool.Nodes">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessNode" Name="Agent" />
             </p:NodeReference>
             <Pin Id="J0IsyudiCf7LDWLuwQW2ZX" Name="Execute" Kind="InputPin" />
+            <Pin Id="Hq7gO6nK3AOMl8OSfrsPMB" Name="AutoRun" Kind="InputPin" />
+            <Pin Id="MRyct4Oai3bOY48nIpdL2v" Name="RestartOnChange" Kind="InputPin" />
             <Pin Id="RTMlW9ku4RULyM3IhPr7Vs" Name="model" Kind="InputPin" />
             <Pin Id="H134z0rRrmAPFtX2xi9V0l" Name="system" Kind="InputPin" DefaultValue="you are a helpful agent" />
             <Pin Id="UNNbneAu9Z8MO7IrG1aXz6" Name="prompt" Kind="InputPin" DefaultValue="say hi" />
@@ -353,13 +352,15 @@
           </Pad>
           <Pad Id="LnGmOAlDnUfPAzzSI3XUPe" Comment="Error" Bounds="722,800,278,132" ShowValueBox="true" isIOBox="true" Value="ValueError: Failed to load node 5bea9728-7427-4d72-a665-dd45d2b1bb4a (type: nodetool.agents.Agent): Error setting property 'model' on node '5bea9728-7427-4d72-a665-dd45d2b1bb4a': [Agent] Invalid value for property `model`: &lt;class 'str'&gt;  (expected type='language_model' optional=False values=None type_args=[] type_name=None)" />
           <Pad Id="BI9EdQt01QjOQVUHlWdl32" Comment="Debug" Bounds="705,740,125,37" ShowValueBox="true" isIOBox="true" />
-          <Node Bounds="2936,170,65,19" Id="Irg6PofKBtBN0mOd94d0mZ">
+          <Node Bounds="2936,170,85,19" Id="Irg6PofKBtBN0mOd94d0mZ">
             <p:NodeReference LastCategoryFullName="Nodetool Nodes.Math" LastDependency="Nodetool.Nodes">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <CategoryReference Kind="Category" Name="Nodetool Nodes" />
               <Choice Kind="ProcessNode" Name="Add" />
             </p:NodeReference>
             <Pin Id="PAm6pWS4lLnMfQLMfd01uZ" Name="Execute" Kind="InputPin" />
+            <Pin Id="NtV1JGzSwL6NDxaaDciZEz" Name="AutoRun" Kind="InputPin" DefaultValue="True" />
+            <Pin Id="UwVBI1jv7HTOM6iQpjd6gR" Name="RestartOnChange" Kind="InputPin" DefaultValue="False" />
             <Pin Id="SXopAqlMC59OLkWneXBBND" Name="a" Kind="InputPin" />
             <Pin Id="Tf0grubYTx1QL57pkcrX35" Name="b" Kind="InputPin" />
             <Pin Id="Sijn8SOdd4SPRbhKgsYQRw" Name="output" Kind="OutputPin" />
@@ -375,17 +376,178 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="BnnkUI3OlbrNWa0c3FmmZf" Comment="a" Bounds="2968,140,35,15" ShowValueBox="true" isIOBox="true" Value="">
-            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
-              <Choice Kind="TypeFlag" Name="String" />
-            </p:TypeAnnotation>
-          </Pad>
-          <Pad Id="Hsu0DMDhoZ0N2vgQOx2Roy" Comment="b" Bounds="2998,160,35,15" ShowValueBox="true" isIOBox="true" Value="">
-            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
-              <Choice Kind="TypeFlag" Name="String" />
-            </p:TypeAnnotation>
-          </Pad>
           <Pad Id="RDKZFisp4m8Pmq44UpkWVE" Comment="output" Bounds="2938,250,35,15" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="NQabgDFIAMoMPbZCc54JG8" Comment="output" Bounds="555,230,91,15" ShowValueBox="true" isIOBox="true" Value="">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="Gaq94qmo4ANLZ8NSNtLhqq" Comment="a" Bounds="3032,110,35,15" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Float32" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="Nke0x7C9oKgO3XaHNEJhzn" Comment="b" Bounds="3043,140,35,15" ShowValueBox="true" isIOBox="true" Value="0.16">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Float32" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Node Bounds="3069,51,45,19" Id="PFO0YhUEMpwLZuOtwiIdgD">
+            <p:NodeReference LastCategoryFullName="Animation" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="LFO" />
+            </p:NodeReference>
+            <Pin Id="UPvbNgkQpyDNq1c7oPnUBW" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="PvjXnNVs0ciPhlPldxe0Bw" Name="Clock" Kind="InputPin" IsHidden="true" />
+            <Pin Id="N21XB50cS97O2TvCCZXyVW" Name="New Clock" Kind="InputPin" IsHidden="true" />
+            <Pin Id="FAiSeT5Uve6NxOlkvqFdXr" Name="Period" Kind="InputPin" />
+            <Pin Id="ODtYeDRCbLUQUWU5LqlmOb" Name="Pause" Kind="InputPin" DefaultValue="True" />
+            <Pin Id="BjUhKMje4r9L0ieu7XH64u" Name="Reset" Kind="ApplyPin" />
+            <Pin Id="NjwuMFkWggQNWpVKgYql13" Name="Phase" Kind="OutputPin" />
+            <Pin Id="AGzjej1uNS4PitNpAcKuZd" Name="On New Cycle" Kind="OutputPin" />
+            <Pin Id="AEZxNxEdsbWMC8VnYPHZTZ" Name="Cycles" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="3050,261,65,19" Id="TnkuqhVvWDCM3peHeOEvMG">
+            <p:NodeReference LastCategoryFullName="Collections.Spread" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="Queue" />
+            </p:NodeReference>
+            <Pin Id="BI2neZbTKArOM4RJ8GPbVv" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="TGgKZyF0jAGNcdE798OiA6" Name="Input" Kind="InputPin" />
+            <Pin Id="E5ouBcOiwk7OTer1PN4EP5" Name="Frame Count" Kind="InputPin" />
+            <Pin Id="Dg8WKhXwpRuNx6qE2SOATG" Name="Clear" Kind="InputPin" DefaultValue="False" />
+            <Pin Id="VnP3WKsAjFGO9FPKYCLHTh" Name="Insert" Kind="InputPin" DefaultValue="False" />
+            <Pin Id="DVhbD82GVxjN1F5mlkjbcj" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="DsFrSR0JQuGMz0n6qDhvKO" Comment="" Bounds="3052,320,45,371" ShowValueBox="true" isIOBox="true">
+            <p:ValueBoxSettings>
+              <p:maxvisibleentries p:Type="Int32">23</p:maxvisibleentries>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="LTt0G6k6mhEOSDbv3S1AJw" Comment="Insert" Bounds="3111,210,35,35" ShowValueBox="true" isIOBox="true" Value="False">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="NoATeoRtO7ZLgk94L6yLor" Comment="Clear" Bounds="3147,150,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Press</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="F67iomR4z5bNe4pw4hkgFK" Comment="Pause" Bounds="3091,0,35,35" ShowValueBox="true" isIOBox="true" Value="True">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="3187,390,63,19" Id="G5fAn7r6zE9LODG4GqxpPp">
+            <p:NodeReference LastCategoryFullName="Animation" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="Stopwatch" />
+            </p:NodeReference>
+            <Pin Id="QdRt3rsl4UdN4tU5UMGMZw" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="ELcMNuHboncL8XcSXTVXSy" Name="Clock" Kind="InputPin" IsHidden="true" />
+            <Pin Id="SltUG2NJMsgLp32w4ztZru" Name="Time" Kind="InputPin" IsHidden="true" />
+            <Pin Id="DbkgoMn2jOeNMqfP0lWaLL" Name="New Clock" Kind="InputPin" IsHidden="true" />
+            <Pin Id="T9yKkmW1znRNqw3NhqP5KJ" Name="New Time" Kind="InputPin" IsHidden="true" />
+            <Pin Id="BPNiwtXAVRNQKyiDZeqeCz" Name="Enabled" Kind="InputPin" />
+            <Pin Id="CgLXjRzdOr4Mfrof2YNW4i" Name="Reset" Kind="InputPin" />
+            <Pin Id="PtzEbXdh7TUQKjFEfayFqp" Name="Time" Kind="OutputPin" />
+          </Node>
+          <Pad Id="VZv84EqeireLQGZLj46LVa" Comment="Time" Bounds="3189,450,35,15" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="FOIuBC4IdXIOwGlCvd9Sgf" Comment="IsRunning" Bounds="3189,341,35,35" ShowValueBox="true" isIOBox="true" />
+          <Node Bounds="2188,170,107,19" Id="VXeYUXKqkuoOlzlVoHXamy">
+            <p:NodeReference LastCategoryFullName="Nodetool Workflows" LastDependency="Nodetool.Workflows">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessNode" Name="TEST_SDK_4_AGENT" />
+            </p:NodeReference>
+            <Pin Id="JS68ponDrQkLp9xk5TSHEw" Name="Trigger" Kind="InputPin" />
+            <Pin Id="EfTmaGrTQp9OIpa6FyfqHD" Name="AutoRun" Kind="InputPin" />
+            <Pin Id="JIqa3h2yyVALQYcGSeBLLa" Name="RestartOnChange" Kind="InputPin" />
+            <Pin Id="LIBJjLbkWOWQBUMuQxQmKt" Name="IsRunning" Kind="OutputPin" />
+            <Pin Id="Di7uNHeRZ6bPALce4brgUw" Name="Error" Kind="OutputPin" />
+            <Pin Id="StFh7fwFJxUOzF9n8P2Id2" Name="Debug" Kind="OutputPin" />
+            <Pin Id="RGpcczGNkyEMgwQLafTXGU" Name="InputSchemaJson" Kind="OutputPin" />
+            <Pin Id="Gi5fcDWbcExL5eAug7nFoM" Name="OutputSchemaJson" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="589,499,63,19" Id="D7NGJ9iALR9Ng09PdHpHMZ">
+            <p:NodeReference LastCategoryFullName="Animation" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="Stopwatch" />
+            </p:NodeReference>
+            <Pin Id="U3Xg9MsYmQMNLZodrB2fBI" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="F2W4QEumcG1LcElFAX0gmq" Name="Clock" Kind="InputPin" IsHidden="true" />
+            <Pin Id="Iv3scAJwxeqMntSB6KrqQO" Name="Time" Kind="InputPin" IsHidden="true" />
+            <Pin Id="KOLDUwzVR1oO3AcvsaEpH5" Name="New Clock" Kind="InputPin" IsHidden="true" />
+            <Pin Id="G0NcUaN1tr6O1ORBW0ZgDz" Name="New Time" Kind="InputPin" IsHidden="true" />
+            <Pin Id="KDjS1sa0vLoPMnCruVY4tY" Name="Enabled" Kind="InputPin" />
+            <Pin Id="Q3BgMxloTlOMU5YucoYFVW" Name="Reset" Kind="InputPin" />
+            <Pin Id="DTlCneVJiwbPpSUftbBxdF" Name="Time" Kind="OutputPin" />
+          </Node>
+          <Pad Id="Gg5phB8zKaFNxduQOS7eCC" Comment="Time" Bounds="591,559,35,15" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="Esh2UpYJ5FUQBLxkO9eIfi" Comment="IsRunning" Bounds="591,450,35,35" ShowValueBox="true" isIOBox="true" Value="True">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Node Bounds="-147,431,65,19" Id="IFMXtXid3uxNv7gthzAaKr">
+            <p:NodeReference LastCategoryFullName="Collections.Spread" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="Queue" />
+            </p:NodeReference>
+            <Pin Id="QQ2hMoQOARYP8FNUdYbSRb" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="IeF9aAlh7pjLcxxiZyF5tH" Name="Input" Kind="InputPin" />
+            <Pin Id="E0qRShJXGOOMdHDfdQ6C2A" Name="Frame Count" Kind="InputPin" />
+            <Pin Id="RtDlMiRUqIGQYFyop3JGGe" Name="Clear" Kind="InputPin" DefaultValue="False" />
+            <Pin Id="IgOb3GNOlX8QWkAvj8xL1P" Name="Insert" Kind="InputPin" DefaultValue="False" />
+            <Pin Id="IYYVCWTMKdKLm8e5IK8YHb" Name="Output" Kind="OutputPin" />
+          </Node>
+          <Pad Id="QIJf05L5wVlLp6ELTpBSbR" Comment="" Bounds="-145,490,81,111" ShowValueBox="true" isIOBox="true">
+            <p:ValueBoxSettings>
+              <p:maxvisibleentries p:Type="Int32">23</p:maxvisibleentries>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="IqeP4QArsWfNk4gMytaJmc" Comment="Insert" Bounds="-86,380,35,35" ShowValueBox="true" isIOBox="true" Value="False">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="-147,301,57,19" Id="Br2CyKdA7eGOwYvOrvNcCw">
+            <p:NodeReference LastCategoryFullName="Control" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Control" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="ProcessAppFlag" Name="Changed" />
+            </p:NodeReference>
+            <Pin Id="UzUkEJjezmtP04NXBWB8AV" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="L22YTwtdn94O577fxbrELF" Name="Changed On Create" Kind="InputPin" IsHidden="true" />
+            <Pin Id="NcPrhi5EhX9MhLF0beFAwH" Name="Value" Kind="InputPin" />
+            <Pin Id="F4JsEGnoUOfNV0tJUNH4If" Name="Result" Kind="OutputPin" />
+            <Pin Id="Po0x1vnSYAjMybMlRAuYBh" Name="Unchanged" Kind="OutputPin" />
+          </Node>
+          <Node Bounds="-50,321,56,19" Id="FNUd39bRC7pOG3TPQQpkXQ">
+            <p:NodeReference LastCategoryFullName="Control" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessAppFlag" Name="TogEdge" />
+            </p:NodeReference>
+            <Pin Id="M4soxIWiqhOMenoA82SRr1" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="TesfwGQTY4rPZGDxHtAHTl" Name="Value" Kind="InputPin" />
+            <Pin Id="Va3F6ByDEFSObVGi5ZH0gY" Name="Up Edge" Kind="OutputPin" />
+            <Pin Id="KoUyG5JCncLNlHQLxZ7Ffy" Name="Down Edge" Kind="OutputPin" />
+          </Node>
+          <Pad Id="NCafyRHmDMzLwe3Zb0dWp8" Comment="IsRunning" Bounds="476,240,35,35" ShowValueBox="true" isIOBox="true" />
         </Canvas>
         <Patch Id="BVZk8J8KreGPn6XpAL8K43" Name="Create" />
         <Patch Id="OPRQahXEwooMG9XKpojbFr" Name="Update" />
@@ -423,19 +585,11 @@
         <Link Id="N7mIju1hpaUQaRYLL4sq62" Ids="HDeB25arJcwNyGuVm5Q552,FXIReuoZi42OgTuFKFLCBb" />
         <Link Id="BNvO8AkqERjOyTxmSNRd5q" Ids="McYZ0lrr9poPxgB5UoaqIv,Lb27LUTfZxKOrtczW20PMX" />
         <Link Id="QpppBrq4ovIPUBVy72wdsa" Ids="SgNCjYnICmiMyqK5rYF1PG,RfToD5eLT9VNQwiGEn6e5D" />
-        <Link Id="Lvi8tXUWacoMOnmZa8kZL0" Ids="S6sszU7uVanOsznfLVr4B7,UkRj2zmJs5TOVLNF497tk4" />
         <Link Id="J3h06eAOydmOPeFpbqBBdE" Ids="KVygITsKkCwLN2w1Zhehfh,RAFWxPrBpjcMCsfnGhS5ds" />
-        <Link Id="RIE93AwxBneO4eqZX13txg" Ids="J1jttW92qGQQPPsefTOPwA,MuAR0VbosBOMopYpPClts3" />
         <Link Id="CQjlWCAkZZ5MAlT5KTeNmn" Ids="JIKUGqRpPY6QNl9igp7PVU,KQduwQbzzaUQIeKf79Vf3s" />
-        <Link Id="LWzmZrlVt52LJi7NF4edEB" Ids="KKX6fyImEahMqUR5USwpOv,A5mGPmpX0v6Pzj86HIitLA" />
-        <Link Id="Vdxn6IJrItNNE4NUpFhulV" Ids="Eae42sodHnkNnaCju1uDC3,DGjiX3TLLWXNuUvxsOUsvC" />
-        <Link Id="A6WLUkcwsSANNfxWZ0fs9b" Ids="A4tfoCzbq5yOQkKCDYcdKQ,JuiZZLyEkBaLFq0UlfD2CY" />
         <Link Id="CM0YRPcFPImLIxnbGwb6M3" Ids="RR1scRg9T58NviuQeE3yDO,UM6buij3ebKQSlHbPvJsq0" />
-        <Link Id="JlPXeSc32TJNns0i9KupDQ" Ids="UkRj2zmJs5TOVLNF497tk4,KnzCI5AgX54PkabZ8bU8Xx" />
         <Link Id="Ltdy0YYjObbMMlhR56Zp9k" Ids="EZuNqZs8nxTPv0YoGarkks,MfnEsA8gCzhNIyEaoZ3KAL" />
         <Link Id="JHw4IMln0P3LOKgnuSkokg" Ids="KD32X2bLFgWPN3pDrLT9Po,BnUEtqO5GpkQF20DYNZU3D" />
-        <Link Id="CVVFcI3TIwrMI7cL1KOUpe" Ids="MuAR0VbosBOMopYpPClts3,NuWomKz54b7PBBVB0E7YM0" />
-        <Link Id="EpyJMQP8ntvMxAiHFiQn1Q" Ids="OxeugwrpLHEPSbr9cYAClS,NmSqN2dUWFGQcG9O1qLUTf" />
         <Link Id="CnewfrkNrWXO1BLsP7GwxZ" Ids="Sdjoclv8B5INjcVoO4sviB,QPz4Ergf7LQMhCyvKT07My" />
         <Link Id="DUEwQse3eyKOi2VCasuPga" Ids="H71NzvlihVHNd9VvJMaWjn,DhYv8kEvvwqLgPLje3Aey6" />
         <Link Id="GoE04LrWLKWLzT3M1We0M7" Ids="LB0erxDWEAbMsqOSh1Bkf2,KoSnxcRY2o3NnGRCU2oFC9" />
@@ -448,9 +602,27 @@
         <Link Id="DywQhpGtZoYNyQpkqMDGYl" Ids="IVvVGhLDHj1OBWB5Tgbxlt,LnGmOAlDnUfPAzzSI3XUPe" />
         <Link Id="IdZKvGEsC3IP3vJiZBSK8d" Ids="E4rXGC3ddGQOylCgxDueHo,BI9EdQt01QjOQVUHlWdl32" />
         <Link Id="Gug3iUVasngLqNWRcnGErt" Ids="UhAfbsnAz3ANOIE4Fm81Im,PAm6pWS4lLnMfQLMfd01uZ" />
-        <Link Id="RJ9k7RRxKUYQVqaE8P33nl" Ids="BnnkUI3OlbrNWa0c3FmmZf,SXopAqlMC59OLkWneXBBND" />
-        <Link Id="PK02exbRttpOt5KgD5hHRY" Ids="Hsu0DMDhoZ0N2vgQOx2Roy,Tf0grubYTx1QL57pkcrX35" />
         <Link Id="DbIePkIjNadP6RkU9zaYuk" Ids="Sijn8SOdd4SPRbhKgsYQRw,RDKZFisp4m8Pmq44UpkWVE" />
+        <Link Id="LKMnDmqLH7VLojO9yP7bAG" Ids="S6sszU7uVanOsznfLVr4B7,KnzCI5AgX54PkabZ8bU8Xx" />
+        <Link Id="NdkXQSnWGVVQFxLJEarzeI" Ids="Gaq94qmo4ANLZ8NSNtLhqq,SXopAqlMC59OLkWneXBBND" />
+        <Link Id="JB7zgYBzAaKQDNIGyW0FSM" Ids="Nke0x7C9oKgO3XaHNEJhzn,Tf0grubYTx1QL57pkcrX35" />
+        <Link Id="PjTcjBLxlk5L7wP247UUT2" Ids="NjwuMFkWggQNWpVKgYql13,Gaq94qmo4ANLZ8NSNtLhqq" />
+        <Link Id="ELtkIDzNKPYOP9PmBV4eul" Ids="Sijn8SOdd4SPRbhKgsYQRw,TGgKZyF0jAGNcdE798OiA6" />
+        <Link Id="LscXUMUQrUIOs5GSzFwk6J" Ids="DVhbD82GVxjN1F5mlkjbcj,DsFrSR0JQuGMz0n6qDhvKO" />
+        <Link Id="RE1M1QByh5vPV5NhaELG5l" Ids="LTt0G6k6mhEOSDbv3S1AJw,VnP3WKsAjFGO9FPKYCLHTh" />
+        <Link Id="UOWaUSCUyJOOab1sz0ATHz" Ids="NoATeoRtO7ZLgk94L6yLor,Dg8WKhXwpRuNx6qE2SOATG" />
+        <Link Id="N9mYtgiWRieM3JgHpR5QTA" Ids="F67iomR4z5bNe4pw4hkgFK,ODtYeDRCbLUQUWU5LqlmOb" />
+        <Link Id="Rpw9fA37iH9P2JJvKNU8Iv" Ids="UhAfbsnAz3ANOIE4Fm81Im,CgLXjRzdOr4Mfrof2YNW4i" />
+        <Link Id="B1GBKzNKCNALiQ6BBtFUpl" Ids="PtzEbXdh7TUQKjFEfayFqp,VZv84EqeireLQGZLj46LVa" />
+        <Link Id="IW5tUckAafkMW2MXzUmofd" Ids="CMWeC6CYv5WNk1bR69pmKu,FOIuBC4IdXIOwGlCvd9Sgf" />
+        <Link Id="EScKO5YEJSLMLLs0fNDIT9" Ids="FOIuBC4IdXIOwGlCvd9Sgf,BPNiwtXAVRNQKyiDZeqeCz" />
+        <Link Id="EQXZui8Z1oGPar9Xvxz5zC" Ids="DTlCneVJiwbPpSUftbBxdF,Gg5phB8zKaFNxduQOS7eCC" />
+        <Link Id="VwK88sRecuWOw0VWiyOWh9" Ids="Esh2UpYJ5FUQBLxkO9eIfi,KDjS1sa0vLoPMnCruVY4tY" />
+        <Link Id="QHnA0Lv5o1KPKWyEY496jq" Ids="IYYVCWTMKdKLm8e5IK8YHb,QIJf05L5wVlLp6ELTpBSbR" />
+        <Link Id="LfUjLu4BiDNPylCjfdvVI2" Ids="IqeP4QArsWfNk4gMytaJmc,IgOb3GNOlX8QWkAvj8xL1P" />
+        <Link Id="Ia3SAP9xILQOnkydjvwxvW" Ids="F4JsEGnoUOfNV0tJUNH4If,IqeP4QArsWfNk4gMytaJmc" />
+        <Link Id="AHOb2R68UaENXGK0VUOg19" Ids="Va3F6ByDEFSObVGi5ZH0gY,RtDlMiRUqIGQYFyop3JGGe" />
+        <Link Id="AUfWen0gvXcOxxjUDKtpnn" Ids="J1jttW92qGQQPPsefTOPwA,NCafyRHmDMzLwe3Zb0dWp8" />
       </Patch>
     </Node>
   </Patch>

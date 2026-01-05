@@ -753,6 +753,51 @@ namespace Nodetool.SDK.VL.Nodes
                     if (TryConcatChunkList(value, out var text))
                         return text;
 
+                    // Common: ["hello"] (list of primitive strings) -> unwrap for ergonomics.
+                    // Output nodes sometimes return a list even when a single string is expected.
+                    var list = value.AsListOrEmpty();
+                    if (list.Count > 0)
+                    {
+                        var allStrings = new List<string>(list.Count);
+                        var ok = true;
+                        foreach (var item in list)
+                        {
+                            if (item.Kind == NodeToolValueKind.String && item.AsString() is string s)
+                            {
+                                allStrings.Add(s);
+                                continue;
+                            }
+
+                            if (item.Kind == NodeToolValueKind.Map)
+                            {
+                                var m = item.AsMapOrEmpty();
+                                if (m.TryGetValue("type", out var t) &&
+                                    string.Equals(t.AsString(), "string", StringComparison.OrdinalIgnoreCase) &&
+                                    m.TryGetValue("value", out var inner))
+                                {
+                                    allStrings.Add(inner.AsString() ?? inner.ToJsonString());
+                                    continue;
+                                }
+                            }
+
+                            ok = false;
+                            break;
+                        }
+
+                        if (ok)
+                        {
+                            // If it's a list-of-1, treat it as a scalar string (common for workflow outputs).
+                            if (allStrings.Count == 1)
+                                return allStrings[0];
+
+                            // If it's a list-of-many, we should NOT concatenate: that loses structure.
+                            // In vvvv, list-like results should be represented as a Spread via a string[] pin,
+                            // which requires the schema/metadata to expose an array type.
+                            // For a string pin, keep structure visible as JSON.
+                            return value.ToJsonString();
+                        }
+                    }
+
                     // Common: [{ type:"string", value:"..." }] -> unwrap
                     var first = value.AsListOrEmpty().FirstOrDefault(v => v.Kind == NodeToolValueKind.Map);
                     if (first != null && first.Kind == NodeToolValueKind.Map)

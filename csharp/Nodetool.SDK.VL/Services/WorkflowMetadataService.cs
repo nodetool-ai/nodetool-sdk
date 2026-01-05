@@ -79,6 +79,7 @@ public class WorkflowMetadataService : IDisposable
                         Id = detailedWorkflow.Id,
                         Name = detailedWorkflow.Name,
                         Description = detailedWorkflow.Description,
+                        Tags = detailedWorkflow.Tags,
                         CreatedAt = detailedWorkflow.CreatedAt,
                         UpdatedAt = detailedWorkflow.UpdatedAt,
                         InputSchema = ConvertToWorkflowSchema(detailedWorkflow.InputSchema),
@@ -141,10 +142,12 @@ public class WorkflowMetadataService : IDisposable
                 Id = workflow.Id,
                 Name = workflow.Name,
                 Description = workflow.Description,
+            Tags = workflow.Tags,
                 CreatedAt = workflow.CreatedAt,
                 UpdatedAt = workflow.UpdatedAt,
                 InputSchema = ConvertToWorkflowSchema(workflow.InputSchema),
-                OutputSchema = ConvertToWorkflowSchema(workflow.OutputSchema)
+            OutputSchema = ConvertToWorkflowSchema(workflow.OutputSchema),
+            Graph = workflow.Graph,
             };
 
             return workflowDetail;
@@ -187,23 +190,37 @@ public class WorkflowMetadataService : IDisposable
 
     private WorkflowSchemaDefinition? ConvertToWorkflowSchema(Nodetool.SDK.Api.Models.SchemaDefinition? apiSchema)
     {
-        if (apiSchema?.Properties == null || apiSchema.Properties.Count == 0)
+        if (apiSchema == null)
             return null;
 
         var schema = new WorkflowSchemaDefinition
         {
             Type = apiSchema.Type ?? "object",
-            Properties = new Dictionary<string, WorkflowPropertyDefinition>(),
+            Properties = new Dictionary<string, WorkflowPropertyDefinition>(StringComparer.Ordinal),
             Required = apiSchema.Required ?? new List<string>(),
             Title = apiSchema.Title,
-            Description = apiSchema.Description
+            Description = apiSchema.Description,
+            Ref = apiSchema.Ref,
+            Definitions = apiSchema.Definitions != null && apiSchema.Definitions.Count > 0
+                ? apiSchema.Definitions.ToDictionary(kvp => kvp.Key, kvp => ConvertProperty(kvp.Value), StringComparer.Ordinal)
+                : null,
+            Defs = apiSchema.DollarDefs != null && apiSchema.DollarDefs.Count > 0
+                ? apiSchema.DollarDefs.ToDictionary(kvp => kvp.Key, kvp => ConvertProperty(kvp.Value), StringComparer.Ordinal)
+                : null,
+            AnyOf = apiSchema.AnyOf?.Select(ConvertProperty).ToList(),
+            OneOf = apiSchema.OneOf?.Select(ConvertProperty).ToList(),
+            AllOf = apiSchema.AllOf?.Select(ConvertProperty).ToList(),
         };
 
-        foreach (var prop in apiSchema.Properties)
+        // Preserve direct properties if present
+        if (apiSchema.Properties != null)
         {
-            if (string.IsNullOrEmpty(prop.Key) || prop.Value == null)
-                continue;
-            schema.Properties[prop.Key] = ConvertProperty(prop.Value);
+            foreach (var prop in apiSchema.Properties)
+            {
+                if (string.IsNullOrEmpty(prop.Key) || prop.Value == null)
+                    continue;
+                schema.Properties[prop.Key] = ConvertProperty(prop.Value);
+            }
         }
 
         return schema;
@@ -222,7 +239,11 @@ public class WorkflowMetadataService : IDisposable
             Format = apiProp.Format,
             Enum = apiProp.Enum,
             Const = apiProp.Const,
-            Required = apiProp.Required
+            Required = apiProp.Required,
+            Ref = apiProp.Ref,
+            AnyOf = apiProp.AnyOf?.Select(ConvertProperty).ToList(),
+            OneOf = apiProp.OneOf?.Select(ConvertProperty).ToList(),
+            AllOf = apiProp.AllOf?.Select(ConvertProperty).ToList(),
         };
 
         if (apiProp.Properties != null && apiProp.Properties.Count > 0)

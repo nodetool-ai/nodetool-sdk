@@ -19,12 +19,25 @@ public class WorkflowSchemaDefinition
     [JsonPropertyName("required")]
     public List<string> Required { get; set; } = new();
 
+    // Root schema refs/wrappers (some workflows return schemas as anyOf/oneOf/allOf at the root)
+    [JsonPropertyName("$ref")]
+    public string? Ref { get; set; }
+
     // JSON Schema definitions (used by $ref)
     [JsonPropertyName("definitions")]
     public Dictionary<string, WorkflowPropertyDefinition>? Definitions { get; set; }
 
     [JsonPropertyName("$defs")]
     public Dictionary<string, WorkflowPropertyDefinition>? Defs { get; set; }
+
+    [JsonPropertyName("anyOf")]
+    public List<WorkflowPropertyDefinition>? AnyOf { get; set; }
+
+    [JsonPropertyName("oneOf")]
+    public List<WorkflowPropertyDefinition>? OneOf { get; set; }
+
+    [JsonPropertyName("allOf")]
+    public List<WorkflowPropertyDefinition>? AllOf { get; set; }
 
     [JsonPropertyName("title")]
     public string? Title { get; set; }
@@ -175,22 +188,46 @@ public class WorkflowDetail
     /// </summary>
     public IEnumerable<(string Name, TypeMetadata Type, string Description, object? DefaultValue)> GetInputProperties()
     {
-        if (InputSchema?.Properties == null)
+        // Preferred: schema-driven inputs
+        if (InputSchema?.Properties != null && InputSchema.Properties.Count > 0)
+        {
+            var required = InputSchema.Required ?? new List<string>();
+            foreach (var prop in InputSchema.Properties)
+            {
+                var metadata = prop.Value.ToTypeMetadata();
+                metadata.Optional = !required.Contains(prop.Key);
+
+                yield return (
+                    Name: prop.Key,
+                    Type: metadata,
+                    Description: prop.Value.Description ?? prop.Value.Title ?? "",
+                    DefaultValue: prop.Value.Default
+                );
+            }
+            yield break;
+        }
+
+        // Fallback: infer inputs from graph when schema is missing/empty (some workflows return root anyOf/$ref schemas)
+        if (Graph?.Nodes == null)
             yield break;
 
-        var required = InputSchema.Required ?? new List<string>();
-
-        foreach (var prop in InputSchema.Properties)
+        foreach (var node in Graph.Nodes)
         {
-            var metadata = prop.Value.ToTypeMetadata();
-            metadata.Optional = !required.Contains(prop.Key);
+            if (node == null)
+                continue;
 
-            yield return (
-                Name: prop.Key,
-                Type: metadata,
-                Description: prop.Value.Description ?? prop.Value.Title ?? "",
-                DefaultValue: prop.Value.Default
-            );
+            if (!TryInferInputTypeFromGraphNode(node.Type, out var inferredType))
+                continue;
+
+            if (!TryGetNodeName(node.Data, out var name) || string.IsNullOrWhiteSpace(name))
+                continue;
+
+            var meta = new TypeMetadata { Type = inferredType, Optional = false };
+            string desc = "";
+            if (TryGetNodeDescription(node.Data, out var d) && !string.IsNullOrWhiteSpace(d))
+                desc = d!;
+
+            yield return (Name: name!, Type: meta, Description: desc, DefaultValue: null);
         }
     }
 
@@ -199,40 +236,107 @@ public class WorkflowDetail
     /// </summary>
     public IEnumerable<(string Name, TypeMetadata Type, string Description)> GetOutputProperties()
     {
-        if (OutputSchema?.Properties == null)
+        // Preferred: schema-driven outputs
+        if (OutputSchema?.Properties != null && OutputSchema.Properties.Count > 0)
+        {
+            foreach (var prop in OutputSchema.Properties)
+            {
+                var metadata = prop.Value.ToTypeMetadata();
+
+                // Prefer output_schema for inference when possible (better than graph heuristics).
+                if (TryInferOutputTypeFromSchema(prop.Value, OutputSchema, out var schemaInferred))
+                {
+                    metadata.Type = schemaInferred;
+                }
+
+                // If output schema is too generic ("any"), try to infer type from workflow graph edges.
+                if (string.Equals(metadata.Type, "any", StringComparison.OrdinalIgnoreCase) &&
+                    TryInferOutputTypeFromGraph(prop.Key, out var inferred))
+                {
+                    metadata.Type = inferred;
+                }
+
+                // If it's still "any", default to string for VL ergonomics.
+                if (string.Equals(metadata.Type, "any", StringComparison.OrdinalIgnoreCase))
+                {
+                    metadata.Type = "string";
+                }
+
+                yield return (
+                    Name: prop.Key,
+                    Type: metadata,
+                    Description: prop.Value.Description ?? prop.Value.Title ?? ""
+                );
+            }
+            yield break;
+        }
+
+        // Fallback: infer outputs from graph when schema is missing/empty.
+        if (Graph?.Nodes == null)
             yield break;
 
-        foreach (var prop in OutputSchema.Properties)
+        var outputNames = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var node in Graph.Nodes)
         {
-            var metadata = prop.Value.ToTypeMetadata();
-
-            // Prefer output_schema for inference when possible (better than graph heuristics).
-            if (TryInferOutputTypeFromSchema(prop.Value, OutputSchema, out var schemaInferred))
-            {
-                metadata.Type = schemaInferred;
-            }
-
-            // If output schema is too generic ("any"), try to infer type from workflow graph edges.
-            if (string.Equals(metadata.Type, "any", StringComparison.OrdinalIgnoreCase) &&
-                TryInferOutputTypeFromGraph(prop.Key, out var inferred))
-            {
-                metadata.Type = inferred;
-            }
-
-            // If it's still "any", default to string for VL ergonomics.
-            // Rationale: NodeTool outputs are frequently dynamic, and VL users strongly prefer a readable string pin
-            // over an Object pin (Object works but is noisy and triggers warnings).
-            if (string.Equals(metadata.Type, "any", StringComparison.OrdinalIgnoreCase))
-            {
-                metadata.Type = "string";
-            }
-
-            yield return (
-                Name: prop.Key,
-                Type: metadata,
-                Description: prop.Value.Description ?? prop.Value.Title ?? ""
-            );
+            if (!string.Equals(node.Type, "nodetool.output.Output", StringComparison.Ordinal))
+                continue;
+            if (TryGetNodeName(node.Data, out var name) && !string.IsNullOrWhiteSpace(name))
+                outputNames.Add(name!);
         }
+
+        foreach (var name in outputNames.OrderBy(n => n, StringComparer.Ordinal))
+        {
+            var meta = new TypeMetadata { Type = "string", Optional = false };
+            if (TryInferOutputTypeFromGraph(name, out var inferred))
+                meta.Type = inferred;
+            yield return (Name: name, Type: meta, Description: "");
+        }
+    }
+
+    private static bool TryInferInputTypeFromGraphNode(string nodeType, out string inferredType)
+    {
+        inferredType = "";
+        if (string.IsNullOrWhiteSpace(nodeType))
+            return false;
+
+        // Only infer for known input nodes
+        return nodeType switch
+        {
+            "nodetool.input.StringInput" => Set("string", out inferredType),
+            "nodetool.input.BooleanInput" => Set("bool", out inferredType),
+            "nodetool.input.IntegerInput" => Set("int", out inferredType),
+            "nodetool.input.FloatInput" => Set("float", out inferredType),
+            "nodetool.input.ImageInput" => Set("image", out inferredType),
+            "nodetool.input.AudioInput" => Set("audio", out inferredType),
+            "nodetool.input.FilePathInput" => Set("string", out inferredType),
+            _ => false
+        };
+
+        static bool Set(string s, out string inferred)
+        {
+            inferred = s;
+            return true;
+        }
+    }
+
+    private static bool TryGetNodeDescription(JsonElement data, out string? description)
+    {
+        description = null;
+        try
+        {
+            if (data.ValueKind == JsonValueKind.Object &&
+                data.TryGetProperty("description", out var d) &&
+                d.ValueKind == JsonValueKind.String)
+            {
+                description = d.GetString();
+                return !string.IsNullOrWhiteSpace(description);
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+        return false;
     }
 
     private static bool TryInferOutputTypeFromSchema(

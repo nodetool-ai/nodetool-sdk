@@ -147,6 +147,9 @@ public class WorkflowResponse
     
     [JsonPropertyName("description")]
     public string Description { get; set; } = string.Empty;
+
+    [JsonPropertyName("tags")]
+    public List<string>? Tags { get; set; }
     
     [JsonPropertyName("input_schema")]
     public SchemaDefinition? InputSchema { get; set; }
@@ -237,6 +240,24 @@ public class SchemaDefinition
 
     [JsonPropertyName("description")]
     public string? Description { get; set; }
+
+    [JsonPropertyName("$ref")]
+    public string? Ref { get; set; }
+
+    [JsonPropertyName("definitions")]
+    public Dictionary<string, PropertyDefinition>? Definitions { get; set; }
+
+    [JsonPropertyName("$defs")]
+    public Dictionary<string, PropertyDefinition>? DollarDefs { get; set; }
+
+    [JsonPropertyName("anyOf")]
+    public List<PropertyDefinition>? AnyOf { get; set; }
+
+    [JsonPropertyName("oneOf")]
+    public List<PropertyDefinition>? OneOf { get; set; }
+
+    [JsonPropertyName("allOf")]
+    public List<PropertyDefinition>? AllOf { get; set; }
 }
 
 /// <summary>
@@ -279,6 +300,21 @@ public class PropertyDefinition
 
     [JsonPropertyName("items")]
     public PropertyDefinition? Items { get; set; }
+
+    [JsonPropertyName("$ref")]
+    public string? Ref { get; set; }
+
+    [JsonPropertyName("anyOf")]
+    public List<PropertyDefinition>? AnyOf { get; set; }
+
+    [JsonPropertyName("oneOf")]
+    public List<PropertyDefinition>? OneOf { get; set; }
+
+    [JsonPropertyName("allOf")]
+    public List<PropertyDefinition>? AllOf { get; set; }
+
+    [JsonPropertyName("label")]
+    public string? Label { get; set; }
 }
 
 /// <summary>

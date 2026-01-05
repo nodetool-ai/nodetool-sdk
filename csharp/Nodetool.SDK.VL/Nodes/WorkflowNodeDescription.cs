@@ -66,11 +66,20 @@ namespace Nodetool.SDK.VL.Nodes
 
             inputPins.Add(new PinDescription(AutoRunInputName, typeof(bool), false,
                 "🔁 Execute on input change",
-                "When enabled, the workflow executes automatically whenever any input changes (useful for chaining/autorun)."));
+                "When enabled, this workflow automatically executes whenever any *workflow input pin* changes.\n\n"
+                + "- This watches all workflow input pins (not Trigger/AutoRun/RestartOnChange).\n"
+                + "- Useful for chaining workflows and building autorun patches.\n"
+                + "- If an input changes while a run is active, behavior depends on RestartOnChange."));
 
             inputPins.Add(new PinDescription(RestartOnChangeInputName, typeof(bool), false,
                 "♻️ Restart on input change",
-                "When enabled and AutoRun is on, input changes will cancel the current run and restart with the latest inputs."));
+                "Only relevant when AutoRun is enabled.\n\n"
+                + "If true and inputs change while the workflow is already running:\n"
+                + "- the current run is cancelled, and\n"
+                + "- the workflow restarts immediately with the latest inputs.\n\n"
+                + "If false:\n"
+                + "- the workflow finishes the current run, then reruns once.\n\n"
+                + "Tip: enable this for interactive tweaking. Leave it off when the workflow is expensive or you prefer stable completion."));
 
             // Add workflow input pins
             foreach (var property in _workflow.GetInputProperties())

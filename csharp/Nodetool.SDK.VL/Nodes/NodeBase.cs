@@ -51,6 +51,9 @@ namespace Nodetool.SDK.VL.Nodes
         private IExecutionSession? _activeSession = null;
         private CancellationTokenSource? _manualCancelCts = null;
 
+        // VL evaluation can be demand-driven; without invalidation pulses, async state changes might not propagate.
+        private long _lastInvalidateTicks = 0;
+
         public NodeBase(NodeContext nodeContext, NodeMetadataResponse nodeMetadata)
         {
             _nodeContext = nodeContext ?? throw new ArgumentNullException(nameof(nodeContext));
@@ -205,6 +208,11 @@ namespace Nodetool.SDK.VL.Nodes
                 _manualCancelCts = new CancellationTokenSource();
             }
 
+            // Update pins immediately so IsRunning can't get stuck if VL skips subsequent Update() calls.
+            SetIsRunning(true);
+            SetError("");
+            InvalidateOutputs();
+
             try
             {
                 AppendDebug($"start node='{_nodeMetadata.NodeType}'");
@@ -288,6 +296,7 @@ namespace Nodetool.SDK.VL.Nodes
 
                             _lastOutputs[update.OutputName] = update.Value;
                         }
+                        InvalidateOutputs();
                     };
 
                     session.NodeUpdated += update =>
@@ -299,6 +308,8 @@ namespace Nodetool.SDK.VL.Nodes
                                 _lastError = update.error ?? "";
                             }
                             AppendDebug($"node_error: {update.error}");
+                            SetError(_lastError);
+                            InvalidateOutputs();
                         }
 
                         if (update.result != null)
@@ -312,6 +323,7 @@ namespace Nodetool.SDK.VL.Nodes
                                     _lastOutputs[kvp.Key] = NodeToolValue.From(kvp.Value);
                                 }
                             }
+                            InvalidateOutputs();
                         }
                     };
 
@@ -370,6 +382,9 @@ namespace Nodetool.SDK.VL.Nodes
                 {
                     _isRunning = false;
                 }
+                SetIsRunning(false);
+                SetError(_lastError);
+                InvalidateOutputs();
                 AppendDebug("done");
 
                 // If inputs changed during execution and AutoRun is enabled, run once more.
@@ -379,6 +394,40 @@ namespace Nodetool.SDK.VL.Nodes
                     AppendDebug("autorun: rerun requested");
                     _ = ExecuteNodeAsync();
                 }
+            }
+        }
+
+        private void SetIsRunning(bool isRunning)
+        {
+            if (_outputPins.TryGetValue("IsRunning", out var pin))
+                pin.Value = isRunning;
+        }
+
+        private void SetError(string error)
+        {
+            if (_outputPins.TryGetValue("Error", out var pin))
+                pin.Value = error ?? "";
+        }
+
+        private void InvalidateOutputs()
+        {
+            // Throttle invalidation to avoid spamming for streaming outputs.
+            var now = DateTime.UtcNow.Ticks;
+            var last = Interlocked.Read(ref _lastInvalidateTicks);
+            if (now - last < TimeSpan.FromMilliseconds(30).Ticks)
+                return;
+
+            Interlocked.Exchange(ref _lastInvalidateTicks, now);
+            try
+            {
+                // This is a best-effort hint to VL that outputs changed.
+                // SimpleNodeDescription already exposes an Invalidated observable.
+                if (_nodeDescription is SimpleNodeDescription sd)
+                    sd.Invalidate();
+            }
+            catch
+            {
+                // ignore
             }
         }
 
@@ -641,6 +690,50 @@ namespace Nodetool.SDK.VL.Nodes
                         if (TryConcatChunkList(value, out var text))
                             return text;
 
+                        // Common: ["hello"] (list of primitive strings) -> unwrap for ergonomics.
+                        var list = value.AsListOrEmpty();
+                        if (list.Count > 0)
+                        {
+                            var allStrings = new List<string>(list.Count);
+                            var ok = true;
+                            foreach (var item in list)
+                            {
+                                if (item.Kind == NodeToolValueKind.String && item.AsString() is string s)
+                                {
+                                    allStrings.Add(s);
+                                    continue;
+                                }
+
+                                if (item.Kind == NodeToolValueKind.Map)
+                                {
+                                    var m = item.AsMapOrEmpty();
+                                    if (m.TryGetValue("type", out var t) &&
+                                        string.Equals(t.AsString(), "string", StringComparison.OrdinalIgnoreCase) &&
+                                        m.TryGetValue("value", out var inner))
+                                    {
+                                        allStrings.Add(inner.AsString() ?? inner.ToJsonString());
+                                        continue;
+                                    }
+                                }
+
+                                ok = false;
+                                break;
+                            }
+
+                            if (ok)
+                            {
+                                // If it's a list-of-1, treat it as a scalar string (common for workflow outputs).
+                                if (allStrings.Count == 1)
+                                    return allStrings[0];
+
+                                // If it's a list-of-many, we should NOT concatenate: that loses structure.
+                                // In vvvv, list-like results should be represented as a Spread via a string[] pin,
+                                // which requires the schema/metadata to expose an array type.
+                                // For a string pin, keep structure visible as JSON.
+                                return value.ToJsonString();
+                            }
+                        }
+
                         // Common: [{ type:"string", value:"..." }] -> unwrap
                         var first = value.AsListOrEmpty().FirstOrDefault(v => v.Kind == NodeToolValueKind.Map);
                         if (first != null && first.Kind == NodeToolValueKind.Map)
@@ -880,6 +973,7 @@ namespace Nodetool.SDK.VL.Nodes
             
             private readonly Subject<object> _invalidated = new Subject<object>();
             public IObservable<object> Invalidated => _invalidated;
+            public void Invalidate() => _invalidated.OnNext(this);
 
             public IVLNode CreateInstance(NodeContext nodeContext)
             {
