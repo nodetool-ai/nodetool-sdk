@@ -71,7 +71,7 @@ public class WorkflowMetadataService : IDisposable
                 try
                 {
                     // Get detailed workflow information
-                    var detailedWorkflow = await _client.GetWorkflowAsync(workflow.Id);
+                    var detailedWorkflow = await _client.GetWorkflowAsync(workflow.Id, includeTypeMetadata: true);
                     
                     // Convert to our model
                     var workflowDetail = new WorkflowDetail
@@ -84,7 +84,9 @@ public class WorkflowMetadataService : IDisposable
                         UpdatedAt = detailedWorkflow.UpdatedAt,
                         InputSchema = ConvertToWorkflowSchema(detailedWorkflow.InputSchema),
                         OutputSchema = ConvertToWorkflowSchema(detailedWorkflow.OutputSchema),
-                        Graph = detailedWorkflow.Graph
+                        Graph = detailedWorkflow.Graph,
+                        InputTypeMetadata = detailedWorkflow.InputTypeMetadata,
+                        OutputTypeMetadata = detailedWorkflow.OutputTypeMetadata,
                     };
 
                     workflowDetails.Add(workflowDetail);

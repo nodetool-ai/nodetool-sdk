@@ -183,11 +183,63 @@ public class WorkflowDetail
     [JsonPropertyName("thumbnail")]
     public string? Thumbnail { get; set; }
 
+    // Typed workflow I/O metadata (present when fetched with include_type_metadata=1)
+    public Dictionary<string, TypeMetadata>? InputTypeMetadata { get; set; }
+    public Dictionary<string, TypeMetadata>? OutputTypeMetadata { get; set; }
+
+    public bool TryGetInputType(string name, out TypeMetadata typeMetadata)
+    {
+        typeMetadata = new TypeMetadata { Type = "any" };
+        return InputTypeMetadata != null && InputTypeMetadata.TryGetValue(name, out typeMetadata);
+    }
+
+    public bool TryGetOutputType(string name, out TypeMetadata typeMetadata)
+    {
+        typeMetadata = new TypeMetadata { Type = "any" };
+        return OutputTypeMetadata != null && OutputTypeMetadata.TryGetValue(name, out typeMetadata);
+    }
+
     /// <summary>
     /// Get input properties as TypeMetadata for VL pin creation
     /// </summary>
     public IEnumerable<(string Name, TypeMetadata Type, string Description, object? DefaultValue)> GetInputProperties()
     {
+        // Preferred (Phase 2): backend-supplied typed metadata, merged with schema defaults/required/description.
+        if (InputTypeMetadata != null && InputTypeMetadata.Count > 0)
+        {
+            var required = InputSchema?.Required ?? new List<string>();
+            var schemaProps = InputSchema?.Properties ?? new Dictionary<string, WorkflowPropertyDefinition>(StringComparer.Ordinal);
+
+            // Prefer schema ordering when available (stable UX).
+            var names = schemaProps.Count > 0
+                ? schemaProps.Keys
+                : InputTypeMetadata.Keys;
+
+            foreach (var name in names)
+            {
+                if (!InputTypeMetadata.TryGetValue(name, out var tm))
+                    continue;
+
+                var meta = tm;
+                meta.Optional = !required.Contains(name);
+
+                if (schemaProps.TryGetValue(name, out var prop))
+                {
+                    yield return (
+                        Name: name,
+                        Type: meta,
+                        Description: prop.Description ?? prop.Title ?? "",
+                        DefaultValue: prop.Default
+                    );
+                }
+                else
+                {
+                    yield return (Name: name, Type: meta, Description: "", DefaultValue: null);
+                }
+            }
+            yield break;
+        }
+
         // Preferred: schema-driven inputs
         if (InputSchema?.Properties != null && InputSchema.Properties.Count > 0)
         {
@@ -236,6 +288,37 @@ public class WorkflowDetail
     /// </summary>
     public IEnumerable<(string Name, TypeMetadata Type, string Description)> GetOutputProperties()
     {
+        // Preferred (Phase 2): backend-supplied typed metadata, merged with schema descriptions when available.
+        if (OutputTypeMetadata != null && OutputTypeMetadata.Count > 0)
+        {
+            var schemaProps = OutputSchema?.Properties ?? new Dictionary<string, WorkflowPropertyDefinition>(StringComparer.Ordinal);
+
+            // Prefer schema ordering when available.
+            var names = schemaProps.Count > 0
+                ? schemaProps.Keys
+                : OutputTypeMetadata.Keys;
+
+            foreach (var name in names)
+            {
+                if (!OutputTypeMetadata.TryGetValue(name, out var tm))
+                    continue;
+
+                if (schemaProps.TryGetValue(name, out var prop))
+                {
+                    yield return (
+                        Name: name,
+                        Type: tm,
+                        Description: prop.Description ?? prop.Title ?? prop.Label ?? ""
+                    );
+                }
+                else
+                {
+                    yield return (Name: name, Type: tm, Description: "");
+                }
+            }
+            yield break;
+        }
+
         // Preferred: schema-driven outputs
         if (OutputSchema?.Properties != null && OutputSchema.Properties.Count > 0)
         {

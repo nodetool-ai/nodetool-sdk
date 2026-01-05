@@ -106,12 +106,31 @@ public class NodetoolClient : INodetoolClient
         return workflowListResponse?.Workflows ?? new List<WorkflowResponse>();
     }
 
-    public async Task<WorkflowResponse> GetWorkflowAsync(string workflowId, CancellationToken cancellationToken = default)
+    public async Task<WorkflowResponse> GetWorkflowAsync(
+        string workflowId,
+        bool includeTypeMetadata = false,
+        CancellationToken cancellationToken = default)
     {
         _logger?.LogDebug("Fetching workflow: {WorkflowId}", workflowId);
         
         var endpoint = string.Format(NodetoolConstants.Endpoints.WorkflowById, workflowId);
+        if (includeTypeMetadata)
+        {
+            endpoint = endpoint.Contains("?", StringComparison.Ordinal)
+                ? $"{endpoint}&include_type_metadata=1"
+                : $"{endpoint}?include_type_metadata=1";
+        }
+
         var response = await _httpClient.GetAsync(endpoint, cancellationToken);
+
+        // Graceful fallback for older servers that don't support this query param yet.
+        if (!response.IsSuccessStatusCode && includeTypeMetadata && (int)response.StatusCode == 422)
+        {
+            _logger?.LogDebug("Server rejected include_type_metadata=1 (422). Retrying without typed metadata.");
+            endpoint = string.Format(NodetoolConstants.Endpoints.WorkflowById, workflowId);
+            response = await _httpClient.GetAsync(endpoint, cancellationToken);
+        }
+
         response.EnsureSuccessStatusCode();
         
         var json = await response.Content.ReadAsStringAsync(cancellationToken);

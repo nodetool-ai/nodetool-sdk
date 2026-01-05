@@ -39,9 +39,13 @@ public interface INodetoolClient : IDisposable
     /// Get a specific workflow by ID
     /// </summary>
     /// <param name="workflowId">The workflow ID</param>
+    /// <param name="includeTypeMetadata">If true, request typed workflow I/O metadata (include_type_metadata=1)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The workflow details</returns>
-    Task<WorkflowResponse> GetWorkflowAsync(string workflowId, CancellationToken cancellationToken = default);
+    Task<WorkflowResponse> GetWorkflowAsync(
+        string workflowId,
+        bool includeTypeMetadata = false,
+        CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Execute a workflow

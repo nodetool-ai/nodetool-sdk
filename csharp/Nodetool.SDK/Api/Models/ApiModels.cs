@@ -157,6 +157,13 @@ public class WorkflowResponse
     [JsonPropertyName("output_schema")]
     public SchemaDefinition? OutputSchema { get; set; }
 
+    // Typed workflow I/O metadata (only present when requested via include_type_metadata=1)
+    [JsonPropertyName("input_type_metadata")]
+    public Dictionary<string, TypeMetadata>? InputTypeMetadata { get; set; }
+
+    [JsonPropertyName("output_type_metadata")]
+    public Dictionary<string, TypeMetadata>? OutputTypeMetadata { get; set; }
+
     // Full workflow graph (present on /api/workflows/{id} in NodeTool)
     [JsonPropertyName("graph")]
     public WorkflowGraph? Graph { get; set; }
