@@ -941,12 +941,9 @@ namespace Nodetool.SDK.VL.Nodes
 
             if (expectedType.IsEnum)
             {
-                if (TryExtractEnumLiteral(value, out var literal) &&
-                    DynamicEnumFactory.TryFromNodeToolLiteral(expectedType, literal, out var enumValue) &&
-                    enumValue != null)
-                {
-                    return enumValue;
-                }
+                if (TryExtractEnumLiteral(value, out var literal) && literal is string litStr &&
+                    Enum.TryParse(expectedType, litStr, ignoreCase: true, out var litParsed))
+                    return litParsed!;
 
                 if (value.AsString() is string s && Enum.TryParse(expectedType, s, ignoreCase: true, out var parsed))
                     return parsed!;
@@ -1143,8 +1140,8 @@ namespace Nodetool.SDK.VL.Nodes
 
                 if (tt == "enum")
                 {
-                    if (rawValue is Enum e && DynamicEnumFactory.TryToNodeToolLiteral(e, out var lit))
-                        return lit ?? "";
+                    if (rawValue is Enum e)
+                        return StaticEnumRegistry.ToNodeToolLiteral(e);
 
                     return rawValue ?? "";
                 }

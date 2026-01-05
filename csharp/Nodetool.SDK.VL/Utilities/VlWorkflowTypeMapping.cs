@@ -42,20 +42,14 @@ internal static class VlWorkflowTypeMapping
 
         if (t == "enum" && typeMetadata.Values != null && typeMetadata.Values.Count > 0)
         {
-            // Prefer stable identity from backend (type_name); fallback to pinName.
-            var enumType = DynamicEnumFactory.GetOrCreateEnumType(
-                typeMetadata.TypeName,
-                typeMetadata.Values,
-                fallbackName: $"Enum_{pinName}");
-
-            if (enumType == null)
+            if (!StaticEnumRegistry.TryGetEnumType(typeMetadata.TypeName, typeMetadata.Values, out var enumType))
                 return (typeof(string), "");
 
             // Default: schema default if provided; else first enum entry.
             if (TryParseEnumDefault(enumType, schemaDefaultValue, out var enumValue))
                 return (enumType, enumValue);
 
-            return (enumType, DynamicEnumFactory.GetDefaultValue(enumType));
+            return (enumType, StaticEnumRegistry.GetDefaultValue(enumType));
         }
 
         // Fallback: keep it readable.
@@ -73,7 +67,7 @@ internal static class VlWorkflowTypeMapping
             ? je.ValueKind == JsonValueKind.String ? (object?)(je.GetString() ?? "") : (object?)je.ToString()
             : schemaDefaultValue;
 
-        return DynamicEnumFactory.TryFromNodeToolLiteral(enumType, literal, out enumValue);
+        return StaticEnumRegistry.TryFromNodeToolLiteral(enumType, literal, out enumValue);
     }
 
     private static T CoerceDefault<T>(object? value, T fallback) where T : struct

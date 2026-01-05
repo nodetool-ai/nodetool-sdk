@@ -46,18 +46,11 @@ internal static class VlTypeMapping
 
     private static (Type?, object?) MapEnumType(NodeTypeDefinition nodeType)
     {
-        if (nodeType.Values == null || nodeType.Values.Count == 0)
-            return (typeof(string), "");
+        if (StaticEnumRegistry.TryGetEnumType(nodeType.TypeName, nodeType.Values, out var enumType))
+            return (enumType, StaticEnumRegistry.GetDefaultValue(enumType));
 
-        var enumType = DynamicEnumFactory.GetOrCreateEnumType(
-            nodeType.TypeName,
-            nodeType.Values,
-            fallbackName: "Enum");
-
-        if (enumType == null)
-            return (typeof(string), "");
-
-        return (enumType, DynamicEnumFactory.GetDefaultValue(enumType));
+        // If enum isn't pre-generated, fall back to string to avoid VL type resolution issues.
+        return (typeof(string), "");
     }
 
     private enum Kind
