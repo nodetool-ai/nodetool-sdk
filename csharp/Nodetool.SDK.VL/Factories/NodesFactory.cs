@@ -146,6 +146,11 @@ namespace Nodetool.SDK.VL.Factories
                                     outputPins.Add(bc.Pin("IsRunning", typeof(bool), false,
                                         "⏳ Execution status", 
                                         "True while the node is processing, false when complete or idle"));
+                                    outputPins.Add(bc.Pin("On Update", typeof(bool), false,
+                                        "⚡ On Update",
+                                        "Pulse: goes true briefly when the node run finishes (success/failed/cancelled).\n\n"
+                                        + "This does not mean the values actually changed—only that the node executed.\n"
+                                        + "Use it to trigger downstream logic."));
                                     outputPins.Add(bc.Pin("Error", typeof(string), "",
                                         "❌ Error message", 
                                         "Contains error details if execution fails, empty string if successful"));

@@ -40,6 +40,7 @@ namespace Nodetool.SDK.VL.Nodes
         private string _lastError = "";
         private readonly Dictionary<string, NodeToolValue> _lastOutputs = new(StringComparer.Ordinal);
         private bool _lastExecuteState = false;
+        private volatile bool _onUpdatePulse = false;
         private bool _hasInitialized = false;
         private bool _prevAutoRunEnabled = false;
 
@@ -99,6 +100,7 @@ namespace Nodetool.SDK.VL.Nodes
 
             // Add standard status outputs
             _outputPins["IsRunning"] = new InternalPin("IsRunning", typeof(bool), false);
+            _outputPins["On Update"] = new InternalPin("On Update", typeof(bool), false);
             _outputPins["Error"] = new InternalPin("Error", typeof(string), "");
             _outputPins["Debug"] = new InternalPin("Debug", typeof(string), "");
 
@@ -432,6 +434,7 @@ namespace Nodetool.SDK.VL.Nodes
                 }
                 SetIsRunning(false);
                 SetError(_lastError);
+                FireOnUpdatePulse();
                 InvalidateOutputs();
                 AppendDebug("done");
 
@@ -486,6 +489,32 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 // ignore
             }
+        }
+
+        private void FireOnUpdatePulse()
+        {
+            _onUpdatePulse = true;
+            if (_outputPins.TryGetValue("On Update", out var pin))
+                pin.Value = true;
+
+            // VL-style: keep this as a short pulse (true briefly, then false).
+            // We reset asynchronously and invalidate again so downstream edge detectors can pick it up.
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(1).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // ignore
+                }
+
+                _onUpdatePulse = false;
+                if (_outputPins.TryGetValue("On Update", out var p))
+                    p.Value = false;
+                InvalidateOutputs();
+            });
         }
 
         private async Task CancelActiveRunAsync()
@@ -611,6 +640,8 @@ namespace Nodetool.SDK.VL.Nodes
                 // Set standard outputs
                 if (_outputPins.TryGetValue("IsRunning", out var isRunningPin))
                     isRunningPin.Value = isRunning;
+                if (_outputPins.TryGetValue("On Update", out var onUpdatePin))
+                    onUpdatePin.Value = _onUpdatePulse;
                 if (_outputPins.TryGetValue("Error", out var errorPin))
                     errorPin.Value = lastError;
                 if (_outputPins.TryGetValue("Debug", out var debugPin))
