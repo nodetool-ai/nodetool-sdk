@@ -23,6 +23,7 @@
             </p:NodeReference>
             <Pin Id="VrAI2MMQGo4Qb5XC6t7nGc" Name="BaseUrl" Kind="InputPin" />
             <Pin Id="MPr7f9h9GKDNXwxNObr6gl" Name="ApiKey" Kind="InputPin" />
+            <Pin Id="C6JERsjbHEXPOktTcj5FVA" Name="AssetCacheDir" Kind="InputPin" />
             <Pin Id="SF65mlVdB3rPLh0e3uPFOT" Name="AutoReconnect" Kind="InputPin" />
             <Pin Id="S6TCzfAYbLZONBo2BQf5SH" Name="Reconnect" Kind="InputPin" />
             <Pin Id="ROZCEa8jIDDLSFUoe9NWHn" Name="IsConnected" Kind="OutputPin" />
@@ -430,23 +431,6 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Node Bounds="2592,151,79,19" Id="EcWP8YU5OprPO4gHy1Z2I7">
-            <p:NodeReference LastCategoryFullName="Graphics.Skia.Unwrapped.SKImage" LastDependency="VL.Skia.vl">
-              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-              <CategoryReference Kind="ClassType" Name="SKImage" />
-              <Choice Kind="OperationCallFlag" Name="CreateDefault" />
-            </p:NodeReference>
-            <Pin Id="JBPG1Bf9QknPZV8RCk0M10" Name="Output" Kind="StateOutputPin" />
-          </Node>
-          <Node Bounds="2629,211,47,26" Id="RkKKYOmBxYYOTWsMIRKmRV">
-            <p:NodeReference LastCategoryFullName="Graphics.Skia.Unwrapped.SKImage" LastDependency="VL.Skia.vl">
-              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-              <CategoryReference Kind="ClassType" Name="SKImage" />
-              <Choice Kind="OperationCallFlag" Name="Create" />
-            </p:NodeReference>
-            <Pin Id="LB1hySFYv6oOBPBpyTvuGf" Name="Info" Kind="InputPin" />
-            <Pin Id="EYXRO5jdkfHMwr2TpLdfeF" Name="Result" Kind="OutputPin" />
-          </Node>
           <Node Bounds="1230,660,85,19" Id="CYzNY8ly5TRMLS8MfG1cZD">
             <p:NodeReference LastCategoryFullName="Nodetool Nodes.Pillow" LastDependency="Nodetool.Nodes">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -533,6 +517,99 @@
             </p:ValueBoxSettings>
           </Pad>
           <Pad Id="NAUKVQIA0sULblUPuZGpBm" Comment="" Bounds="1640,740,257,247" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="VaGUiNV3gy1NmSNtwchfRg" Comment="Trigger" Bounds="2631,290,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="SCJ4dp9t3YPPmByxBHtttf" Comment="output" Bounds="2861,520,189,178" ShowValueBox="true" isIOBox="true" Value="[&#xD;&#xA;  {&#xD;&#xA;    &quot;type&quot;: &quot;audio&quot;,&#xD;&#xA;    &quot;uri&quot;: null,&#xD;&#xA;    &quot;asset_id&quot;: null,&#xD;&#xA;    &quot;data&quot;: [&#xD;&#xA;      73,&#xD;&#xA;      68,&#xD;&#xA;      51,&#xD;&#xA;      4,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      35,&#xD;&#xA;      84,&#xD;&#xA;      83,&#xD;&#xA;      83,&#xD;&#xA;      69,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      15,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      3,&#xD;&#xA;      76,&#xD;&#xA;      97,&#xD;&#xA;      118,&#xD;&#xA;      102,&#xD;&#xA;      54,&#xD;&#xA;      48,&#xD;&#xA;      46,&#xD;&#xA;      49,&#xD;&#xA;      54,&#xD;&#xA;      46,&#xD;&#xA;      49,&#xD;&#xA;      48,&#xD;&#xA;      48,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      255,&#xD;&#xA;      243,&#xD;&#xA;      196,&#xD;&#xA;      192,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      73,&#xD;&#xA;      110,&#xD;&#xA;      102,&#xD;&#xA;      111,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      15,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      1,&#xD;&#xA;      128,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      76,&#xD;&#xA;      97,&#xD;&#xA;      118,&#xD;&#xA;      99,&#xD;&#xA;      54,&#xD;&#xA;      48,&#xD;&#xA;      46,&#xD;&#xA;      51,&#xD;&#xA;      49,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      1,&#xD;&#xA;      128,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      46,&#xD;&#xA;      182,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0,&#xD;&#xA;      0&#xD;&#xA;    ],&#xD;&#xA;    &quot;metadata&quot;: {&#xD;&#xA;      &quot;sample_rate&quot;: 24000,&#xD;&#xA;      &quot;channels&quot;: 1,&#xD;&#xA;      &quot;format&quot;: &quot;wav&quot;,&#xD;&#xA;      &quot;duration_seconds&quot;: 2.7333333333333334&#xD;&#xA;    }&#xD;&#xA;  }&#xD;&#xA;]" />
+          <Pad Id="N4vhk5CjdzQNXWwIvvw9x9" Comment="input" Bounds="2725,250,145,15" ShowValueBox="true" isIOBox="true" Value="hello from nodetool!">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="Nf3qDjsTqppMiguub8wiY3" Comment="IsRunning" Bounds="2631,455,35,35" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="NGplZJm5BESMLMrxSXw17A" Comment="Error" Bounds="2678,425,305,23" ShowValueBox="true" isIOBox="true">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Overlay Id="G0qMtU3yZZ6OhSBls8llIe" Name="TTS" Bounds="2566,122,504,603" />
+          <Node Bounds="2653,571,48,19" Id="UyPtGd17yn7PkjYYuaZQxT">
+            <p:NodeReference LastCategoryFullName="IO" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="OperationCallFlag" Name="ToPath" />
+            </p:NodeReference>
+            <Pin Id="RTZEWWWhEljN6hW3Q4OPHK" Name="Input" Kind="InputPin" />
+            <Pin Id="LTFFSf1ycxYMxZVb8rpl2I" Name="Result" Kind="OutputPin" />
+          </Node>
+          <Pad Id="VPbh9xauNJWLRJKqjl94jC" Comment="Play" Bounds="2723,571,35,35" ShowValueBox="true" isIOBox="true" Value="True">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Node Bounds="2653,630,165,19" Id="Bmk3L2VMJfwPcKelXtX3x3">
+            <p:NodeReference LastCategoryFullName="Video" LastDependency="VL.Video.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Video" />
+              <Choice Kind="ProcessAppFlag" Name="VideoPlayer" />
+            </p:NodeReference>
+            <Pin Id="L2nE53SMuexLkqOVTF5OTT" Name="Node Context" Kind="InputPin" IsHidden="true" />
+            <Pin Id="VDIrA6zexIMQIs4udVuSsL" Name="Filename" Kind="InputPin" />
+            <Pin Id="QTcXjCNLcifOsLlQyw8iYO" Name="Play" Kind="InputPin" />
+            <Pin Id="BUVLYvTrrp3LvmnXGbgTDH" Name="Rate" Kind="InputPin" />
+            <Pin Id="G7uyxwPqxK2MKMuAdEK5wX" Name="Seek Time" Kind="InputPin" />
+            <Pin Id="Lq3NnVV2WC7PHqbBwSJ90r" Name="Seek" Kind="InputPin" />
+            <Pin Id="Szf9I3AKafHOpa72MzSBey" Name="Loop Start Time" Kind="InputPin" />
+            <Pin Id="JAYyzi9nse0N8l7UkSrV0P" Name="Loop End Time" Kind="InputPin" />
+            <Pin Id="DnepohLR1DvMKW6nUrGVcN" Name="Loop" Kind="InputPin" DefaultValue="True" />
+            <Pin Id="RFkpMYPJUgVPF0pFN4U7HN" Name="Volume" Kind="InputPin" />
+            <Pin Id="QTGthZyBRuiOnErdEw6CoH" Name="Output" Kind="OutputPin" />
+            <Pin Id="PBfUYw9uH88MI9GDKZx25r" Name="Playing" Kind="OutputPin" />
+            <Pin Id="NIGodCkbcerNozQkUKDEPb" Name="Current Time" Kind="OutputPin" />
+            <Pin Id="Rsn3SYbKVCcLOa0eHKXgYG" Name="Duration" Kind="OutputPin" />
+            <Pin Id="RtNYN26sJabNAdKX94yquS" Name="Ready State" Kind="OutputPin" />
+            <Pin Id="NGbZA1rIlvFPfgHRq59KEA" Name="Error Code" Kind="OutputPin" />
+            <Pin Id="NCm7nzYuOAfMQJdJetAiq9" Name="Texture Size" Kind="InputPin" IsHidden="true" />
+            <Pin Id="BF9Yy4OygMWQHOw7CqIDjS" Name="Source Bounds" Kind="InputPin" IsHidden="true" />
+            <Pin Id="SoU0pIRm8qLP6QRbgDTb6T" Name="Border Color" Kind="InputPin" IsHidden="true" />
+          </Node>
+          <Pad Id="PsXNYckSkACMXnQRGtYFSp" Comment="Current Time" Bounds="2719,680,35,15" ShowValueBox="true" isIOBox="true" />
+          <Node Bounds="2573,630,59,26" Id="MszYixHYb05LqS1ygSjq3J">
+            <p:NodeReference LastCategoryFullName="IO.Path" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="4026531840" Name="Path" NeedsToBeDirectParent="true">
+                <p:OuterCategoryReference Kind="Category" Name="IO" NeedsToBeDirectParent="true" />
+              </CategoryReference>
+              <Choice Kind="OperationCallFlag" Name="FileExists" />
+            </p:NodeReference>
+            <Pin Id="HAfwalBTgBuLsAfXVOT6cs" Name="Input" Kind="StateInputPin" />
+            <Pin Id="AJupj53kCLsNlkM1K0PFvq" Name="Exists" Kind="OutputPin" />
+          </Node>
+          <Pad Id="NSL8YbzSkGLQSkANvvNg5e" Comment="Exists" Bounds="2575,680,35,35" ShowValueBox="true" isIOBox="true" />
+          <Node Bounds="2629,350,99,19" Id="U20QtxnquNsM7RqvW0o9XA">
+            <p:NodeReference LastCategoryFullName="Nodetool Workflows" LastDependency="Nodetool.Workflows">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessNode" Name="TEST_SDK_08_TTS" />
+            </p:NodeReference>
+            <Pin Id="MSPPbDZkanYNs3DtwrrOwn" Name="Trigger" Kind="InputPin" />
+            <Pin Id="Mbw2sznvcymPduSnieckv6" Name="Cancel" Kind="InputPin" />
+            <Pin Id="TdgILL3Oy2NPmkvoY5WcPl" Name="AutoRun" Kind="InputPin" />
+            <Pin Id="RBvKYL27a4lMkd0NonuwVa" Name="RestartOnChange" Kind="InputPin" />
+            <Pin Id="E3iXMmBAtseOUPzq676HSN" Name="input" Kind="InputPin" />
+            <Pin Id="CNnCRugyUIYMlI0Jm0Isas" Name="IsRunning" Kind="OutputPin" />
+            <Pin Id="DrxoSkaNbbfNXdeZvBjs8e" Name="Error" Kind="OutputPin" />
+            <Pin Id="H1daKrGqPLtQbFcz84ehJG" Name="Debug" Kind="OutputPin" IsHidden="true" />
+            <Pin Id="KyBN6yRuVjeNIZFk3nNtnq" Name="InputSchemaJson" Kind="OutputPin" IsHidden="true" />
+            <Pin Id="C0MvTNH7ljGPL3z0L1iQBw" Name="OutputSchemaJson" Kind="OutputPin" IsHidden="true" />
+            <Pin Id="TFIGNwHxA6WNaXPzFV90N2" Name="output" Kind="OutputPin" />
+          </Node>
         </Canvas>
         <Patch Id="BVZk8J8KreGPn6XpAL8K43" Name="Create" />
         <Patch Id="OPRQahXEwooMG9XKpojbFr" Name="Update" />
@@ -596,6 +673,17 @@
         <Link Id="ASA3MAMVslIL2vHxKS9J6s" Ids="FaQUHRF5bXiMc7tGWwCOHy,Jv8L3ViXtvqNFTXqjREa8R" />
         <Link Id="CDyTS9xseXzNksQTNyx5r7" Ids="AcXSSloXJaoO9NWNM0ppkU,NIolgkNSlvSLVGnqByIVKv" />
         <Link Id="PsnwzMO16xQLUMkwfgNMI7" Ids="Ky3Zte1pzWYNjCJCMyb1Ny,NAUKVQIA0sULblUPuZGpBm" />
+        <Link Id="KPpyFnmPqqoL6UnA2b7ycc" Ids="SCJ4dp9t3YPPmByxBHtttf,RTZEWWWhEljN6hW3Q4OPHK" />
+        <Link Id="RbddxWcpoJENtKzLkXqFlr" Ids="LTFFSf1ycxYMxZVb8rpl2I,VDIrA6zexIMQIs4udVuSsL" />
+        <Link Id="TojlawLCe2jMY1b6337DxH" Ids="VPbh9xauNJWLRJKqjl94jC,QTcXjCNLcifOsLlQyw8iYO" />
+        <Link Id="HmDD9AwMA1LPfm9bd3iQkZ" Ids="NIGodCkbcerNozQkUKDEPb,PsXNYckSkACMXnQRGtYFSp" />
+        <Link Id="BqeskMuksFcK9uzCHH0aRT" Ids="LTFFSf1ycxYMxZVb8rpl2I,HAfwalBTgBuLsAfXVOT6cs" />
+        <Link Id="CpWMCaXS9NRNEsSsdnOc0y" Ids="AJupj53kCLsNlkM1K0PFvq,NSL8YbzSkGLQSkANvvNg5e" />
+        <Link Id="Fvs1eCilog2M4Fl1ctx5QY" Ids="VaGUiNV3gy1NmSNtwchfRg,MSPPbDZkanYNs3DtwrrOwn" />
+        <Link Id="GPLjqmtGwXcNI9y5BMwKjt" Ids="N4vhk5CjdzQNXWwIvvw9x9,E3iXMmBAtseOUPzq676HSN" />
+        <Link Id="GgsyaMWFDtiOw7KNawceQN" Ids="CNnCRugyUIYMlI0Jm0Isas,Nf3qDjsTqppMiguub8wiY3" />
+        <Link Id="OVtB9I0rzLnOl8mNTGCIPJ" Ids="TFIGNwHxA6WNaXPzFV90N2,SCJ4dp9t3YPPmByxBHtttf" />
+        <Link Id="ICYdIsaJQjyNl6yAZKo58C" Ids="DrxoSkaNbbfNXdeZvBjs8e,NGplZJm5BESMLMrxSXw17A" />
       </Patch>
     </Node>
   </Patch>
@@ -607,4 +695,5 @@
   <PlatformDependency Id="UTKnYEdBo5UMr5YYtz1DxI" Location="../../csharp/Nodetool.SDK.VL/bin/Release/net8.0/Nodetool.SDK.VL.dll" />
   <PlatformDependency Id="AF9k2B57lTBNqnRtDjXJa9" Location="../../csharp/Nodetool.SDK.VL/bin/Release/net8.0/Nodetool.Types.dll" />
   <NugetDependency Id="EpfFQ2FpSFJLC5u6CuIuzi" Location="VL.Audio" Version="1.9.14" />
+  <NugetDependency Id="TzGqUVv5qQ9NdxMvuoy0Yd" Location="VL.Video" Version="2025.7.1-0013-g8fcece0df9" />
 </Document>

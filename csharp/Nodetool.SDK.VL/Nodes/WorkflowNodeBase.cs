@@ -47,6 +47,7 @@ namespace Nodetool.SDK.VL.Nodes
         private readonly Dictionary<string, StringBuilder> _chunkBuffers = new(StringComparer.Ordinal);
         private readonly Dictionary<string, SKImage> _latestImages = new(StringComparer.Ordinal);
         private readonly Dictionary<string, string> _latestAudioPaths = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _latestAudioByteLengths = new(StringComparer.Ordinal);
         private readonly HashSet<string> _audioDownloadsInFlight = new(StringComparer.Ordinal);
         private readonly Queue<string> _debugLines = new();
         private const int DebugMaxLines = 30;
@@ -371,58 +372,83 @@ namespace Nodetool.SDK.VL.Nodes
                         }
 
                         // Special handling for audio outputs: expose a local cached file path string.
-                        if (string.Equals(update.OutputType, "audio", StringComparison.OrdinalIgnoreCase) &&
-                            TryExtractAssetUri(update.Value, expectedType: "audio", out var audioUri))
+                        // IMPORTANT: don't rely on update.OutputType (some servers send "any").
+                        var hasAudioUri = TryExtractAssetUri(update.Value, expectedType: "audio", out var audioUri);
+                        var hasAudioInline = TryExtractAudioInlineBytes(update.Value, out var bytesInline, out var declaredFormat);
+                        if (hasAudioUri || hasAudioInline)
                         {
-                            var normalized = NodeToolClientProvider.NormalizeAssetUri(audioUri);
-
-                            if (_latestAudioPaths.TryGetValue(update.OutputName, out var cached) &&
-                                !string.IsNullOrWhiteSpace(cached) &&
-                                File.Exists(cached))
-                            {
-                                pin.Value = cached;
-                                return;
-                            }
+                            var normalized = (hasAudioUri && !string.IsNullOrWhiteSpace(audioUri))
+                                ? NodeToolClientProvider.NormalizeAssetUri(audioUri)
+                                : "";
 
                             try
                             {
                                 var assets = NodeToolClientProvider.GetAssetManager();
-                                var hit = assets.GetCachedPath(normalized);
-                                if (!string.IsNullOrWhiteSpace(hit) && File.Exists(hit))
+
+                                // Inline bytes: keep the *largest* payload we've seen for this output.
+                                // Some servers may send partial blobs first (e.g., ID3 header), then the full file.
+                                if (hasAudioInline && bytesInline.Length > 0)
                                 {
-                                    _latestAudioPaths[update.OutputName] = hit;
-                                    pin.Value = hit;
+                                    var prevLen = _latestAudioByteLengths.TryGetValue(update.OutputName, out var pl) ? pl : 0;
+                                    if (bytesInline.Length >= prevLen)
+                                    {
+                                        _latestAudioByteLengths[update.OutputName] = bytesInline.Length;
+                                        var ext = AssetCacheWriter.GetAudioExtension(bytesInline, declaredFormat);
+                                        var path = AssetCacheWriter.GetOrWriteFile(
+                                            assets.CacheDirectory,
+                                            prefix: "nodetool-audio",
+                                            bytes: bytesInline,
+                                            extensionWithDot: ext);
+
+                                        _latestAudioPaths[update.OutputName] = path;
+                                        pin.Value = path;
+
+                                        // High-signal debug (helps diagnose backend truncation/streaming).
+                                        Console.WriteLine($"WorkflowNodeBase: audio inline bytes len={bytesInline.Length} ext={ext} -> {path}");
+                                        return;
+                                    }
+                                }
+
+                                // URI-based asset: normal download/caching.
+                                if (!string.IsNullOrWhiteSpace(normalized))
+                                {
+                                    var hit = assets.GetCachedPath(normalized);
+                                    if (!string.IsNullOrWhiteSpace(hit) && File.Exists(hit))
+                                    {
+                                        _latestAudioPaths[update.OutputName] = hit;
+                                        pin.Value = hit;
+                                        return;
+                                    }
+
+                                    // Show URI while downloading; replace once done.
+                                    pin.Value = normalized;
+                                    if (_audioDownloadsInFlight.Add(update.OutputName))
+                                    {
+                                        _ = Task.Run(async () =>
+                                        {
+                                            try
+                                            {
+                                                var path = await assets.DownloadAssetAsync(normalized, cancellationToken: CancellationToken.None);
+                                                _latestAudioPaths[update.OutputName] = path;
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                SetError($"Audio download failed ({update.OutputName}): {ex.Message}");
+                                            }
+                                            finally
+                                            {
+                                                _audioDownloadsInFlight.Remove(update.OutputName);
+                                                if (_outputPins.TryGetValue(update.OutputName, out var p) &&
+                                                    _latestAudioPaths.TryGetValue(update.OutputName, out var finalPath))
+                                                {
+                                                    p.Value = finalPath;
+                                                }
+                                            }
+                                        });
+                                    }
+
                                     return;
                                 }
-
-                                // Show URI while downloading; replace once done.
-                                pin.Value = normalized;
-                                if (_audioDownloadsInFlight.Add(update.OutputName))
-                                {
-                                    _ = Task.Run(async () =>
-                                    {
-                                        try
-                                        {
-                                            var path = await assets.DownloadAssetAsync(normalized, cancellationToken: CancellationToken.None);
-                                            _latestAudioPaths[update.OutputName] = path;
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            SetError($"Audio download failed ({update.OutputName}): {ex.Message}");
-                                        }
-                                        finally
-                                        {
-                                            _audioDownloadsInFlight.Remove(update.OutputName);
-                                            if (_outputPins.TryGetValue(update.OutputName, out var p) &&
-                                                _latestAudioPaths.TryGetValue(update.OutputName, out var finalPath))
-                                            {
-                                                p.Value = finalPath;
-                                            }
-                                        }
-                                    });
-                                }
-
-                                return;
                             }
                             catch
                             {
@@ -646,58 +672,78 @@ namespace Nodetool.SDK.VL.Nodes
                         }
 
                         // Final audio: turn AudioRef into a local cached file path (string pin).
-                        if (expectedType == typeof(string) &&
-                            TryExtractAssetUri(kvp.Value, expectedType: "audio", out var audioUri))
+                        // Supports both URI-backed and inline-byte payloads.
+                        var hasAudioUri2 = TryExtractAssetUri(kvp.Value, expectedType: "audio", out var audioUri);
+                        var hasAudioInline2 = TryExtractAudioInlineBytes(kvp.Value, out var bytesInline2, out var declaredFormat2);
+                        if (expectedType == typeof(string) && (hasAudioUri2 || hasAudioInline2))
                         {
                             try
                             {
-                                var normalized = NodeToolClientProvider.NormalizeAssetUri(audioUri);
                                 var assets = NodeToolClientProvider.GetAssetManager();
 
-                                if (_latestAudioPaths.TryGetValue(outputName, out var already) &&
-                                    !string.IsNullOrWhiteSpace(already) &&
-                                    File.Exists(already))
+                                if (hasAudioInline2 && bytesInline2.Length > 0)
                                 {
-                                    pin.Value = already;
-                                    continue;
-                                }
-
-                                var hit = assets.GetCachedPath(normalized);
-                                if (!string.IsNullOrWhiteSpace(hit) && File.Exists(hit))
-                                {
-                                    _latestAudioPaths[outputName] = hit;
-                                    pin.Value = hit;
-                                    continue;
-                                }
-
-                                // Show URI while downloading.
-                                pin.Value = normalized;
-                                if (_audioDownloadsInFlight.Add(outputName))
-                                {
-                                    _ = Task.Run(async () =>
+                                    var prevLen = _latestAudioByteLengths.TryGetValue(outputName, out var pl) ? pl : 0;
+                                    if (bytesInline2.Length >= prevLen)
                                     {
-                                        try
-                                        {
-                                            var path = await assets.DownloadAssetAsync(normalized, cancellationToken: CancellationToken.None);
-                                            _latestAudioPaths[outputName] = path;
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            SetError($"Audio download failed ({outputName}): {ex.Message}");
-                                        }
-                                        finally
-                                        {
-                                            _audioDownloadsInFlight.Remove(outputName);
-                                            if (_outputPins.TryGetValue(outputName, out var p) &&
-                                                _latestAudioPaths.TryGetValue(outputName, out var finalPath))
-                                            {
-                                                p.Value = finalPath;
-                                            }
-                                        }
-                                    });
+                                        _latestAudioByteLengths[outputName] = bytesInline2.Length;
+                                        var ext = AssetCacheWriter.GetAudioExtension(bytesInline2, declaredFormat2);
+                                        var path = AssetCacheWriter.GetOrWriteFile(
+                                            assets.CacheDirectory,
+                                            prefix: "nodetool-audio",
+                                            bytes: bytesInline2,
+                                            extensionWithDot: ext);
+
+                                        _latestAudioPaths[outputName] = path;
+                                        pin.Value = path;
+                                        Console.WriteLine($"WorkflowNodeBase: final audio inline bytes len={bytesInline2.Length} ext={ext} -> {path}");
+                                        continue;
+                                    }
                                 }
 
-                                continue;
+                                var normalized = (hasAudioUri2 && !string.IsNullOrWhiteSpace(audioUri))
+                                    ? NodeToolClientProvider.NormalizeAssetUri(audioUri)
+                                    : "";
+
+                                if (!string.IsNullOrWhiteSpace(normalized))
+                                {
+                                    var hit = assets.GetCachedPath(normalized);
+                                    if (!string.IsNullOrWhiteSpace(hit) && File.Exists(hit))
+                                    {
+                                        _latestAudioPaths[outputName] = hit;
+                                        pin.Value = hit;
+                                        continue;
+                                    }
+
+                                    // Show URI while downloading.
+                                    pin.Value = normalized;
+                                    if (_audioDownloadsInFlight.Add(outputName))
+                                    {
+                                        _ = Task.Run(async () =>
+                                        {
+                                            try
+                                            {
+                                                var path = await assets.DownloadAssetAsync(normalized, cancellationToken: CancellationToken.None);
+                                                _latestAudioPaths[outputName] = path;
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                SetError($"Audio download failed ({outputName}): {ex.Message}");
+                                            }
+                                            finally
+                                            {
+                                                _audioDownloadsInFlight.Remove(outputName);
+                                                if (_outputPins.TryGetValue(outputName, out var p) &&
+                                                    _latestAudioPaths.TryGetValue(outputName, out var finalPath))
+                                                {
+                                                    p.Value = finalPath;
+                                                }
+                                            }
+                                        });
+                                    }
+
+                                    continue;
+                                }
                             }
                             catch
                             {
@@ -715,8 +761,31 @@ namespace Nodetool.SDK.VL.Nodes
             }
         }
 
+        private static NodeToolValue UnwrapTypedWrapper(NodeToolValue value)
+        {
+            // Unwrap simple typed wrappers like {type:"list", value:[...]} or {type:"string", value:"..."}.
+            // This is important because ToJsonString() unwraps these, but our extraction logic must do it too.
+            for (var depth = 0; depth < 4; depth++)
+            {
+                if (value.Kind != NodeToolValueKind.Map)
+                    return value;
+
+                var map = value.AsMapOrEmpty();
+                if (map.Count == 2 && map.ContainsKey("type") && map.TryGetValue("value", out var inner))
+                {
+                    value = inner;
+                    continue;
+                }
+
+                return value;
+            }
+
+            return value;
+        }
+
         private static IReadOnlyDictionary<string, NodeToolValue>? ExtractFirstMap(NodeToolValue value)
         {
+            value = UnwrapTypedWrapper(value);
             if (value.Kind == NodeToolValueKind.Map)
                 return value.AsMapOrEmpty();
 
@@ -753,6 +822,57 @@ namespace Nodetool.SDK.VL.Nodes
             }
 
             return false;
+        }
+
+        // Some workflow outputs embed audio inline: {type:"audio", uri:null, data:[...], metadata:{format:"wav", ...}}
+        private static bool TryExtractAudioInlineBytes(NodeToolValue value, out byte[] bytes, out string? declaredFormat)
+        {
+            bytes = Array.Empty<byte>();
+            declaredFormat = null;
+
+            var map = ExtractFirstMap(value);
+            if (map == null)
+                return false;
+
+            if (map.TryGetValue("type", out var typeVal) && typeVal.AsString() is string typeStr &&
+                !string.Equals(typeStr, "audio", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (!map.TryGetValue("data", out var dataVal))
+                return false;
+
+            if (dataVal.TryGetBytes(out var direct) && direct.Length > 0)
+            {
+                bytes = direct;
+            }
+            else if (dataVal.Kind == NodeToolValueKind.List)
+            {
+                var list = dataVal.AsListOrEmpty();
+                if (list.Count == 0)
+                    return false;
+
+                var tmp = new byte[list.Count];
+                for (var i = 0; i < list.Count; i++)
+                {
+                    if (!list[i].TryGetLong(out var l))
+                        return false;
+                    tmp[i] = (byte)(l & 0xFF);
+                }
+                bytes = tmp;
+            }
+            else
+            {
+                return false;
+            }
+
+            if (map.TryGetValue("metadata", out var metaVal) && metaVal.Kind == NodeToolValueKind.Map)
+            {
+                var meta = metaVal.AsMapOrEmpty();
+                if (meta.TryGetValue("format", out var fmtVal) && fmtVal.AsString() is string fmt)
+                    declaredFormat = fmt;
+            }
+
+            return bytes.Length > 0;
         }
 
         private static bool TryExtractImageBytes(NodeToolValue value, out byte[] bytes)

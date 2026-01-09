@@ -61,7 +61,12 @@ namespace Nodetool.SDK.VL
                     vlSelfFactory => NodesFactory.GetFactory(vlSelfFactory)
                 );
 
-                VlLog.Info("registered factories (Diagnostics, Workflows, Nodes)");
+                // Asset utility nodes (download/cache/upload helpers)
+                appHost?.RegisterNodeFactory("Nodetool.Assets",
+                    vlSelfFactory => AssetNodeFactory.GetFactory(vlSelfFactory)
+                );
+
+                VlLog.Info("registered factories (Diagnostics, Workflows, Nodes, Assets)");
             }
             catch (Exception ex)
             {
