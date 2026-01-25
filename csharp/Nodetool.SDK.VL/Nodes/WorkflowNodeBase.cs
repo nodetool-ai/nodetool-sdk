@@ -272,8 +272,8 @@ namespace Nodetool.SDK.VL.Nodes
                 // Collect inputs from pins (excluding Trigger) and adapt values based on workflow schema.
                 var parameters = await BuildWorkflowParametersAsync(linked.Token);
 
-                // Execute by name (requires ApiBaseUrl on the shared client options)
-                var session = await client.ExecuteWorkflowByNameAsync(_workflow.Name, parameters, linked.Token);
+                // Execute by workflow ID (avoids HTTP lookup overhead)
+                var session = await client.ExecuteWorkflowAsync(_workflow.Id, parameters, linked.Token);
                 _activeSession = session;
 
                 session.ProgressChanged += progress =>
