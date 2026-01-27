@@ -55,7 +55,7 @@ public class NodetoolClient : INodetoolClient
         var response = await _httpClient.GetAsync(NodetoolConstants.Endpoints.NodesMetadata, cancellationToken);
         response.EnsureSuccessStatusCode();
         
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var json = await ReadAsStringAsync(response.Content, cancellationToken);
         var nodeTypes = JsonSerializer.Deserialize<List<NodeMetadataResponse>>(json, _jsonOptions);
         
         _logger?.LogDebug("Retrieved {Count} node types", nodeTypes?.Count ?? 0);
@@ -81,7 +81,7 @@ public class NodetoolClient : INodetoolClient
         var response = await _httpClient.PostAsync(NodetoolConstants.Endpoints.NodeExecute, content, cancellationToken);
         response.EnsureSuccessStatusCode();
         
-        var resultJson = await response.Content.ReadAsStringAsync(cancellationToken);
+        var resultJson = await ReadAsStringAsync(response.Content, cancellationToken);
         var result = JsonSerializer.Deserialize<Dictionary<string, object>>(resultJson, _jsonOptions);
         
         _logger?.LogDebug("Node execution completed with {OutputCount} outputs", result?.Count ?? 0);
@@ -99,7 +99,7 @@ public class NodetoolClient : INodetoolClient
         var response = await _httpClient.GetAsync(NodetoolConstants.Endpoints.Workflows, cancellationToken);
         response.EnsureSuccessStatusCode();
         
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var json = await ReadAsStringAsync(response.Content, cancellationToken);
         var workflowListResponse = JsonSerializer.Deserialize<WorkflowListResponse>(json, _jsonOptions);
         
         _logger?.LogDebug("Retrieved {Count} workflows", workflowListResponse?.Workflows?.Count ?? 0);
@@ -133,7 +133,7 @@ public class NodetoolClient : INodetoolClient
 
         response.EnsureSuccessStatusCode();
         
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var json = await ReadAsStringAsync(response.Content, cancellationToken);
         var workflow = JsonSerializer.Deserialize<WorkflowResponse>(json, _jsonOptions);
         
         _logger?.LogDebug("Retrieved workflow: {Name}", workflow?.Name ?? "Unknown");
@@ -159,7 +159,7 @@ public class NodetoolClient : INodetoolClient
         var response = await _httpClient.PostAsync(endpoint, content, cancellationToken);
         response.EnsureSuccessStatusCode();
         
-        var resultJson = await response.Content.ReadAsStringAsync(cancellationToken);
+        var resultJson = await ReadAsStringAsync(response.Content, cancellationToken);
         var result = JsonSerializer.Deserialize<Dictionary<string, object>>(resultJson, _jsonOptions);
         
         _logger?.LogDebug("Workflow execution completed");
@@ -185,7 +185,7 @@ public class NodetoolClient : INodetoolClient
         var response = await _httpClient.PostAsync(NodetoolConstants.Endpoints.Assets, form, cancellationToken);
         response.EnsureSuccessStatusCode();
         
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var json = await ReadAsStringAsync(response.Content, cancellationToken);
         var asset = JsonSerializer.Deserialize<AssetResponse>(json, _jsonOptions);
         
         _logger?.LogDebug("Asset uploaded: {AssetId}", asset?.Id);
@@ -200,7 +200,7 @@ public class NodetoolClient : INodetoolClient
         var response = await _httpClient.GetAsync(endpoint, cancellationToken);
         response.EnsureSuccessStatusCode();
         
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var json = await ReadAsStringAsync(response.Content, cancellationToken);
         var asset = JsonSerializer.Deserialize<AssetResponse>(json, _jsonOptions);
         
         _logger?.LogDebug("Retrieved asset: {Name}", asset?.Name);
@@ -215,7 +215,7 @@ public class NodetoolClient : INodetoolClient
         var response = await _httpClient.GetAsync(endpoint, cancellationToken);
         response.EnsureSuccessStatusCode();
         
-        return await response.Content.ReadAsStreamAsync(cancellationToken);
+        return await ReadAsStreamAsync(response.Content, cancellationToken);
     }
 
     #endregion
@@ -230,7 +230,7 @@ public class NodetoolClient : INodetoolClient
         var response = await _httpClient.GetAsync(endpoint, cancellationToken);
         response.EnsureSuccessStatusCode();
         
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var json = await ReadAsStringAsync(response.Content, cancellationToken);
         var job = JsonSerializer.Deserialize<JobResponse>(json, _jsonOptions);
         
         _logger?.LogDebug("Retrieved job: {Status}", job?.Status);
@@ -255,4 +255,24 @@ public class NodetoolClient : INodetoolClient
         _httpClient?.Dispose();
         GC.SuppressFinalize(this);
     }
-} 
+
+    private static async Task<string> ReadAsStringAsync(HttpContent content, CancellationToken cancellationToken)
+    {
+#if NET8_0_OR_GREATER
+        return await content.ReadAsStringAsync(cancellationToken);
+#else
+        cancellationToken.ThrowIfCancellationRequested();
+        return await content.ReadAsStringAsync();
+#endif
+    }
+
+    private static async Task<Stream> ReadAsStreamAsync(HttpContent content, CancellationToken cancellationToken)
+    {
+#if NET8_0_OR_GREATER
+        return await content.ReadAsStreamAsync(cancellationToken);
+#else
+        cancellationToken.ThrowIfCancellationRequested();
+        return await content.ReadAsStreamAsync();
+#endif
+    }
+}

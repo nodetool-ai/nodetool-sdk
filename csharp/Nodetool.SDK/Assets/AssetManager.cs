@@ -189,7 +189,12 @@ public class AssetManager : IAssetManager
         }
 
         await using var fileStream = File.Create(targetPath);
+#if NET8_0_OR_GREATER
         await response.Content.CopyToAsync(fileStream, cancellationToken);
+#else
+        cancellationToken.ThrowIfCancellationRequested();
+        await response.Content.CopyToAsync(fileStream);
+#endif
 
         _logger.LogDebug("Asset downloaded: {Uri} -> {Path} ({Size} bytes)", uri, targetPath, new FileInfo(targetPath).Length);
         return targetPath;
@@ -221,7 +226,12 @@ public class AssetManager : IAssetManager
         }
 
         var data = Convert.FromBase64String(base64Data);
+#if NET8_0_OR_GREATER
         await File.WriteAllBytesAsync(targetPath, data, cancellationToken);
+#else
+        cancellationToken.ThrowIfCancellationRequested();
+        await File.WriteAllBytesAsync(targetPath, data);
+#endif
 
         _logger.LogDebug("Data URI saved: {Path} ({Size} bytes)", targetPath, data.Length);
         return targetPath;
@@ -235,7 +245,7 @@ public class AssetManager : IAssetManager
         using var sha = SHA256.Create();
         var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(uri));
         // Take first 8 bytes for a shorter cache key
-        return Convert.ToHexString(hash.AsSpan(0, 8)).ToLowerInvariant();
+        return ToHexString(hash, 8);
     }
 
     private static string GetExtensionFromUri(string uri)
@@ -298,5 +308,16 @@ public class AssetManager : IAssetManager
     {
         var userHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         return Path.Combine(userHome, ".nodetool", "cache", "assets");
+    }
+
+    private static string ToHexString(byte[] bytes, int length)
+    {
+        var count = Math.Min(length, bytes.Length);
+        var sb = new StringBuilder(count * 2);
+        for (var i = 0; i < count; i++)
+        {
+            sb.Append(bytes[i].ToString("x2"));
+        }
+        return sb.ToString();
     }
 }

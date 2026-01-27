@@ -8,7 +8,7 @@ namespace Nodetool.SDK.Configuration;
 /// </summary>
 public sealed class NodeToolClientOptions
 {
-    public required Uri WorkerWebSocketUrl { get; init; }
+    public Uri WorkerWebSocketUrl { get; init; } = null!;
 
     /// <summary>
     /// Optional HTTP API base URL (for discovery endpoints).
@@ -56,5 +56,4 @@ public sealed class NodeToolClientOptions
         return WorkerWebSocketUrl;
     }
 }
-
 

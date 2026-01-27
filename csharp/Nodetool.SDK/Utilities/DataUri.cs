@@ -14,7 +14,7 @@ public static class DataUri
         if (!File.Exists(filePath))
             throw new FileNotFoundException("File not found", filePath);
 
-        var bytes = await File.ReadAllBytesAsync(filePath, cancellationToken);
+        var bytes = await File.ReadAllBytesAsync(filePath);
         var mime = GetMimeTypeFromExtension(Path.GetExtension(filePath));
         var b64 = Convert.ToBase64String(bytes);
         return $"data:{mime};base64,{b64}";
@@ -49,5 +49,4 @@ public static class DataUri
         };
     }
 }
-
 
