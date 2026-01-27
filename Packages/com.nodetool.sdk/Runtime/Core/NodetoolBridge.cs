@@ -116,7 +116,14 @@ namespace Nodetool.SDK.Unity
             };
 
             await session.WaitForCompletionAsync(ct);
-            result.Outputs = session.GetLatestOutputs();
+            result.Outputs ??= new Dictionary<string, NodeToolValue>(StringComparer.Ordinal);
+            foreach (var kvp in session.GetLatestOutputs())
+            {
+                if (!result.Outputs.ContainsKey(kvp.Key))
+                {
+                    result.Outputs[kvp.Key] = kvp.Value;
+                }
+            }
 
             return result;
         }
@@ -130,9 +137,12 @@ namespace Nodetool.SDK.Unity
             });
         }
 
-        private void OnDestroy()
+        private async void OnDestroy()
         {
-            _ = DisconnectAsync();
+            if (_client != null)
+            {
+                await DisconnectAsync();
+            }
         }
     }
 

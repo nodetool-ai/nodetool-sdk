@@ -42,6 +42,11 @@ public sealed class NodeToolClientOptions
 
     public Uri GetNormalizedWorkerWebSocketUrl()
     {
+        if (WorkerWebSocketUrl == null)
+        {
+            throw new InvalidOperationException("WorkerWebSocketUrl must be provided.");
+        }
+
         // Accept http/https inputs as a convenience, but keep caller in control of host/port/path.
         if (WorkerWebSocketUrl.Scheme == "http")
         {
@@ -56,4 +61,3 @@ public sealed class NodeToolClientOptions
         return WorkerWebSocketUrl;
     }
 }
-

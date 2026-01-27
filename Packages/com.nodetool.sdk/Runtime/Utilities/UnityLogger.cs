@@ -13,7 +13,7 @@ namespace Nodetool.SDK.Unity
             _category = category;
         }
 
-        public IDisposable BeginScope<TState>(TState state) => null;
+        public IDisposable BeginScope<TState>(TState state) => NullScope.Instance;
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
@@ -41,6 +41,15 @@ namespace Nodetool.SDK.Unity
                     Debug.Log($"[{_category}] {message}");
                     break;
             }
+        }
+    }
+
+    internal sealed class NullScope : IDisposable
+    {
+        public static NullScope Instance { get; } = new();
+
+        public void Dispose()
+        {
         }
     }
 }

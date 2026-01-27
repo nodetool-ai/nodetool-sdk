@@ -6,23 +6,33 @@ namespace Nodetool.SDK.Unity
 {
     public static class UnityAudioLoader
     {
-        public static async Task<AudioClip> LoadAudioClipAsync(string localPath, AudioType audioType = AudioType.UNKNOWN)
+        public static Task<AudioClip> LoadAudioClipAsync(string localPath, AudioType audioType = AudioType.UNKNOWN)
         {
             var uri = new System.Uri(localPath).AbsoluteUri;
-            using var request = UnityWebRequestMultimedia.GetAudioClip(uri, audioType);
+            var request = UnityWebRequestMultimedia.GetAudioClip(uri, audioType);
+            var tcs = new TaskCompletionSource<AudioClip>();
+
             var operation = request.SendWebRequest();
-
-            while (!operation.isDone)
+            operation.completed += _ =>
             {
-                await Task.Yield();
-            }
+                try
+                {
+                    if (request.result != UnityWebRequest.Result.Success)
+                    {
+                        tcs.TrySetException(new UnityException(request.error));
+                    }
+                    else
+                    {
+                        tcs.TrySetResult(DownloadHandlerAudioClip.GetContent(request));
+                    }
+                }
+                finally
+                {
+                    request.Dispose();
+                }
+            };
 
-            if (request.result != UnityWebRequest.Result.Success)
-            {
-                throw new UnityException(request.error);
-            }
-
-            return DownloadHandlerAudioClip.GetContent(request);
+            return tcs.Task;
         }
     }
 }

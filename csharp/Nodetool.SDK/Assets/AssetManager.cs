@@ -245,7 +245,7 @@ public class AssetManager : IAssetManager
         using var sha = SHA256.Create();
         var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(uri));
         // Take first 8 bytes for a shorter cache key
-        return ToHexString(hash, 8);
+        return ToHexStringCompat(hash, 8);
     }
 
     private static string GetExtensionFromUri(string uri)
@@ -310,7 +310,7 @@ public class AssetManager : IAssetManager
         return Path.Combine(userHome, ".nodetool", "cache", "assets");
     }
 
-    private static string ToHexString(byte[] bytes, int length)
+    private static string ToHexStringCompat(byte[] bytes, int length)
     {
         var count = Math.Min(length, bytes.Length);
         var sb = new StringBuilder(count * 2);
