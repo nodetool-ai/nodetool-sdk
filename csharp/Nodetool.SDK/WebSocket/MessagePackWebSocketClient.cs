@@ -20,6 +20,10 @@ public class MessagePackWebSocketClient : IDisposable
     private readonly SemaphoreSlim _sendSemaphore = new(1, 1);
     private bool _disposed = false;
     private readonly MessagePackSerializerOptions _options;
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
 
     /// <summary>
     /// Event fired when a message is received and deserialized.
@@ -316,13 +320,22 @@ public class MessagePackWebSocketClient : IDisposable
             {
                 // Try MessagePack first
                 message = await TryDeserializeMessagePack(data);
+                if (message == null && LooksLikeUtf8Json(data))
+                {
+                    // Some servers may send JSON payloads in binary frames; accept that as a fallback.
+                    var jsonText = Encoding.UTF8.GetString(data);
+                    message = TryDeserializeJson(jsonText);
+                }
             }
             else if (messageType == WebSocketMessageType.Text)
             {
-                // We run MessagePack-only for workflow execution; text frames are unexpected.
                 var jsonText = Encoding.UTF8.GetString(data);
-                _logger.LogWarning("Received unexpected text WebSocket message: {Text}", jsonText);
-                message = new Dictionary<string, object?> { ["type"] = "text", ["text"] = jsonText };
+                message = TryDeserializeJson(jsonText);
+                if (message == null)
+                {
+                    _logger.LogWarning("Failed to deserialize JSON WebSocket message: {Text}", jsonText);
+                    message = new Dictionary<string, object?> { ["type"] = "text", ["text"] = jsonText };
+                }
             }
 
             if (message != null)
@@ -401,6 +414,63 @@ public class MessagePackWebSocketClient : IDisposable
         {
             _logger.LogDebug(ex, "Failed to deserialize MessagePack data");
             return Task.FromResult<object?>(null);
+        }
+    }
+
+    private static bool LooksLikeUtf8Json(ReadOnlySpan<byte> data)
+    {
+        var max = Math.Min(data.Length, 64);
+        for (var i = 0; i < max; i++)
+        {
+            var b = data[i];
+            if (b is (byte)' ' or (byte)'\t' or (byte)'\r' or (byte)'\n')
+            {
+                continue;
+            }
+            return b is (byte)'{' or (byte)'[';
+        }
+        return false;
+    }
+
+    private object? TryDeserializeJson(string jsonText)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(jsonText);
+
+            if (doc.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return new Dictionary<string, object?> { ["type"] = "json", ["text"] = jsonText };
+            }
+
+            if (!doc.RootElement.TryGetProperty("type", out var typeProp) || typeProp.ValueKind != JsonValueKind.String)
+            {
+                return new Dictionary<string, object?> { ["type"] = "json", ["text"] = jsonText };
+            }
+
+            var typeStr = typeProp.GetString();
+            if (string.IsNullOrWhiteSpace(typeStr))
+            {
+                return new Dictionary<string, object?> { ["type"] = "json", ["text"] = jsonText };
+            }
+
+            return typeStr switch
+            {
+                "job_update" => JsonSerializer.Deserialize<JobUpdate>(jsonText, JsonOptions),
+                "node_update" => JsonSerializer.Deserialize<NodeUpdate>(jsonText, JsonOptions),
+                "output_update" => JsonSerializer.Deserialize<OutputUpdate>(jsonText, JsonOptions),
+                "preview_update" => JsonSerializer.Deserialize<PreviewUpdate>(jsonText, JsonOptions),
+                "progress_update" => JsonSerializer.Deserialize<ProgressUpdate>(jsonText, JsonOptions),
+                "node_progress" => JsonSerializer.Deserialize<NodeProgress>(jsonText, JsonOptions),
+                "connection_status" => JsonSerializer.Deserialize<ConnectionStatus>(jsonText, JsonOptions),
+                "error" => JsonSerializer.Deserialize<ErrorMessage>(jsonText, JsonOptions),
+                _ => new Dictionary<string, object?> { ["type"] = typeStr, ["text"] = jsonText },
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to deserialize JSON WebSocket data");
+            return null;
         }
     }
 

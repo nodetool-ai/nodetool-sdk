@@ -298,6 +298,12 @@ public class RunJobRequest
     [Key("type")]
     public string Type { get; set; } = "run_job_request";
 
+    // Optional client-provided job id. If set, the server will use this as the job_id.
+    // This allows clients to correlate sessions reliably even when multiple run_job requests
+    // are in flight concurrently.
+    [Key("job_id")]
+    public string? JobId { get; set; } = null;
+
     [Key("job_type")]
     public string JobType { get; set; } = "workflow";
 

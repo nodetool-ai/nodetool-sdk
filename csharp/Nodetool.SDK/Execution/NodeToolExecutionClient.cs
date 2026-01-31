@@ -138,8 +138,9 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         Dictionary<string, object>? inputs = null,
         CancellationToken cancellationToken = default)
     {
-        // Server assigns job_id; we start a pending session keyed by workflow_id.
-        var session = CreatePendingSession(workflowId);
+        // Prefer client-provided job_id for deterministic correlation under concurrency.
+        var jobId = Guid.NewGuid().ToString();
+        var session = CreateSession(jobId);
 
         var command = new WebSocketCommand
         {
@@ -147,6 +148,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             type = "run_job",
             data = new RunJobRequest
             {
+                JobId = jobId,
                 WorkflowId = workflowId,
                 Params = inputs,
                 JobType = "workflow",
@@ -252,9 +254,9 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         Dictionary<string, object>? inputs = null,
         CancellationToken cancellationToken = default)
     {
-        // Use a non-empty pending key so we can bind the first job_update even if the server doesn't echo workflow_id.
-        var pendingKey = Guid.NewGuid().ToString();
-        var session = CreatePendingSession(workflowId: pendingKey);
+        var workflowId = Guid.NewGuid().ToString();
+        var jobId = Guid.NewGuid().ToString();
+        var session = CreateSession(jobId);
 
         var command = new WebSocketCommand
         {
@@ -262,7 +264,8 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             type = "run_job",
             data = new RunJobRequest
             {
-                WorkflowId = pendingKey,
+                JobId = jobId,
+                WorkflowId = workflowId,
                 Graph = graph,
                 Params = inputs,
                 JobType = "workflow",
@@ -295,8 +298,8 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     {
         // Create a simple graph with just this node
         var nodeId = Guid.NewGuid().ToString();
-        // Use nodeId as the pending key for binding job updates.
-        var session = CreatePendingSession(workflowId: nodeId);
+        var jobId = Guid.NewGuid().ToString();
+        var session = CreateSession(jobId);
         var graph = new Graph
         {
             nodes = new List<GraphNode>
@@ -317,6 +320,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             type = "run_job",
             data = new RunJobRequest
             {
+                JobId = jobId,
                 WorkflowId = nodeId,
                 Graph = graph,
                 JobType = "workflow",
