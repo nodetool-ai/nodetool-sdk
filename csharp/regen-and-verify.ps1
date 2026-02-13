@@ -1,7 +1,8 @@
 param(
     [switch]$SkipGitDiff,
     [switch]$SkipGeneration,
-    [switch]$IncludeVL
+    [switch]$IncludeVL,
+    [string]$OutputDir
 )
 
 Set-StrictMode -Version Latest
@@ -12,8 +13,17 @@ $csharpDir = $PSScriptRoot
 $typesDir = Join-Path $csharpDir "Nodetool.Types"
 $sdkDir = Join-Path $csharpDir "Nodetool.SDK"
 
+if ([string]::IsNullOrWhiteSpace($OutputDir)) {
+    $OutputDir = Join-Path $csharpDir "_vvvv_builds\Release\net8.0"
+}
+$resolvedOutputDir = [System.IO.Path]::GetFullPath($OutputDir)
+if (-not (Test-Path $resolvedOutputDir)) {
+    New-Item -ItemType Directory -Path $resolvedOutputDir -Force | Out-Null
+}
+
 Write-Host "=== NodeTool C# regen + verify ===" -ForegroundColor Cyan
 Write-Host "Repo root: $root" -ForegroundColor Gray
+Write-Host "Build output: $resolvedOutputDir" -ForegroundColor Gray
 
 if (-not (Test-Path $typesDir)) { throw "Missing: $typesDir" }
 if (-not (Test-Path $sdkDir)) { throw "Missing: $sdkDir" }
@@ -69,18 +79,18 @@ if (-not $SkipGitDiff) {
 Write-Host ""
 Write-Host ">>> Building C# projects..." -ForegroundColor Cyan
 
-dotnet build (Join-Path $typesDir "Nodetool.Types.csproj") -c Release
-dotnet build (Join-Path $sdkDir "Nodetool.SDK.csproj") -c Release
-dotnet build (Join-Path $sdkDir "TestConsole\Nodetool.SDK.TestConsole.csproj") -c Release
+dotnet build (Join-Path $typesDir "Nodetool.Types.csproj") -c Release -o $resolvedOutputDir
+dotnet build (Join-Path $sdkDir "Nodetool.SDK.csproj") -c Release -o $resolvedOutputDir
+dotnet build (Join-Path $sdkDir "TestConsole\Nodetool.SDK.TestConsole.csproj") -c Release -o $resolvedOutputDir
 
 if ($IncludeVL) {
     Write-Host ""
     Write-Host ">>> Building VL project..." -ForegroundColor Cyan
     $vlDir = Join-Path $csharpDir "Nodetool.SDK.VL"
-    dotnet build (Join-Path $vlDir "Nodetool.SDK.VL.csproj") -c Release
+    dotnet build (Join-Path $vlDir "Nodetool.SDK.VL.csproj") -c Release -o $resolvedOutputDir
 }
 
 Write-Host ""
-Write-Host "✅ Done" -ForegroundColor Green
+Write-Host "Done" -ForegroundColor Green
 
 

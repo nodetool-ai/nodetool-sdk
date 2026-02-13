@@ -1,0 +1,133 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document xmlns:p="property" xmlns:r="reflection" Id="NCB2fGfmHSWPOjyXoe03NK" LanguageVersion="2025.7.1-0013-g8fcece0df9" Version="0.128">
+  <NugetDependency Id="AjcOtGJSkd3LgbbSNHMTwq" Location="VL.CoreLib" Version="2025.7.1-0013-g8fcece0df9" />
+  <Patch Id="E6J6ahaS2UpN2ZM56ii3wP">
+    <Canvas Id="EtpN4aPz11MMwluUZuKDq2" DefaultCategory="Main" BordersChecked="false" CanvasType="FullCategory" />
+    <!--
+
+    ************************ Application ************************
+
+-->
+    <Node Name="Application" Bounds="100,100" Id="KDG4HIUSpNVMVrjVQuA3oB">
+      <p:NodeReference>
+        <Choice Kind="ContainerDefinition" Name="Process" />
+        <CategoryReference Kind="Category" Name="Primitive" />
+      </p:NodeReference>
+      <Patch Id="D2xhfIeDbwtNXLaQwdwih0">
+        <Canvas Id="J27TOUT9mMHOoZqQjeEBnQ" CanvasType="Group">
+          <Node Bounds="82,218,172,19" Id="GF7asS7bECcOQ27XAwacmB">
+            <p:NodeReference LastCategoryFullName="Nodetool" LastDependency="Nodetool">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Nodetool" NeedsToBeDirectParent="true" />
+              <Choice Kind="ProcessAppFlag" Name="Connect" />
+            </p:NodeReference>
+            <Pin Id="Nmjq8TEsiVsNXVSWsywQ8Q" Name="BaseUrl" Kind="InputPin" />
+            <Pin Id="SDHAtSPFo5ZQOcFgqd2fkP" Name="ApiKey" Kind="InputPin" DefaultValue="local" />
+            <Pin Id="LAK6rCX2NP1PbU7KRnBNrr" Name="AutoReconnect" Kind="InputPin" />
+            <Pin Id="SonLLMNYG7ZNWm0K4OHK9G" Name="Reconnect" Kind="InputPin" DefaultValue="False" />
+            <Pin Id="JQDKxrf9zz6M7FqCj6Anm7" Name="IsConnected" Kind="OutputPin" />
+            <Pin Id="IIXeoddy3DWMdwReut0S2n" Name="Status" Kind="OutputPin" />
+            <Pin Id="SAtsg4SFwv0MT1CtdKkhMp" Name="LastError" Kind="OutputPin" />
+          </Node>
+          <Pad Id="IfYglfAdcmsObaiyOMjG1x" Comment="IsConnected" Bounds="84,306,35,35" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="EvqvvUgVvzbNPO3SCGnqdB" Comment="BaseUrl" Bounds="84,107,165,15" ShowValueBox="true" isIOBox="true" Value="ws://localhost:7777">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="D3q1l43x6PSOuV9xsEsH8p" Comment="Reconnect" Bounds="251,158,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="RoS9wYkgZM9QVRx3XY1CMr" Comment="AutoReconnect" Bounds="195,134,35,35" ShowValueBox="true" isIOBox="true" Value="True">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="TEwQZYzqAuCNXGvchCLFoc" Comment="Status" Bounds="168,287,78,15" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="EgPWy891nvhOQhgeTLhCWh" Comment="LastError" Bounds="251,263,35,15" ShowValueBox="true" isIOBox="true" />
+          <Node Bounds="594,170,105,19" Id="OeSrco6K5bHLUxKy3GiF4G">
+            <p:NodeReference LastCategoryFullName="Nodetool Nodes.Math" LastDependency="Nodetool.Nodes">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Nodetool Nodes" />
+              <Choice Kind="ProcessNode" Name="Add" />
+            </p:NodeReference>
+            <Pin Id="STXi39xMa16L3VsvT1PewL" Name="Execute" Kind="InputPin" />
+            <Pin Id="Dzi8BhopQXlLoCRKiMtVxs" Name="Cancel" Kind="InputPin" />
+            <Pin Id="HAxRr3h0B7iNvOCjXSKuhg" Name="AutoRun" Kind="InputPin" />
+            <Pin Id="OxSVXf9fFtVLlhu4D1qZJX" Name="RestartOnChange" Kind="InputPin" />
+            <Pin Id="G5zaNNSaS6FLx5skR11g2N" Name="a" Kind="InputPin" />
+            <Pin Id="NBVJ0z0D0l0OEaHCxRNXPp" Name="b" Kind="InputPin" />
+            <Pin Id="LmRiiZuclmiLIfP4kXmeQy" Name="output" Kind="OutputPin" />
+            <Pin Id="Qr1vfLtVJREOWTE1p4fpmb" Name="IsRunning" Kind="OutputPin" />
+            <Pin Id="Vp2IQRBYF1wQEqhzfDu0VN" Name="On Update" Kind="OutputPin" />
+            <Pin Id="NmuCHWKoevJM7b9Q0HgWgQ" Name="Error" Kind="OutputPin" />
+            <Pin Id="QVugefD2IU2NweMh5lf5jR" Name="Debug" Kind="OutputPin" IsHidden="true" />
+          </Node>
+          <Pad Id="FMMdoqxPiMDL78w67iS1Ph" Comment="a" Bounds="676,119,35,15" ShowValueBox="true" isIOBox="true" Value="1">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Float32" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="KHmFRaB0eHqMg4jV0yQA1Z" Comment="b" Bounds="696,149,35,15" ShowValueBox="true" isIOBox="true" Value="1">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="Float32" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="SDALdl7A48PNelUbUZHFBO" Comment="Error" Bounds="696,219,35,15" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="HSwhZ6pvd6vLi3EMN1H651" Comment="output" Bounds="596,259,35,15" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="Uk8zbukXGAmNAl9sU0qQ9N" Comment="Execute" Bounds="596,98,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Overlay Id="GyfLpTmIl6sPiBPnrQAg1d" Name="ADD" Bounds="556,48,244,264" />
+          <Pad Id="U2g4aonH1TpL7rpelIkW2a" Bounds="11,-214,796,197" ShowValueBox="true" isIOBox="true" Value="1: start nodetool app&#xD;&#xA;2: Dependencies: add / replace the 3 dll dependencie &#xD;&#xA;3: Dependencies &gt; Node Factories: enable NodeFactories for workflows&#xD;&#xA;4: open node menu and search for nodetool.&#xD;&#xA;&#xD;&#xA;'Nodetool Workflows' should show your workflows.&#xD;&#xA;">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">14</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Overlay Id="DOPkqhnqT3iO80Vy3d04Rr" Name="CONNECT TO NODETOOL" Bounds="48,48,388,318" />
+        </Canvas>
+        <Patch Id="D93Oro2VoNHM9jH7yxrNBx" Name="Create" />
+        <Patch Id="KhGcMRTy6gYMHnxrRsZAUO" Name="Update" />
+        <ProcessDefinition Id="KXQOHM5mWiNMw1qCOSraC9">
+          <Fragment Id="DoHo53Zwvx8Nt1jJN8X6oh" Patch="D93Oro2VoNHM9jH7yxrNBx" Enabled="true" />
+          <Fragment Id="RB85JYPxmOdMTSsz9u7yNP" Patch="KhGcMRTy6gYMHnxrRsZAUO" Enabled="true" />
+        </ProcessDefinition>
+        <Link Id="LgHTxASPLTSQMz4tgcDFbu" Ids="JQDKxrf9zz6M7FqCj6Anm7,IfYglfAdcmsObaiyOMjG1x" />
+        <Link Id="GiHkAIVVP3PMnq21VeXcFA" Ids="D3q1l43x6PSOuV9xsEsH8p,SonLLMNYG7ZNWm0K4OHK9G" />
+        <Link Id="F2tEiFVQ4kFMuhWy1HD8zu" Ids="RoS9wYkgZM9QVRx3XY1CMr,LAK6rCX2NP1PbU7KRnBNrr" />
+        <Link Id="IC1R2Ms3MS4OuVMDhi2dKe" Ids="IIXeoddy3DWMdwReut0S2n,TEwQZYzqAuCNXGvchCLFoc" />
+        <Link Id="Ge0zoHZLuj4Mk0dK20bXfl" Ids="SAtsg4SFwv0MT1CtdKkhMp,EgPWy891nvhOQhgeTLhCWh" />
+        <Link Id="F1qwDdaKiiYOc9g8XzRVbk" Ids="EvqvvUgVvzbNPO3SCGnqdB,Nmjq8TEsiVsNXVSWsywQ8Q" />
+        <Link Id="EANR3yvJ0cGN0ahKhOMbpy" Ids="FMMdoqxPiMDL78w67iS1Ph,G5zaNNSaS6FLx5skR11g2N" />
+        <Link Id="AwoqHTGNTK4NWKV5QNopOg" Ids="KHmFRaB0eHqMg4jV0yQA1Z,NBVJ0z0D0l0OEaHCxRNXPp" />
+        <Link Id="TaJqWgmp1gXLn3qOwYiHCH" Ids="NmuCHWKoevJM7b9Q0HgWgQ,SDALdl7A48PNelUbUZHFBO" />
+        <Link Id="PGvzsBraebDMddB0F7WAyD" Ids="LmRiiZuclmiLIfP4kXmeQy,HSwhZ6pvd6vLi3EMN1H651" />
+        <Link Id="VryOjsiYj2HQB4ofOmDU8K" Ids="Uk8zbukXGAmNAl9sU0qQ9N,STXi39xMa16L3VsvT1PewL" />
+      </Patch>
+    </Node>
+  </Patch>
+  <NodeFactoryDependency Id="E4Q7DLQAWtsOZpwrPZFy9Y" Location="Nodetool" />
+  <NodeFactoryDependency Id="P0nbSbPTb1IQNgccPQYXyx" Location="Nodetool.Nodes" />
+  <NodeFactoryDependency Id="VL63SSWV5xML8IPZVDdxRD" Location="Nodetool.Workflows" />
+  <NugetDependency Id="TRd777YKFloPi2V7y0eZAs" Location="VL.Skia" Version="2025.7.1-0013-g8fcece0df9" />
+  <PlatformDependency Id="BPcWvVDOKNULg5bEi9zY1l" Location="../../csharp/_vvvv_builds/Release/net8.0/Nodetool.SDK.VL.dll" />
+  <PlatformDependency Id="FsJJeGGB15JL8YSP3JjClX" Location="../../csharp/_vvvv_builds/Release/net8.0/Nodetool.Types.dll" />
+  <PlatformDependency Id="Bhim1vPAn7MN1daTtPX8Xf" Location="../../csharp/_vvvv_builds/Release/net8.0/Nodetool.SDK.dll" />
+</Document>

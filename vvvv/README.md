@@ -1,30 +1,43 @@
-# VL.NewLibrary.Template
+# NodeTool SDK for vvvv
 
-- [ ] A clear and concise description of what this package is and does, also what problem it solves.
-- [ ] In case this is a wrapper, links to original code and which version of it is used
-- [ ] In case this is for a device/protocol, links to the device/protocol-specs
-- [ ] Required dependencies/drivers to download and install in the getting started section below
-- [ ] If available, links to documentation (other than helppatches), tutorial videos, blog posts, ...
-- [ ] Note that you can also [include images](https://devblogs.microsoft.com/nuget/add-a-readme-to-your-nuget-package/#markdown-and-image-support)!
-- [ ] Mention any limitations
+This folder contains VL documents and help patches for using NodeTool from vvvv gamma.
 
-For use with vvvv, the visual live-programming environment for .NET: http://vvvv.org
+## Build and output
 
-## Getting started
-- Install as [described here](https://thegraybook.vvvv.org/reference/hde/managing-nugets.html) via commandline:
+Build from `csharp/`:
 
-    `nuget install VL.NewLibrary.Template -pre`
+```powershell
+.\regen-and-verify.ps1 -IncludeVL -SkipGeneration -SkipGitDiff
+```
 
-- Usage examples and more information are included in the pack and can be found via the [Help Browser](https://thegraybook.vvvv.org/reference/hde/findinghelp.html)
+Default output directory:
 
-## Contributing
-- Report issues on [the vvvv forum](https://forum.vvvv.org/c/vvvv-gamma/28)
-- For custom development requests, please [get in touch](mailto:devvvvs@vvvv.org)
-- When making a pull-request, please make sure to read the general [guidelines on contributing to vvvv libraries](https://thegraybook.vvvv.org/reference/extending/contributing.html)
+- `csharp/_vvvv_builds/Release/net8.0/`
 
-## Credits
-Links to libraries this is based on
+You can override output:
 
-## Sponsoring
-Development of this library was partially sponsored by:  
-* 
+```powershell
+.\regen-and-verify.ps1 -IncludeVL -OutputDir "C:\path\to\output"
+```
+
+## vvvv setup
+
+Use Platform Dependencies and reference:
+
+- `Nodetool.SDK.VL.dll`
+- `Nodetool.SDK.dll`
+- `Nodetool.Types.dll`
+
+from `csharp/_vvvv_builds/Release/net8.0/`.
+
+## Connection defaults
+
+Electron NodeTool app starts backend on localhost and tries port `7777` first.
+If busy, it picks the next free port.
+
+- Worker WebSocket: `ws://127.0.0.1:7777/ws` (or selected port)
+- HTTP API: `http://127.0.0.1:7777` (or selected port)
+
+## Help patches
+
+See `vvvv/help/` for example patches and diagnostics.

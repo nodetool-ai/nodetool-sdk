@@ -17,3 +17,5 @@ csharp/Nodetool.SDK.VL/*.deps.json
 # Agent
 __PLANS__/
 __pycache__/
+
+_vvvv_builds/
