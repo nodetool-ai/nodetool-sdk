@@ -18,6 +18,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     private readonly NodeToolClientOptions _options;
     private readonly ConcurrentDictionary<string, ExecutionSession> _sessions;
     private readonly ConcurrentDictionary<string, ExecutionSession> _pendingByWorkflowId;
+    private readonly ConcurrentDictionary<string, string> _workflowIdsByName;
     private readonly Uri _serverUri;
     private readonly string? _apiKey;
     private bool _disposed;
@@ -65,6 +66,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<NodeToolExecutionClient>.Instance;
         _sessions = new ConcurrentDictionary<string, ExecutionSession>();
         _pendingByWorkflowId = new ConcurrentDictionary<string, ExecutionSession>();
+        _workflowIdsByName = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         // Create WebSocket client
         _webSocketClient = new MessagePackWebSocketClient(
@@ -188,30 +190,8 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
                 "ExecuteWorkflowByNameAsync requires NodeToolClientOptions.ApiBaseUrl to be set (HTTP discovery).");
         }
 
-        using var api = new NodetoolClient();
-        var apiKey = _apiKey ?? _options.AuthToken;
-        api.Configure(_options.ApiBaseUrl.ToString().TrimEnd('/'), apiKey: apiKey);
-
-        var workflows = await api.GetWorkflowsAsync(cancellationToken);
-        var matches = workflows
-            .Where(w => string.Equals(w.Name, workflowName, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        if (matches.Count == 0)
-        {
-            var available = string.Join(", ", workflows.Select(w => w.Name));
-            throw new InvalidOperationException($"Workflow not found: '{workflowName}'. Available: {available}");
-        }
-
-        if (matches.Count > 1)
-        {
-            // Avoid silently picking a random one when names collide.
-            var ids = string.Join(", ", matches.Select(w => $"{w.Id} ({w.Name})"));
-            throw new InvalidOperationException(
-                $"Multiple workflows named '{workflowName}' found: {ids}. Use ExecuteWorkflowAsync(workflowId, ...) to disambiguate.");
-        }
-
-        return await ExecuteWorkflowAsync(matches[0].Id, inputs, cancellationToken);
+        var workflowId = await ResolveWorkflowIdByNameAsync(workflowName, cancellationToken);
+        return await ExecuteWorkflowAsync(workflowId, inputs, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -376,6 +356,42 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         return session;
     }
 
+    private async Task<string> ResolveWorkflowIdByNameAsync(string workflowName, CancellationToken cancellationToken)
+    {
+        if (_workflowIdsByName.TryGetValue(workflowName, out var cachedWorkflowId))
+        {
+            _logger.LogDebug("Using cached workflow ID for '{WorkflowName}': {WorkflowId}", workflowName, cachedWorkflowId);
+            return cachedWorkflowId;
+        }
+
+        using var api = new NodetoolClient();
+        var apiKey = _apiKey ?? _options.AuthToken;
+        api.Configure(_options.ApiBaseUrl!.ToString().TrimEnd('/'), apiKey: apiKey);
+
+        var workflows = await api.GetWorkflowsAsync(cancellationToken);
+        var matches = workflows
+            .Where(w => string.Equals(w.Name, workflowName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (matches.Count == 0)
+        {
+            var available = string.Join(", ", workflows.Select(w => w.Name));
+            throw new InvalidOperationException($"Workflow not found: '{workflowName}'. Available: {available}");
+        }
+
+        if (matches.Count > 1)
+        {
+            // Avoid silently picking a random one when names collide.
+            var ids = string.Join(", ", matches.Select(w => $"{w.Id} ({w.Name})"));
+            throw new InvalidOperationException(
+                $"Multiple workflows named '{workflowName}' found: {ids}. Use ExecuteWorkflowAsync(workflowId, ...) to disambiguate.");
+        }
+
+        var resolvedWorkflowId = matches[0].Id;
+        _workflowIdsByName[workflowName] = resolvedWorkflowId;
+        return resolvedWorkflowId;
+    }
+
     private void OnMessageReceived(object? sender, MessageReceivedEventArgs args)
     {
         try
@@ -518,6 +534,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             }
             _sessions.Clear();
             _pendingByWorkflowId.Clear();
+            _workflowIdsByName.Clear();
         }
     }
 }

@@ -1,5 +1,6 @@
 using Nodetool.SDK.Configuration;
 using Nodetool.SDK.Execution;
+using Nodetool.SDK.VL.Factories;
 using Nodetool.SDK.VL.Utilities;
 
 namespace Nodetool.SDK.VL.Services;
@@ -86,6 +87,10 @@ public static class NodeToolClientProvider
     {
         lock (_lock)
         {
+            var configurationChanged =
+                !string.Equals(serverUrl, _currentUrl, StringComparison.Ordinal) ||
+                !string.Equals(apiKey, _currentApiKey, StringComparison.Ordinal);
+
             if (disposeExistingClient && _client != null)
             {
                 try
@@ -114,6 +119,12 @@ public static class NodeToolClientProvider
             {
                 Status = "error";
                 LastError = $"Invalid URL: {ex.Message}";
+            }
+
+            if (configurationChanged)
+            {
+                WorkflowNodeFactory.Reset();
+                NodesFactory.Reset();
             }
 
             StatusChanged?.Invoke(Status);
@@ -222,6 +233,8 @@ public static class NodeToolClientProvider
             }
             Status = "disconnected";
             LastError = null;
+            WorkflowNodeFactory.Reset();
+            NodesFactory.Reset();
             StatusChanged?.Invoke(Status);
         }
     }

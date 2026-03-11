@@ -31,6 +31,18 @@ namespace Nodetool.SDK.VL.Factories
         public static string CurrentApiStatusMessage => _apiStatusMessage;
         public static string CurrentProcessingSummary => _processingSummary;
 
+        public static void Reset()
+        {
+            lock (_lock)
+            {
+                _factoryImpl = null;
+                _isInitialized = false;
+                _fetchedNodes = ImmutableList<NodeMetadataResponse>.Empty;
+                _apiStatusMessage = "API data not fetched.";
+                _processingSummary = "Node processing summary not yet available.";
+            }
+        }
+
         /// <summary>
         /// Gets the VL node factory, initializing if necessary
         /// </summary>
