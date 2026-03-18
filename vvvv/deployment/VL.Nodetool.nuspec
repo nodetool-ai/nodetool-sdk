@@ -15,19 +15,15 @@
     <icon>icon\nugeticon.png</icon>
     <dependencies>
       <group targetFramework="net8.0">
-        <dependency id="VL.Core" version="2024.6.7" />
+        <dependency id="VL.Core" version="2025.7.0" />
         <dependency id="MessagePack" version="3.0.300" />
         <dependency id="Microsoft.Extensions.Logging" version="8.0.0" />
         <dependency id="SkiaSharp" version="2.88.8" />
       </group>
+
     </dependencies>
   </metadata>
   <files>
-    <!-- Main VL documents (package root) -->
-    <file src="..\tests\VL.Nodetool.vl" target="" />
-    <file src="..\tests\VL.NodetoolWorkflows.vl" target="" />
-    <file src="..\tests\VL.NodetoolNodes.vl" target="" />
-
     <!-- Help patches -->
     <file src="..\help\**" target="help\" />
 
