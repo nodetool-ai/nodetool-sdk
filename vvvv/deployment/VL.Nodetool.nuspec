@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/10/nuspec.xsd">
+  <metadata>
+    <id>VL.Nodetool</id>
+    <version>0.1.1</version>
+    <title>VL.Nodetool</title>
+    <authors>Nodetool Contributors</authors>
+    <projectUrl>https://github.com/nodetool-ai/nodetool</projectUrl>
+    <repository type="git" url="https://github.com/nodetool-ai/nodetool-sdk.git" />
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Nodetool integration for vvvv — run AI workflows from VL via WebSocket. Supports streaming text, images, and arbitrary node outputs.</description>
+    <tags>VL AI workflow nodetool</tags>
+    <license type="expression">AGPL-3.0-only</license>
+    <readme>docs\README.md</readme>
+    <icon>icon\nugeticon.png</icon>
+    <dependencies>
+      <group targetFramework="net8.0">
+        <dependency id="VL.Core" version="2024.6.7" />
+        <dependency id="MessagePack" version="3.0.300" />
+        <dependency id="Microsoft.Extensions.Logging" version="8.0.0" />
+        <dependency id="Microsoft.Extensions.Logging.Console" version="8.0.0" />
+        <dependency id="Microsoft.Extensions.DependencyInjection" version="8.0.0" />
+        <dependency id="SkiaSharp" version="2.88.8" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <!-- Main VL documents (package root) -->
+    <file src="..\tests\VL.Nodetool.vl" target="" />
+    <file src="..\tests\VL.NodetoolWorkflows.vl" target="" />
+    <file src="..\tests\VL.NodetoolNodes.vl" target="" />
+
+    <!-- Help patches -->
+    <file src="..\help\**" target="help\" />
+
+    <!-- Managed DLLs -->
+    <file src="..\..\csharp\Nodetool.SDK.VL\bin\Release\net8.0\Nodetool.SDK.VL.dll" target="lib\net8.0\" />
+    <file src="..\..\csharp\Nodetool.SDK.VL\bin\Release\net8.0\Nodetool.SDK.dll" target="lib\net8.0\" />
+    <file src="..\..\csharp\Nodetool.SDK.VL\bin\Release\net8.0\Nodetool.Types.dll" target="lib\net8.0\" />
+
+    <!-- Package icon (uncomment when icon is available) -->
+    <file src="nugeticon.png" target="icon\" />
+
+    <!-- README -->
+    <file src="..\README.md" target="docs\" />
+  </files>
+</package>

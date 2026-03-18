@@ -19,3 +19,5 @@ __PLANS__/
 __pycache__/
 
 _vvvv_builds/
+
+nuget.exe

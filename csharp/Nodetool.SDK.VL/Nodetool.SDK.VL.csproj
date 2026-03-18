@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Nodetool.SDK\Nodetool.SDK.csproj" />
+    <ProjectReference Include="..\Nodetool.SDK\Nodetool.SDK.csproj" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
@@ -34,5 +34,16 @@
     <Using Include="VL.Core.CompilerServices" />
     <Using Include="VL.Core.Import" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeProjectReferenceDlls</TargetsForTfmSpecificBuildOutput>
+  </PropertyGroup>
+
+  <Target Name="IncludeProjectReferenceDlls">
+    <ItemGroup>
+      <BuildOutputInPackage Include="$(OutputPath)Nodetool.SDK.dll" />
+      <BuildOutputInPackage Include="$(OutputPath)Nodetool.Types.dll" />
+    </ItemGroup>
+  </Target>
 
 </Project> 

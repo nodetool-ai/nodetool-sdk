@@ -5,7 +5,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <PackageId>Nodetool.SDK</PackageId>
     <Version>0.1.1</Version>
     <Description>C# SDK for NodeTool with WebSocket communication and type support</Description>
@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../Nodetool.Types/Nodetool.Types.csproj" />
+    <ProjectReference Include="../Nodetool.Types/Nodetool.Types.csproj" PrivateAssets="all" />
   </ItemGroup>
 
 </Project> 
