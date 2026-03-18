@@ -15,7 +15,7 @@
       </p:NodeReference>
       <Patch Id="D2xhfIeDbwtNXLaQwdwih0">
         <Canvas Id="J27TOUT9mMHOoZqQjeEBnQ" CanvasType="Group">
-          <Node Bounds="137,272,172,19" Id="PDgH6KYrrDBQF44YRWR9Bc">
+          <Node Bounds="71,218,172,19" Id="PDgH6KYrrDBQF44YRWR9Bc">
             <p:NodeReference LastCategoryFullName="Nodetool" LastDependency="Nodetool">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <CategoryReference Kind="Category" Name="Nodetool" NeedsToBeDirectParent="true" />
@@ -29,13 +29,13 @@
             <Pin Id="IwBPdn5sj0bP7i02AThpTU" Name="Status" Kind="OutputPin" />
             <Pin Id="FOCSWinhFbHPpnZsSH2fgr" Name="LastError" Kind="OutputPin" />
           </Node>
-          <Pad Id="Fnw06M2ZWN3Ln3cZr2XFYk" Comment="IsConnected" Bounds="139,360,35,35" ShowValueBox="true" isIOBox="true" />
-          <Pad Id="BaJrqRWTlhGNKancyEtnu4" Comment="BaseUrl" Bounds="139,161,165,15" ShowValueBox="true" isIOBox="true" Value="ws://localhost:7777">
+          <Pad Id="Fnw06M2ZWN3Ln3cZr2XFYk" Comment="IsConnected" Bounds="73,310,35,35" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="BaJrqRWTlhGNKancyEtnu4" Comment="BaseUrl" Bounds="73,107,165,15" ShowValueBox="true" isIOBox="true" Value="ws://localhost:7777">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="LSgdZulzO7VPA8juWCHs0t" Comment="Reconnect" Bounds="306,212,35,35" ShowValueBox="true" isIOBox="true" Value="False">
+          <Pad Id="LSgdZulzO7VPA8juWCHs0t" Comment="Reconnect" Bounds="240,158,35,35" ShowValueBox="true" isIOBox="true" Value="False">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
             </p:TypeAnnotation>
@@ -43,7 +43,7 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="SVKsjgRK09uL8NyZt55xhK" Comment="AutoReconnect" Bounds="250,188,35,35" ShowValueBox="true" isIOBox="true" Value="True">
+          <Pad Id="SVKsjgRK09uL8NyZt55xhK" Comment="AutoReconnect" Bounds="184,134,35,35" ShowValueBox="true" isIOBox="true" Value="True">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
             </p:TypeAnnotation>
@@ -51,9 +51,9 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="FSiBsWAqBLkM4wTI1puZWk" Comment="Status" Bounds="223,341,131,15" ShowValueBox="true" isIOBox="true" />
-          <Pad Id="MntN9PshyDoOHvG44HjDD7" Comment="LastError" Bounds="306,317,100,15" ShowValueBox="true" isIOBox="true" />
-          <Node Bounds="590,299,146,19" Id="Nn3oFu3bFdQMVUtWF00SZd">
+          <Pad Id="FSiBsWAqBLkM4wTI1puZWk" Comment="Status" Bounds="157,287,131,15" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="MntN9PshyDoOHvG44HjDD7" Comment="LastError" Bounds="240,263,100,15" ShowValueBox="true" isIOBox="true" />
+          <Node Bounds="524,245,146,19" Id="Nn3oFu3bFdQMVUtWF00SZd">
             <p:NodeReference LastCategoryFullName="Nodetool Nodes.Math" LastDependency="Nodetool.Nodes">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <CategoryReference Kind="Category" Name="Nodetool Nodes" />
@@ -71,22 +71,22 @@
             <Pin Id="VbIggIt1IMYMCm3ulCmupD" Name="Error" Kind="OutputPin" />
             <Pin Id="QPrw3WmUrs1MWjHdFC89Mi" Name="Debug" Kind="OutputPin" IsHidden="true" />
           </Node>
-          <Pad Id="K9YHbWUYfX6ME5lDBMMqHz" Comment="a" Bounds="705,259,35,15" ShowValueBox="true" isIOBox="true">
+          <Pad Id="K9YHbWUYfX6ME5lDBMMqHz" Comment="a" Bounds="639,205,35,15" ShowValueBox="true" isIOBox="true">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Float32" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="KwMGbko9IFaLPRU18PsK4i" Comment="b" Bounds="733,279,35,15" ShowValueBox="true" isIOBox="true" Value="0">
+          <Pad Id="KwMGbko9IFaLPRU18PsK4i" Comment="b" Bounds="667,225,35,15" ShowValueBox="true" isIOBox="true" Value="0">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Float32" />
             </p:TypeAnnotation>
           </Pad>
-          <Pad Id="POUZTDRdb08MeFG9IxDUGa" Comment="output" Bounds="592,340,59,29" ShowValueBox="true" isIOBox="true" Value="2">
+          <Pad Id="POUZTDRdb08MeFG9IxDUGa" Comment="output" Bounds="526,286,59,29" ShowValueBox="true" isIOBox="true" Value="2">
             <p:ValueBoxSettings>
               <p:fontsize p:Type="Int32">14</p:fontsize>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="Lpbkv7u2XJnObfeuPNrKjF" Comment="Execute" Bounds="592,227,35,35" ShowValueBox="true" isIOBox="true" Value="False">
+          <Pad Id="Lpbkv7u2XJnObfeuPNrKjF" Comment="Execute" Bounds="526,107,35,35" ShowValueBox="true" isIOBox="true" Value="False">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
             </p:TypeAnnotation>
@@ -94,9 +94,9 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Overlay Id="KhBinLd0Ab1NSplJvi0Vmm" Name="EXECUTE SINGLE NODE" Bounds="542,103,339,314" />
-          <Overlay Id="Hd2AoXUGePDOEXUG34HbSE" Name="CONNECT TO NODETOOL" Bounds="103,102,388,318" />
-          <Node Bounds="703,209,125,19" Id="MXVhILZKEcMPw5ACUQHJum">
+          <Overlay Id="KhBinLd0Ab1NSplJvi0Vmm" Name="EXECUTE SINGLE NODE" Bounds="476,49,339,314" />
+          <Overlay Id="Hd2AoXUGePDOEXUG34HbSE" Name="CONNECT TO NODETOOL" Bounds="37,48,388,318" />
+          <Node Bounds="637,155,125,19" Id="MXVhILZKEcMPw5ACUQHJum">
             <p:NodeReference LastCategoryFullName="Animation.FrameBased" LastDependency="VL.CoreLib.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
               <Choice Kind="ProcessAppFlag" Name="CounterWrap" />
@@ -113,7 +113,7 @@
             <Pin Id="DozWxZYVKI2M0c172KvUJs" Name="Underflow" Kind="OutputPin" />
             <Pin Id="PGVgp453dkFQBvnJd2CfxE" Name="Overflow" Kind="OutputPin" />
           </Node>
-          <Pad Id="VVSsrwcn7ZHNs5YpAApsLz" Comment="AutoRun" Bounds="648,159,35,35" ShowValueBox="true" isIOBox="true" Value="False">
+          <Pad Id="VVSsrwcn7ZHNs5YpAApsLz" Comment="AutoRun" Bounds="582,134,35,35" ShowValueBox="true" isIOBox="true" Value="False">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
             </p:TypeAnnotation>
@@ -121,7 +121,7 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="RH0o8xcZ20CN14lzBSDYM3" Bounds="-11,-376,861,330" ShowValueBox="true" isIOBox="true" Value="1: Start the Nodetool App&#xD;&#xA;&#xD;&#xA;in vvvv&#xD;&#xA;2: nuget install VL.Nodetool&#xD;&#xA;3: Dependencies &gt; Files &gt; Add Existing&#xD;&#xA;add all 3 dll files from&#xD;&#xA;\nugets\VL.Nodetool.0.1.1\lib\net8&#xD;&#xA;4: Dependencies &gt; Node Factories: enable NodeFactories for workflows / nodes&#xD;&#xA;5: Open the Node Menu and search for 'nodetool'.&#xD;&#xA;&#xD;&#xA;'Nodetool Workflows' should show your workflows.&#xD;&#xA;">
+          <Pad Id="RH0o8xcZ20CN14lzBSDYM3" Bounds="-8,-284,779,255" ShowValueBox="true" isIOBox="true" Value="Start the Nodetool App&#xD;&#xA;in vvvv&#xD;&#xA;1: nuget install VL.Nodetool&#xD;&#xA;2: Dependencies &gt; Files &gt; Add Existing&#xD;&#xA;add all 3 dll files from&#xD;&#xA;\nugets\VL.Nodetool.0.1.3\lib\net8&#xD;&#xA;3: Dependencies &gt; Node Factories: enable NodeFactories for workflows / nodes&#xD;&#xA;4: Open the Node Menu and search for 'nodetool'.">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -130,7 +130,43 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Overlay Id="F2Ml506Ub8XP0RLdZqx1UB" Name="EXECUTE A NODETOOL WORKFLOW" Bounds="931,103,396,316" />
+          <Overlay Id="F2Ml506Ub8XP0RLdZqx1UB" Name="EXECUTE A NODETOOL WORKFLOW" Bounds="865,49,396,316" />
+          <Pad Id="GZHNLv7WPwSMnnj1FLAQnF" Bounds="-8,-394,224,32" ShowValueBox="true" isIOBox="true" Value="https://nodetool.ai/">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">14</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Link</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="UGG7cosmK1yP0qiL8oYPkA" Bounds="-8,-358,419,33" ShowValueBox="true" isIOBox="true" Value="https://github.com/nodetool-ai/nodetool">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">14</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Link</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="CMM30ND5uFTN99QKLrlFmJ" Bounds="-8,-455,319,52" ShowValueBox="true" isIOBox="true" Value="Download and install Nodetool">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">14</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="VJLBsN1iHQqNkO6axCs1Uq" Bounds="938,145,236,134" ShowValueBox="true" isIOBox="true" Value="The node menu should list all your 'Nodetool Workflows'.&#xD;&#xA;&#xD;&#xA;Changing inputs or outputs in Nodetool currently needs a full vvvv restart.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
         </Canvas>
         <Patch Id="D93Oro2VoNHM9jH7yxrNBx" Name="Create" />
         <Patch Id="KhGcMRTy6gYMHnxrRsZAUO" Name="Update" />
