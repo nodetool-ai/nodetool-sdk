@@ -5,12 +5,8 @@ name: push_nuget
 
 on:
   push:
-    branches:
-      - main
-    paths-ignore:
-      - README.md
-      - '**/*.md'
-      - '_agent_planning/**'
+    tags:
+      - 'v*'
 
 jobs:
   build:
