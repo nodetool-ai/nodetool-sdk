@@ -121,7 +121,7 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="RH0o8xcZ20CN14lzBSDYM3" Bounds="-2,-316,683,298" ShowValueBox="true" isIOBox="true" Value="1: start nodetool app&#xD;&#xA;2: install VL.Nodetool nuget &#xD;&#xA;or:&#xD;&#xA;- Dependencies: add / replace the 3 dll dependencies &#xD;&#xA;- Dependencies &gt; Node Factories: enable NodeFactories for workflows&#xD;&#xA;&#xD;&#xA;4: open node menu and search for nodetool.&#xD;&#xA;&#xD;&#xA;'Nodetool Workflows' should show your workflows.&#xD;&#xA;">
+          <Pad Id="RH0o8xcZ20CN14lzBSDYM3" Bounds="-11,-376,861,330" ShowValueBox="true" isIOBox="true" Value="1: Start the Nodetool App&#xD;&#xA;&#xD;&#xA;in vvvv&#xD;&#xA;2: nuget install VL.Nodetool&#xD;&#xA;3: Dependencies &gt; Files &gt; Add Existing&#xD;&#xA;add all 3 dll files from&#xD;&#xA;\nugets\VL.Nodetool.0.1.1\lib\net8&#xD;&#xA;4: Dependencies &gt; Node Factories: enable NodeFactories for workflows / nodes&#xD;&#xA;5: Open the Node Menu and search for 'nodetool'.&#xD;&#xA;&#xD;&#xA;'Nodetool Workflows' should show your workflows.&#xD;&#xA;">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
