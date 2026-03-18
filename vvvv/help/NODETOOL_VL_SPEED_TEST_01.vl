@@ -95,7 +95,7 @@
             </p:ValueBoxSettings>
           </Pad>
           <Overlay Id="GyfLpTmIl6sPiBPnrQAg1d" Name="ADD" Bounds="556,28,392,224" />
-          <Pad Id="U2g4aonH1TpL7rpelIkW2a" Bounds="11,-214,796,197" ShowValueBox="true" isIOBox="true" Value="1: start nodetool app&#xD;&#xA;2: Dependencies: add / replace the 3 dll dependencie &#xD;&#xA;3: Dependencies &gt; Node Factories: enable NodeFactories for workflows&#xD;&#xA;4: open node menu and search for nodetool.&#xD;&#xA;&#xD;&#xA;'Nodetool Workflows' should show your workflows.&#xD;&#xA;">
+          <Pad Id="U2g4aonH1TpL7rpelIkW2a" Bounds="11,-214,796,197" ShowValueBox="true" isIOBox="true" Value="1: start nodetool app&#xD;&#xA;2: Dependencies: add / replace the 3 dll dependencies &#xD;&#xA;3: Dependencies &gt; Node Factories: enable NodeFactories for workflows&#xD;&#xA;4: open node menu and search for nodetool.&#xD;&#xA;&#xD;&#xA;'Nodetool Workflows' should show your workflows.&#xD;&#xA;">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -317,7 +317,7 @@
             </p:ValueBoxSettings>
           </Pad>
           <Pad Id="E4sEp9p4lBML2XVhVwtmkv" Comment="IsRunning" Bounds="1130,340,35,35" ShowValueBox="true" isIOBox="true" />
-          <Pad Id="RDLbYLuud2yNa5XjvYA3Og" Comment="output" Bounds="1230,300,35,15" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="RDLbYLuud2yNa5XjvYA3Og" Comment="output" Bounds="1230,300,149,51" ShowValueBox="true" isIOBox="true" />
           <Node Bounds="1300,542,63,19" Id="KEFZ7KcWHdYPouAz3ao5M1">
             <p:NodeReference LastCategoryFullName="Animation" LastDependency="VL.CoreLib.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />

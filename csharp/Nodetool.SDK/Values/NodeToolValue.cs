@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Globalization;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Linq;
 
@@ -287,7 +288,11 @@ public sealed class NodeToolValue
         try
         {
             var normalized = ToPlainObject();
-            return JsonSerializer.Serialize(normalized, new JsonSerializerOptions { WriteIndented = true });
+            return JsonSerializer.Serialize(normalized, new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            });
         }
         catch
         {

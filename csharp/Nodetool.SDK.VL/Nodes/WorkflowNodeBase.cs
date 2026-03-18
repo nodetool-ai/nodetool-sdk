@@ -267,6 +267,11 @@ namespace Nodetool.SDK.VL.Nodes
 
                 // Collect inputs from pins (excluding Trigger) and adapt values based on workflow schema.
                 var parameters = await BuildWorkflowParametersAsync(linked.Token);
+                var expectedOutputNames = new HashSet<string>(
+                    _workflow.GetOutputProperties().Select(p => p.Name),
+                    StringComparer.Ordinal);
+                var receivedCompletedOutputs = new HashSet<string>(StringComparer.Ordinal);
+                var outputsReadyTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
                 // Execute by ID so repeated runs do not pay the HTTP name lookup cost.
                 var session = await client.ExecuteWorkflowAsync(_workflow.Id, parameters, linked.Token);
@@ -339,6 +344,10 @@ namespace Nodetool.SDK.VL.Nodes
 
                                 // Show accumulated content even when we get the final done=true message (often empty content).
                                 pin.Value = sb.ToString();
+                                if (done)
+                                {
+                                    MarkOutputReady(update.OutputName, expectedOutputNames, receivedCompletedOutputs, outputsReadyTcs);
+                                }
                                 return;
                             }
                         }
@@ -359,6 +368,7 @@ namespace Nodetool.SDK.VL.Nodes
                                     }
                                     _latestImages[update.OutputName] = img;
                                     pin.Value = img;
+                                    MarkOutputReady(update.OutputName, expectedOutputNames, receivedCompletedOutputs, outputsReadyTcs);
                                     return;
                                 }
 
@@ -368,10 +378,28 @@ namespace Nodetool.SDK.VL.Nodes
                         }
 
                         pin.Value = ConvertNodeToolValueToExpectedType(update.Value, expectedType);
+                        MarkOutputReady(update.OutputName, expectedOutputNames, receivedCompletedOutputs, outputsReadyTcs);
                     }
                 };
 
-                var ok = await session.WaitForCompletionAsync(linked.Token);
+                var sessionCompletionTask = session.WaitForCompletionAsync(linked.Token);
+                var completionSourceTask = expectedOutputNames.Count > 0
+                    ? WaitForOutputsReadyAsync(outputsReadyTcs.Task, linked.Token)
+                    : Task.FromResult(false);
+
+                var completedTask = expectedOutputNames.Count > 0
+                    ? await Task.WhenAny(sessionCompletionTask, completionSourceTask)
+                    : sessionCompletionTask;
+
+                var ok = ReferenceEquals(completedTask, completionSourceTask)
+                    ? completionSourceTask.Result
+                    : sessionCompletionTask.Result;
+
+                if (ReferenceEquals(completedTask, completionSourceTask) && ok)
+                {
+                    AppendDebug("completed: ok (outputs)");
+                }
+
                 if (!ok)
                 {
                     throw new InvalidOperationException(session.ErrorMessage ?? "Workflow execution failed.");
@@ -445,6 +473,39 @@ namespace Nodetool.SDK.VL.Nodes
                 {
                     // ignore
                 }
+            }
+        }
+
+        private static void MarkOutputReady(
+            string outputName,
+            ISet<string> expectedOutputNames,
+            ISet<string> receivedCompletedOutputs,
+            TaskCompletionSource<bool> outputsReadyTcs)
+        {
+            if (!expectedOutputNames.Contains(outputName))
+            {
+                return;
+            }
+
+            receivedCompletedOutputs.Add(outputName);
+            if (receivedCompletedOutputs.Count >= expectedOutputNames.Count)
+            {
+                outputsReadyTcs.TrySetResult(true);
+            }
+        }
+
+        private static async Task<bool> WaitForOutputsReadyAsync(Task outputsReadyTask, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await outputsReadyTask.WaitAsync(cancellationToken);
+                // Short grace period so an immediate failure can still win over the optimistic output path.
+                await Task.Delay(100, cancellationToken);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
             }
         }
 
@@ -882,11 +943,37 @@ namespace Nodetool.SDK.VL.Nodes
             if (string.Equals(typeStr, "list", StringComparison.OrdinalIgnoreCase) &&
                 map.TryGetValue("value", out var innerList))
             {
-                // A typed list wrapper; handle chunk lists specially.
                 if (TryConcatChunkList(innerList, out var t))
                 {
                     text = t;
                     return true;
+                }
+
+                // Plain string list: unwrap single-element or join multiple.
+                if (innerList.Kind == NodeToolValueKind.List)
+                {
+                    var items = innerList.AsListOrEmpty();
+                    var strings = new List<string>(items.Count);
+                    var allStr = true;
+                    foreach (var item in items)
+                    {
+                        var s = item.AsString();
+                        if (s != null)
+                        {
+                            strings.Add(s);
+                        }
+                        else
+                        {
+                            allStr = false;
+                            break;
+                        }
+                    }
+
+                    if (allStr && strings.Count > 0)
+                    {
+                        text = strings.Count == 1 ? strings[0] : string.Join("\n", strings);
+                        return true;
+                    }
                 }
             }
 

@@ -23,7 +23,6 @@
             </p:NodeReference>
             <Pin Id="Nmjq8TEsiVsNXVSWsywQ8Q" Name="BaseUrl" Kind="InputPin" />
             <Pin Id="SDHAtSPFo5ZQOcFgqd2fkP" Name="ApiKey" Kind="InputPin" DefaultValue="local" />
-            <Pin Id="HjRMDWWzLWBOuaFidKPZwN" Name="AssetCacheDir" Kind="InputPin" />
             <Pin Id="LAK6rCX2NP1PbU7KRnBNrr" Name="AutoReconnect" Kind="InputPin" />
             <Pin Id="SonLLMNYG7ZNWm0K4OHK9G" Name="Reconnect" Kind="InputPin" DefaultValue="False" />
             <Pin Id="JQDKxrf9zz6M7FqCj6Anm7" Name="IsConnected" Kind="OutputPin" />
@@ -106,56 +105,6 @@
             </p:ValueBoxSettings>
           </Pad>
           <Overlay Id="DOPkqhnqT3iO80Vy3d04Rr" Name="CONNECT TO NODETOOL" Bounds="48,48,388,318" />
-          <Node Bounds="934,111,65,19" Id="J4v1L9ZFowHLY4P0kJ0kH1">
-            <p:NodeReference LastCategoryFullName="Nodetool Workflows" LastDependency="Nodetool.Workflows">
-              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-              <CategoryReference Kind="Category" Name="Nodetool Workflows" />
-              <Choice Kind="ProcessNode" Name="KIE_Kling" />
-            </p:NodeReference>
-            <Pin Id="GVez423AxyzPuBWADJjVAZ" Name="Trigger" Kind="InputPin" />
-            <Pin Id="RDWKSNuifZUNRpacWhEVHM" Name="Cancel" Kind="InputPin" />
-            <Pin Id="HRl51EbKhRJOpaZ6NRlGgW" Name="AutoRun" Kind="InputPin" />
-            <Pin Id="GZCDEL6qyAKOa2hbtYBPxW" Name="RestartOnChange" Kind="InputPin" />
-            <Pin Id="JropV6g2OyiPTbfVctLwBa" Name="IsRunning" Kind="OutputPin" />
-            <Pin Id="BHgm6eDll9fLgWVGuGLTOh" Name="Error" Kind="OutputPin" />
-            <Pin Id="RMJ3iAsz1iQNnEZNJyjMXE" Name="Debug" Kind="OutputPin" IsHidden="true" />
-            <Pin Id="NC9urc9HlYRMrHCByJYauK" Name="InputSchemaJson" Kind="OutputPin" IsHidden="true" />
-            <Pin Id="J88dzR0j4I3M98vccTLSFe" Name="OutputSchemaJson" Kind="OutputPin" IsHidden="true" />
-          </Node>
-          <Node Bounds="917,321,368,19" Id="GCV7kEkL4a0P0jyHTSxdiI">
-            <p:NodeReference LastCategoryFullName="Nodetool Workflows" LastDependency="Nodetool.Workflows">
-              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-              <Choice Kind="ProcessNode" Name="TEST_VVVV_02" />
-            </p:NodeReference>
-            <Pin Id="AmjKkQ5Koq2MdzBSx8kyJ7" Name="Trigger" Kind="InputPin" />
-            <Pin Id="MR3HSGyQfYjO9N7qLPmLPB" Name="Cancel" Kind="InputPin" />
-            <Pin Id="CFQO5C595kELE6Jx2WRekb" Name="AutoRun" Kind="InputPin" />
-            <Pin Id="Sy20ZLeJSzoOWxoJl6Wi2Q" Name="RestartOnChange" Kind="InputPin" />
-            <Pin Id="JUgTeBWVICaNfLz02qu6RK" Name="Prompt" Kind="InputPin" />
-            <Pin Id="J8rMdjEf9RPQXj9ExF6cZF" Name="IsRunning" Kind="OutputPin" />
-            <Pin Id="AcsBmjEkBKYNFtAXgu3K5y" Name="Error" Kind="OutputPin" />
-            <Pin Id="USLNGIMF8wcOyIgP9kcyvJ" Name="Debug" Kind="OutputPin" IsHidden="true" />
-            <Pin Id="IE0wsKtaEewOg78XpEZFyE" Name="InputSchemaJson" Kind="OutputPin" IsHidden="true" />
-            <Pin Id="Jcl8k5nfT4ZPDZpOUdtFbM" Name="OutputSchemaJson" Kind="OutputPin" IsHidden="true" />
-            <Pin Id="R4Z4fRZcSwIN87cgSkqDF9" Name="Output" Kind="OutputPin" />
-            <Pin Id="GRAF5CidgdPNFZRYCiqkv2" Name="Thinking" Kind="OutputPin" />
-          </Node>
-          <Pad Id="PTB0UKkH7fLQCh7TEiUw6f" Comment="Thinking" Bounds="1282,371,123,83" ShowValueBox="true" isIOBox="true" />
-          <Pad Id="TyfRO7lFJmoPTNjHM2KqI4" Comment="" Bounds="1161,471,427,222" ShowValueBox="true" isIOBox="true" />
-          <Pad Id="Q49LEFivUacOtLZapnh8MU" Comment="Prompt" Bounds="1282,290,115,15" ShowValueBox="true" isIOBox="true" Value="how to use nodetool.ai from vvvv?">
-            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
-              <Choice Kind="TypeFlag" Name="String" />
-            </p:TypeAnnotation>
-          </Pad>
-          <Pad Id="Aswi4CQ4VpBLgoXEygqs9t" Comment="Trigger" Bounds="919,230,35,35" ShowValueBox="true" isIOBox="true" Value="false">
-            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
-              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
-            </p:TypeAnnotation>
-            <p:ValueBoxSettings>
-              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
-            </p:ValueBoxSettings>
-          </Pad>
-          <Pad Id="ByZuJAFtd8qN6joeIDjgKR" Comment="IsRunning" Bounds="919,390,35,35" ShowValueBox="true" isIOBox="true" />
           <Node Bounds="671,350,63,19" Id="NoPZ8qCHlbEMMoE5gAVfeA">
             <p:NodeReference LastCategoryFullName="Animation" LastDependency="VL.CoreLib.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
@@ -284,7 +233,7 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="BGSUPHTRtdMOPIpGjww8QM" Comment="AutoRun" Bounds="652,30,35,35" ShowValueBox="true" isIOBox="true" Value="True">
+          <Pad Id="BGSUPHTRtdMOPIpGjww8QM" Comment="AutoRun" Bounds="652,30,35,35" ShowValueBox="true" isIOBox="true" Value="False">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
             </p:TypeAnnotation>
@@ -302,6 +251,41 @@
             <Pin Id="PTVX6pQ1seWN2TdVOVJOym" Name="Up Edge" Kind="OutputPin" />
             <Pin Id="GnzBxBDYdkMNVcTVPaWIV9" Name="Down Edge" Kind="OutputPin" />
           </Node>
+          <Node Bounds="1208,301,105,19" Id="USJKqjD5cBKM7TThnShWLa">
+            <p:NodeReference LastCategoryFullName="Nodetool Workflows" LastDependency="Nodetool.Workflows">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <Choice Kind="ProcessNode" Name="VVVV_02" />
+            </p:NodeReference>
+            <Pin Id="N1U3MsfRr2bOEZfrrJsshu" Name="Trigger" Kind="InputPin" />
+            <Pin Id="EdOyBMc3tgHOoRUgYepi9n" Name="Cancel" Kind="InputPin" />
+            <Pin Id="KfcPkxfnti6MVVOmZAt09b" Name="AutoRun" Kind="InputPin" />
+            <Pin Id="TjL9MQpNelvLyNQ1QRUQFk" Name="RestartOnChange" Kind="InputPin" />
+            <Pin Id="MwbTpFKkEvvLMtwWeaGp76" Name="Prompt" Kind="InputPin" />
+            <Pin Id="UjVMK2NMXwVNs4CgDEaS1V" Name="System" Kind="InputPin" />
+            <Pin Id="HTWOrIytqRNMftRumLPCz6" Name="IsRunning" Kind="OutputPin" />
+            <Pin Id="LRYao4uJCwOPvngGTCgbLu" Name="Error" Kind="OutputPin" />
+            <Pin Id="PFqG2azFniiMEZ13GWemHy" Name="Debug" Kind="OutputPin" IsHidden="true" />
+            <Pin Id="AeAqLcEXFF6MIPpjQxyBaQ" Name="InputSchemaJson" Kind="OutputPin" IsHidden="true" />
+            <Pin Id="RfHGOsmSI3AMTsZr3eXGxu" Name="OutputSchemaJson" Kind="OutputPin" IsHidden="true" />
+            <Pin Id="JBPNex1YVGNL3WKcZxqf7t" Name="Output" Kind="OutputPin" />
+            <Pin Id="TSjHgca5JRyM7xQr5CbAfE" Name="Chunks" Kind="OutputPin" />
+          </Node>
+          <Pad Id="SieVwF94lseL1266yjOvTG" Comment="Trigger" Bounds="1210,210,35,35" ShowValueBox="true" isIOBox="true" Value="false">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="ImmutableTypeFlag" Name="Boolean" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Bang</p:buttonmode>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="CuYxC5vND05MJUSVILEnJe" Comment="" Bounds="1277,510,312,132" ShowValueBox="true" isIOBox="true" Value="[&#xD;&#xA;  &quot;\u003Cthink\u003E\nOkay, the user said \u0022hello\u0022. I need to respond politely. Let me make sure to greet them back and ask how I can assist. Keep it friendly and open-ended. Maybe add an emoji to keep the tone light. Let me check for any typos. Alright, that should do it.\n\u003C/think\u003E\n\nHello! How can I assist you today? \uD83D\uDE0A&quot;&#xD;&#xA;]" />
+          <Pad Id="GkbzpyeLWYTQWRUgHME09h" Comment="Prompt" Bounds="1290,260,35,15" ShowValueBox="true" isIOBox="true" Value="hello">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="O533VfVsIJiNXBC7uuvoLE" Comment="IsRunning" Bounds="1210,380,35,35" ShowValueBox="true" isIOBox="true" />
+          <Pad Id="GvAIps5QFJ7Nd7OWIslJP2" Comment="Chunks" Bounds="1310,420,272,84" ShowValueBox="true" isIOBox="true" />
         </Canvas>
         <Patch Id="D93Oro2VoNHM9jH7yxrNBx" Name="Create" />
         <Patch Id="KhGcMRTy6gYMHnxrRsZAUO" Name="Update" />
@@ -319,11 +303,6 @@
         <Link Id="AwoqHTGNTK4NWKV5QNopOg" Ids="KHmFRaB0eHqMg4jV0yQA1Z,NBVJ0z0D0l0OEaHCxRNXPp" />
         <Link Id="PGvzsBraebDMddB0F7WAyD" Ids="LmRiiZuclmiLIfP4kXmeQy,HSwhZ6pvd6vLi3EMN1H651" />
         <Link Id="VryOjsiYj2HQB4ofOmDU8K" Ids="Uk8zbukXGAmNAl9sU0qQ9N,STXi39xMa16L3VsvT1PewL" />
-        <Link Id="KpBZ8M4JFISOtLIrhPCu4K" Ids="GRAF5CidgdPNFZRYCiqkv2,PTB0UKkH7fLQCh7TEiUw6f" />
-        <Link Id="Sx2tcqS51L0OjR9NqA0fYY" Ids="R4Z4fRZcSwIN87cgSkqDF9,TyfRO7lFJmoPTNjHM2KqI4" />
-        <Link Id="HsOR2fSNbY1NZR6J4bwsHd" Ids="Q49LEFivUacOtLZapnh8MU,JUgTeBWVICaNfLz02qu6RK" />
-        <Link Id="TPFi53v7FC4LKdCHK6Vj7q" Ids="Aswi4CQ4VpBLgoXEygqs9t,AmjKkQ5Koq2MdzBSx8kyJ7" />
-        <Link Id="QUxaaBh8ycjPGpoDY3JvF1" Ids="J8rMdjEf9RPQXj9ExF6cZF,ByZuJAFtd8qN6joeIDjgKR" />
         <Link Id="Lj1dJVjl8h1NnGCGodBg36" Ids="Agw4ceJLmqGNYToG3qp1Gw,Siw8aPI8PPiLa9A5AUJC2a" />
         <Link Id="GBL62nZKPdnM7NtTQ5yOtT" Ids="NoWB8eDotcgONm2V88I3PI,SWEU22Fwz9gMnUBM7LEloy" />
         <Link Id="M1MFRAsJWLMMJ4AAt5Z3Iy" Ids="RkC7UMxGIZ3NWtnXflYG1T,A2NDUGC54mcLe4rIaN4kgf" />
@@ -342,6 +321,11 @@
         <Link Id="EaW2WPZNfpOMGgumzFmKg1" Ids="OiF7JGvkbpgOuxlPbKkbM8,CmklzyzgQLwMTW5xCvecx8" />
         <Link Id="FH4Aa5qoXyTNDhnISVZ2YP" Ids="PTVX6pQ1seWN2TdVOVJOym,HZ3HvEzyOj0OdXwdMO0oUg" />
         <Link Id="GFhQBhUnqWqMKgqe9OKVdp" Ids="PTVX6pQ1seWN2TdVOVJOym,KuHBz5z1f2VP5kpRHILU79" />
+        <Link Id="N90oVDa59O2LptERXaXCGW" Ids="SieVwF94lseL1266yjOvTG,N1U3MsfRr2bOEZfrrJsshu" />
+        <Link Id="RyNfduHfgunOpmwThK2pvv" Ids="JBPNex1YVGNL3WKcZxqf7t,CuYxC5vND05MJUSVILEnJe" />
+        <Link Id="CYr4eyHEeJYO1RM6fdANiG" Ids="GkbzpyeLWYTQWRUgHME09h,MwbTpFKkEvvLMtwWeaGp76" />
+        <Link Id="IjCXMPTgPuYNZuwRk1Uzre" Ids="HTWOrIytqRNMftRumLPCz6,O533VfVsIJiNXBC7uuvoLE" />
+        <Link Id="ADNbYgoDVZBPsoseyiOF4V" Ids="TSjHgca5JRyM7xQr5CbAfE,GvAIps5QFJ7Nd7OWIslJP2" />
       </Patch>
     </Node>
   </Patch>
