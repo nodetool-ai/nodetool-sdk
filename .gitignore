@@ -21,3 +21,5 @@ __pycache__/
 _vvvv_builds/
 
 nuget.exe
+*.nupkg
+*.snupkg

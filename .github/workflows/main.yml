@@ -3,7 +3,6 @@
 
 name: push_nuget
 
-# on push on main
 on:
   push:
     branches:
@@ -25,14 +24,19 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
+    - name: Setup NuGet
+      uses: nuget/setup-nuget@v2
+
     - name: Regen + verify + build (C#)
       shell: pwsh
       run: |
-        # Regenerates C# types/nodes when Python nodetool is available,
-        # verifies generated output is committed (git diff),
-        # then builds Nodetool.Types + Nodetool.SDK + TestConsole.
         .\csharp\regen-and-verify.ps1
 
-    # Note: VL.SDK requires VL.Core which needs special setup
-    # - name: Build VL SDK
-    #   run: dotnet build csharp/Nodetool.SDK.VL/Nodetool.SDK.VL.csproj --configuration Release
+    - name: Build VL SDK
+      run: dotnet build csharp/Nodetool.SDK.VL/Nodetool.SDK.VL.csproj -c Release
+
+    - name: Pack VL.Nodetool
+      run: nuget pack vvvv/deployment/VL.Nodetool.nuspec -OutputDirectory out
+
+    - name: Push to NuGet
+      run: nuget push out\VL.Nodetool.*.nupkg -Source https://api.nuget.org/v3/index.json -ApiKey ${{ secrets.NUGET_KEY }} -SkipDuplicate
