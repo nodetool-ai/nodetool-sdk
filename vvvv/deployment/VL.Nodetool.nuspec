@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/10/nuspec.xsd">
   <metadata>
     <id>VL.Nodetool</id>
-    <version>0.1.4</version>
+    <version>0.1.5</version>
     <title>VL.Nodetool</title>
     <authors>Nodetool Contributors</authors>
     <projectUrl>https://github.com/nodetool-ai/nodetool</projectUrl>
@@ -26,6 +26,9 @@
   <files>
     <!-- Help patches -->
     <file src="..\help\**" target="help\" />
+
+    <!-- VL document -->
+    <file src="..\VL.Nodetool.vl" target="" />
 
     <!-- Managed DLLs -->
     <file src="..\..\csharp\Nodetool.SDK.VL\bin\Release\net8.0\Nodetool.SDK.VL.dll" target="lib\net8.0\" />
