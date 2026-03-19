@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document xmlns:p="property" xmlns:r="reflection" Id="Bk62v2AruUPN6yJfpT9A84" LanguageVersion="2025.7.1-0013-g8fcece0df9" Version="0.128">
+  <NugetDependency Id="K6u6dh2uSH3L0HUjUoiBln" Location="VL.CoreLib" Version="2025.7.1-0013-g8fcece0df9" />
+  <Patch Id="VuWDdm6d6G0L4R6YPiqCHE">
+    <Canvas Id="Tzmh46HXA7IQORCf8nuD1F" DefaultCategory="Main" CanvasType="FullCategory" />
+    <!--
+
+    ************************ Application ************************
+
+-->
+    <Node Name="Application" Bounds="100,100" Id="H11OcOsGwf2LNGd5wBjUVM">
+      <p:NodeReference>
+        <Choice Kind="ContainerDefinition" Name="Process" />
+        <CategoryReference Kind="Category" Name="Primitive" />
+      </p:NodeReference>
+      <Patch Id="FTfD8HMFFpMM6MPTKv4q7p">
+        <Canvas Id="HOXYCcwOGrvLar6O4UwVEl" CanvasType="Group">
+          <Pad Id="PUy6cy6j4tzLG1u9PjVbsb" Bounds="32,46,224,32" ShowValueBox="true" isIOBox="true" Value="https://nodetool.ai/">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">14</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Link</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="GwTlmlcLY2KMjewkVS2PQQ" Bounds="32,82,419,33" ShowValueBox="true" isIOBox="true" Value="https://github.com/nodetool-ai/nodetool">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">14</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Link</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+        </Canvas>
+        <Patch Id="QeHF0FWAx6yM76Kyck8Ij7" Name="Create" />
+        <Patch Id="UTQL1Q38d3uLdMYpUptEIr" Name="Update" />
+        <ProcessDefinition Id="DQG3aTHk3rVO7toXAv2Kjw">
+          <Fragment Id="NcndpPVGs0FMNjMIt6davy" Patch="QeHF0FWAx6yM76Kyck8Ij7" Enabled="true" />
+          <Fragment Id="EYcBLV57o25MxVz71l3Ggw" Patch="UTQL1Q38d3uLdMYpUptEIr" Enabled="true" />
+        </ProcessDefinition>
+      </Patch>
+    </Node>
+  </Patch>
+  <PlatformDependency Id="Ot4DnmjDZJgPuNlwrrStlx" Location="../csharp/Nodetool.SDK.VL/bin/Release/net8.0/Nodetool.SDK.dll" IsForward="true" />
+  <PlatformDependency Id="KhJHZXfsHsQP56orfnohqw" Location="../csharp/Nodetool.SDK.VL/bin/Release/net8.0/Nodetool.SDK.VL.dll" IsForward="true" />
+  <PlatformDependency Id="BxQyEu6hZlaQNdxJWi1aSi" Location="../csharp/Nodetool.SDK.VL/bin/Release/net8.0/Nodetool.Types.dll" IsForward="true" />
+  <NodeFactoryDependency Id="IOz9ToTGKcQOzG2bniOOOJ" Location="Nodetool" IsForward="true" />
+  <NodeFactoryDependency Id="TOHFSnjcHkLNR3Fq2S6gr7" Location="Nodetool.Nodes" IsForward="true" />
+  <NodeFactoryDependency Id="QOZ8DsUHtusM1d06MPWUDH" Location="Nodetool.Workflows" IsForward="true" />
+</Document>

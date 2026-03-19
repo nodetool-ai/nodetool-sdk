@@ -1,6 +1,6 @@
 # Nodetool SDK
 
-SDK and integration assets for NodeTool clients.
+SDK and integration for NodeTool clients.
 
 ## C# and VL builds
 

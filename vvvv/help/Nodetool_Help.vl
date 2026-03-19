@@ -121,7 +121,7 @@
               <p:buttonmode p:Assembly="VL.UI.Forms" p:Type="VL.HDE.PatchEditor.Editors.ButtonModeEnum">Toggle</p:buttonmode>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="RH0o8xcZ20CN14lzBSDYM3" Bounds="-8,-284,779,255" ShowValueBox="true" isIOBox="true" Value="Start the Nodetool App&#xD;&#xA;in vvvv&#xD;&#xA;1: nuget install VL.Nodetool&#xD;&#xA;2: Dependencies &gt; Files &gt; Add Existing&#xD;&#xA;add all 3 dll files from&#xD;&#xA;\nugets\VL.Nodetool.0.1.3\lib\net8&#xD;&#xA;3: Dependencies &gt; Node Factories: enable NodeFactories for workflows / nodes&#xD;&#xA;4: Open the Node Menu and search for 'nodetool'.">
+          <Pad Id="RH0o8xcZ20CN14lzBSDYM3" Bounds="-1,-158,516,143" ShowValueBox="true" isIOBox="true" Value="Start the Nodetool App, then in vvvv:&#xD;&#xA;1: Dependencies &gt; Files &gt; Add Existing&#xD;&#xA;add VL.Nodetool&#xD;&#xA;2: Open the Node Menu and search for 'nodetool'.">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -131,7 +131,7 @@
             </p:ValueBoxSettings>
           </Pad>
           <Overlay Id="F2Ml506Ub8XP0RLdZqx1UB" Name="EXECUTE A NODETOOL WORKFLOW" Bounds="865,49,396,316" />
-          <Pad Id="GZHNLv7WPwSMnnj1FLAQnF" Bounds="-8,-394,224,32" ShowValueBox="true" isIOBox="true" Value="https://nodetool.ai/">
+          <Pad Id="GZHNLv7WPwSMnnj1FLAQnF" Bounds="-1,-268,224,32" ShowValueBox="true" isIOBox="true" Value="https://nodetool.ai/">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -140,7 +140,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Link</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="UGG7cosmK1yP0qiL8oYPkA" Bounds="-8,-358,419,33" ShowValueBox="true" isIOBox="true" Value="https://github.com/nodetool-ai/nodetool">
+          <Pad Id="UGG7cosmK1yP0qiL8oYPkA" Bounds="-1,-232,419,33" ShowValueBox="true" isIOBox="true" Value="https://github.com/nodetool-ai/nodetool">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -149,7 +149,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Link</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="CMM30ND5uFTN99QKLrlFmJ" Bounds="-8,-455,319,52" ShowValueBox="true" isIOBox="true" Value="Download and install Nodetool">
+          <Pad Id="CMM30ND5uFTN99QKLrlFmJ" Bounds="-1,-329,319,52" ShowValueBox="true" isIOBox="true" Value="Download and install Nodetool">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -189,11 +189,6 @@
       </Patch>
     </Node>
   </Patch>
-  <NodeFactoryDependency Id="E4Q7DLQAWtsOZpwrPZFy9Y" Location="Nodetool" />
-  <NodeFactoryDependency Id="P0nbSbPTb1IQNgccPQYXyx" Location="Nodetool.Nodes" />
-  <NodeFactoryDependency Id="VL63SSWV5xML8IPZVDdxRD" Location="Nodetool.Workflows" />
   <NugetDependency Id="TRd777YKFloPi2V7y0eZAs" Location="VL.Skia" Version="2025.7.1-0013-g8fcece0df9" />
-  <PlatformDependency Id="QPfFqpnAfOWM7XsDDHPW1f" Location="../../csharp/Nodetool.SDK.VL/bin/Release/net8.0/Nodetool.SDK.dll" />
-  <PlatformDependency Id="QblIKqG8nUOQc4sd7i634F" Location="../../csharp/Nodetool.SDK.VL/bin/Release/net8.0/Nodetool.SDK.VL.dll" />
-  <PlatformDependency Id="LpajtXNPK5gQAe86cgthmF" Location="../../csharp/Nodetool.SDK.VL/bin/Release/net8.0/Nodetool.Types.dll" />
+  <DocumentDependency Id="HZ4Lqn4C7srLbcsPxFW6EE" Location="../VL.Nodetool.vl" />
 </Document>
