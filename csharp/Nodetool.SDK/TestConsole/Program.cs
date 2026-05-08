@@ -27,6 +27,12 @@ class Program
             return;
         }
 
+        if (args.Contains("fetch", StringComparer.OrdinalIgnoreCase))
+        {
+            await FetchMode(args, loggerFactory, logger);
+            return;
+        }
+
         logger.LogInformation("🚀 NodeTool SDK Type Registry Test Console");
         logger.LogInformation("========================================");
 
@@ -227,31 +233,97 @@ class Program
         return Task.CompletedTask;
     }
 
+    private static async Task FetchMode(string[] args, ILoggerFactory loggerFactory, ILogger logger)
+    {
+        var ws = GetArgValue(args, "--ws") ?? Environment.GetEnvironmentVariable("NODETOOL_WORKER_WS");
+        if (string.IsNullOrWhiteSpace(ws))
+        {
+            logger.LogError("Missing --ws. Provide --ws <url> or set NODETOOL_WORKER_WS.");
+            logger.LogInformation("Example: dotnet run -c Release -- fetch --ws ws://localhost:7777/ws");
+            return;
+        }
+
+        logger.LogInformation("🔍 NodeTool SDK Fetch Test (WebSocket)");
+        logger.LogInformation("  WS: {Ws}", ws);
+
+        var options = new NodeToolClientOptions { WorkerWebSocketUrl = new Uri(ws) };
+        using var exec = new NodeToolExecutionClient(options, logger: loggerFactory.CreateLogger<NodeToolExecutionClient>());
+
+        if (!await exec.ConnectAsync())
+        {
+            logger.LogError("Failed to connect to {Ws}", ws);
+            return;
+        }
+
+        logger.LogInformation("--- list_nodes ---");
+        var nodes = await exec.GetNodeTypesAsync();
+        logger.LogInformation("Got {Count} node types", nodes.Count);
+        foreach (var n in nodes.Take(5))
+            logger.LogInformation("  {NodeType}: {Title}", n.NodeType, n.Title);
+        if (nodes.Count > 5) logger.LogInformation("  ... and {More} more", nodes.Count - 5);
+
+        if (nodes.Count > 0)
+        {
+            logger.LogInformation("--- get_node ---");
+            var singleNode = await exec.GetNodeAsync(nodes[0].NodeType);
+            logger.LogInformation("  {NodeType}: {Title}", singleNode?.NodeType, singleNode?.Title);
+        }
+
+        logger.LogInformation("--- list_workflows ---");
+        var workflows = await exec.GetWorkflowsAsync();
+        logger.LogInformation("Got {Count} workflows", workflows.Count);
+        foreach (var w in workflows)
+            logger.LogInformation("  [{Id}] {Name}", w.Id, w.Name);
+
+        if (workflows.Count > 0)
+        {
+            logger.LogInformation("--- get_workflow ---");
+            var single = await exec.GetWorkflowAsync(workflows[0].Id);
+            logger.LogInformation("  {Name} — inputs: {InputCount}, graph nodes: {NodeCount}",
+                single?.Name,
+                single?.InputSchema?.Properties?.Count ?? 0,
+                single?.Graph?.Nodes.Count ?? 0);
+        }
+
+        logger.LogInformation("--- list_assets ---");
+        var assets = await exec.GetAssetsAsync(pageSize: 10);
+        logger.LogInformation("Got {Count} assets (page_size 10)", assets.Count);
+        foreach (var a in assets)
+            logger.LogInformation("  [{Id}] {Name} ({ContentType})", a.Id, a.Name, a.ContentType);
+
+        if (assets.Count > 0)
+        {
+            logger.LogInformation("--- get_asset ---");
+            var singleAsset = await exec.GetAssetAsync(assets[0].Id);
+            logger.LogInformation("  {Name} ({ContentType})", singleAsset?.Name, singleAsset?.ContentType);
+        }
+
+        await exec.DisconnectAsync();
+        logger.LogInformation("✅ Fetch test complete.");
+    }
+
     private static async Task RunWorkflowMode(string[] args, ILoggerFactory loggerFactory, ILogger logger)
     {
         var ws = GetArgValue(args, "--ws") ?? Environment.GetEnvironmentVariable("NODETOOL_WORKER_WS");
-        var http = GetArgValue(args, "--http") ?? Environment.GetEnvironmentVariable("NODETOOL_HTTP_API");
         var workflowName = GetArgValue(args, "--workflow") ?? "TEST_SDK_01";
         var timeoutSecStr = GetArgValue(args, "--timeout-sec") ?? "30";
         var timeoutSec = int.TryParse(timeoutSecStr, out var parsedTimeout) ? parsedTimeout : 30;
 
-        if (string.IsNullOrWhiteSpace(ws) || string.IsNullOrWhiteSpace(http))
+        if (string.IsNullOrWhiteSpace(ws))
         {
-            logger.LogError("Missing required URLs. Provide --ws and --http (or env vars NODETOOL_WORKER_WS and NODETOOL_HTTP_API).");
+            logger.LogError("Missing required URL. Provide --ws (or env var NODETOOL_WORKER_WS).");
             logger.LogInformation("Example:");
-            logger.LogInformation("  dotnet run -c Release -- run-workflow --ws ws://localhost:7777/ws --http http://localhost:7777 --workflow TEST_SDK_01");
+            logger.LogInformation("  dotnet run -c Release -- run-workflow --ws ws://localhost:7777/ws --workflow TEST_SDK_01");
             return;
         }
 
         logger.LogInformation("🚀 NodeTool SDK Workflow Runner (WebSocket)");
-        logger.LogInformation("  WS:   {Ws}", ws);
-        logger.LogInformation("  HTTP: {Http}", http);
+        logger.LogInformation("  WS:       {Ws}", ws);
         logger.LogInformation("  Workflow: {Workflow}", workflowName);
 
         var options = new NodeToolClientOptions
         {
             WorkerWebSocketUrl = new Uri(ws),
-            ApiBaseUrl = new Uri(http),
         };
 
         // Build inputs. Prefer command-line key=value pairs; otherwise seed required inputs with a demo value.

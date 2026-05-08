@@ -1,3 +1,5 @@
+using Nodetool.SDK.Api.Models;
+
 namespace Nodetool.SDK.Execution;
 
 /// <summary>
@@ -46,8 +48,7 @@ public interface INodeToolExecutionClient : IDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Execute a workflow by name (HTTP discovery + WebSocket execution).
-    /// Requires <see cref="Configuration.NodeToolClientOptions.ApiBaseUrl"/> to be set.
+    /// Execute a workflow by name (WebSocket discovery + execution).
     /// </summary>
     /// <param name="workflowName">Workflow name (case-insensitive).</param>
     /// <param name="inputs">Input parameters keyed by input name.</param>
@@ -60,7 +61,6 @@ public interface INodeToolExecutionClient : IDisposable
 
     /// <summary>
     /// Execute a workflow by name with a single input value (common case).
-    /// Requires <see cref="Configuration.NodeToolClientOptions.ApiBaseUrl"/> to be set.
     /// </summary>
     Task<IExecutionSession> ExecuteWorkflowByNameAsync(
         string workflowName,
@@ -70,12 +70,45 @@ public interface INodeToolExecutionClient : IDisposable
 
     /// <summary>
     /// Execute a workflow by name with tuple inputs (convenient for small input sets).
-    /// Requires <see cref="Configuration.NodeToolClientOptions.ApiBaseUrl"/> to be set.
     /// </summary>
     Task<IExecutionSession> ExecuteWorkflowByNameAsync(
         string workflowName,
         CancellationToken cancellationToken = default,
         params (string Name, object? Value)[] inputs);
+
+    /// <summary>
+    /// Fetch all available node types from the server via WebSocket (<c>list_nodes</c>).
+    /// </summary>
+    Task<List<NodeMetadataResponse>> GetNodeTypesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Fetch a single node type by its type identifier (<c>get_node</c>).
+    /// </summary>
+    Task<NodeMetadataResponse?> GetNodeAsync(string nodeType, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Fetch all workflows from the server via WebSocket (<c>list_workflows</c>).
+    /// </summary>
+    Task<List<WorkflowResponse>> GetWorkflowsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Fetch a single workflow by ID from the server via WebSocket (<c>get_workflow</c>).
+    /// </summary>
+    Task<WorkflowResponse?> GetWorkflowAsync(string workflowId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Fetch assets from the server via WebSocket (<c>list_assets</c>).
+    /// </summary>
+    Task<List<AssetResponse>> GetAssetsAsync(
+        string? contentType = null,
+        string? parentId = null,
+        int pageSize = 10000,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Fetch a single asset by ID from the server via WebSocket (<c>get_asset</c>).
+    /// </summary>
+    Task<AssetResponse?> GetAssetAsync(string assetId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Execute a workflow with a graph definition.

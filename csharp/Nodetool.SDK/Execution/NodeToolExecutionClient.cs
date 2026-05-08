@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Nodetool.SDK.Api;
+using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.Configuration;
 using Nodetool.SDK.Types;
 using Nodetool.SDK.WebSocket;
@@ -22,6 +24,11 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     private readonly Uri _serverUri;
     private readonly string? _apiKey;
     private bool _disposed;
+    private readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        PropertyNameCaseInsensitive = true
+    };
 
     /// <inheritdoc/>
     public bool IsConnected => _webSocketClient.IsConnected;
@@ -182,12 +189,6 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         if (string.IsNullOrWhiteSpace(workflowName))
         {
             throw new ArgumentException("Workflow name must not be empty.", nameof(workflowName));
-        }
-
-        if (_options.ApiBaseUrl == null)
-        {
-            throw new InvalidOperationException(
-                "ExecuteWorkflowByNameAsync requires NodeToolClientOptions.ApiBaseUrl to be set (HTTP discovery).");
         }
 
         var workflowId = await ResolveWorkflowIdByNameAsync(workflowName, cancellationToken);
@@ -364,11 +365,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             return cachedWorkflowId;
         }
 
-        using var api = new NodetoolClient();
-        var apiKey = _apiKey ?? _options.AuthToken;
-        api.Configure(_options.ApiBaseUrl!.ToString().TrimEnd('/'), apiKey: apiKey);
-
-        var workflows = await api.GetWorkflowsAsync(cancellationToken);
+        var workflows = await GetWorkflowsAsync(cancellationToken);
         var matches = workflows
             .Where(w => string.Equals(w.Name, workflowName, StringComparison.OrdinalIgnoreCase))
             .ToList();
@@ -381,7 +378,6 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
 
         if (matches.Count > 1)
         {
-            // Avoid silently picking a random one when names collide.
             var ids = string.Join(", ", matches.Select(w => $"{w.Id} ({w.Name})"));
             throw new InvalidOperationException(
                 $"Multiple workflows named '{workflowName}' found: {ids}. Use ExecuteWorkflowAsync(workflowId, ...) to disambiguate.");
@@ -390,6 +386,107 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         var resolvedWorkflowId = matches[0].Id;
         _workflowIdsByName[workflowName] = resolvedWorkflowId;
         return resolvedWorkflowId;
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<NodeMetadataResponse>> GetNodeTypesAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("Fetching node types via WebSocket");
+        var raw = await _webSocketClient.SendRequestAsync(
+            "list_nodes",
+            new Dictionary<string, object?> { ["fields"] = "full" },
+            cancellationToken);
+        return DeserializeListResult<NodeMetadataResponse>(raw, "list_nodes", "nodes");
+    }
+
+    /// <inheritdoc/>
+    public async Task<NodeMetadataResponse?> GetNodeAsync(string nodeType, CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("Fetching node {NodeType} via WebSocket", nodeType);
+        var raw = await _webSocketClient.SendRequestAsync(
+            "get_node",
+            new Dictionary<string, object?> { ["node_type"] = nodeType },
+            cancellationToken);
+        return DeserializeSingleResult<NodeMetadataResponse>(raw, "get_node");
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<WorkflowResponse>> GetWorkflowsAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("Fetching workflows via WebSocket");
+        var raw = await _webSocketClient.SendRequestAsync(
+            "list_workflows",
+            new Dictionary<string, object?>(),
+            cancellationToken);
+        return DeserializeListResult<WorkflowResponse>(raw, "list_workflows", "workflows");
+    }
+
+    /// <inheritdoc/>
+    public async Task<WorkflowResponse?> GetWorkflowAsync(string workflowId, CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("Fetching workflow {WorkflowId} via WebSocket", workflowId);
+        var raw = await _webSocketClient.SendRequestAsync(
+            "get_workflow",
+            new Dictionary<string, object?> { ["id"] = workflowId },
+            cancellationToken);
+        return DeserializeSingleResult<WorkflowResponse>(raw, "get_workflow");
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<AssetResponse>> GetAssetsAsync(
+        string? contentType = null,
+        string? parentId = null,
+        int pageSize = 10000,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("Fetching assets via WebSocket");
+        var data = new Dictionary<string, object?> { ["page_size"] = pageSize };
+        if (contentType != null) data["content_type"] = contentType;
+        if (parentId != null) data["parent_id"] = parentId;
+        var raw = await _webSocketClient.SendRequestAsync("list_assets", data, cancellationToken);
+        return DeserializeListResult<AssetResponse>(raw, "list_assets", "assets");
+    }
+
+    /// <inheritdoc/>
+    public async Task<AssetResponse?> GetAssetAsync(string assetId, CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("Fetching asset {AssetId} via WebSocket", assetId);
+        var raw = await _webSocketClient.SendRequestAsync(
+            "get_asset",
+            new Dictionary<string, object?> { ["id"] = assetId },
+            cancellationToken);
+        return DeserializeSingleResult<AssetResponse>(raw, "get_asset");
+    }
+
+    private static void ThrowIfRpcError(Dictionary<string, object?>? raw, string command)
+    {
+        if (raw is null)
+            throw new InvalidOperationException($"No response received for '{command}'");
+        if (raw.TryGetValue("error", out var err) && err is not null)
+        {
+            var d = err as Dictionary<string, object?>;
+            var code = d?.GetValueOrDefault("code") as string ?? "UNKNOWN";
+            var msg = d?.GetValueOrDefault("message") as string ?? err.ToString()!;
+            throw new InvalidOperationException($"[{code}] {msg}");
+        }
+    }
+
+    private List<T> DeserializeListResult<T>(Dictionary<string, object?>? raw, string command, string key)
+    {
+        ThrowIfRpcError(raw, command);
+        if (raw is null || !raw.TryGetValue("result", out var resultObj)) return new List<T>();
+        var resultDict = resultObj as Dictionary<string, object?>;
+        if (resultDict is null || !resultDict.TryGetValue(key, out var listObj) || listObj is null)
+            return new List<T>();
+        return JsonSerializer.Deserialize<List<T>>(JsonSerializer.Serialize(listObj), _jsonOptions) ?? new List<T>();
+    }
+
+    private T? DeserializeSingleResult<T>(Dictionary<string, object?>? raw, string command) where T : class
+    {
+        ThrowIfRpcError(raw, command);
+        if (raw is null || !raw.TryGetValue("result", out var resultObj) || resultObj is null)
+            return null;
+        return JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(resultObj), _jsonOptions);
     }
 
     private void OnMessageReceived(object? sender, MessageReceivedEventArgs args)

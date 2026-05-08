@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -20,6 +21,7 @@ public class MessagePackWebSocketClient : IDisposable
     private readonly SemaphoreSlim _sendSemaphore = new(1, 1);
     private bool _disposed = false;
     private readonly MessagePackSerializerOptions _options;
+    private readonly ConcurrentDictionary<string, TaskCompletionSource<byte[]>> _pendingRequests = new();
 
     /// <summary>
     /// Event fired when a message is received and deserialized.
@@ -179,6 +181,50 @@ public class MessagePackWebSocketClient : IDisposable
         finally
         {
             _sendSemaphore.Release();
+        }
+    }
+
+    /// <summary>
+    /// Send a request command and await the correlated response.
+    /// Adds a <c>request_id</c> to <paramref name="data"/> automatically and waits for
+    /// a server message with the same <c>request_id</c> echoed back.
+    /// </summary>
+    /// <param name="command">Command name (e.g. "get_node_metadata").</param>
+    /// <param name="data">Command data payload. Will be mutated to include <c>request_id</c>.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="timeout">Response timeout (default 30 s).</param>
+    /// <returns>The raw response message as a string-keyed dictionary, or null on failure.</returns>
+    public async Task<Dictionary<string, object?>?> SendRequestAsync(
+        string command,
+        Dictionary<string, object?> data,
+        CancellationToken cancellationToken = default,
+        TimeSpan? timeout = null)
+    {
+        var requestId = Guid.NewGuid().ToString("N");
+        data["request_id"] = requestId;
+
+        var tcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _pendingRequests[requestId] = tcs;
+
+        var envelope = new Dictionary<string, object?> { ["command"] = command, ["data"] = data };
+        if (!await SendMessageAsync(envelope, cancellationToken))
+        {
+            _pendingRequests.TryRemove(requestId, out _);
+            throw new InvalidOperationException($"Failed to send '{command}' request over WebSocket");
+        }
+
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        linkedCts.CancelAfter(timeout ?? TimeSpan.FromSeconds(30));
+        linkedCts.Token.Register(() => tcs.TrySetCanceled());
+
+        try
+        {
+            var rawBytes = await tcs.Task;
+            return MessagePackSerializer.Deserialize<Dictionary<string, object?>>(rawBytes, _options);
+        }
+        finally
+        {
+            _pendingRequests.TryRemove(requestId, out _);
         }
     }
 
@@ -356,8 +402,16 @@ public class MessagePackWebSocketClient : IDisposable
     {
         try
         {
-            // Peek at "type" first
+            // Peek at "type" and "request_id" first
             var tempDict = MessagePackSerializer.Deserialize<Dictionary<string, object?>>(data, _options);
+
+            // Complete a pending request-reply correlation before continuing.
+            if (tempDict.TryGetValue("request_id", out var reqIdObj) && reqIdObj is string reqId &&
+                _pendingRequests.TryGetValue(reqId, out var pendingTcs))
+            {
+                pendingTcs.TrySetResult(data);
+                // Fall through — still fire MessageReceived so callers can observe the response.
+            }
 
             if (tempDict.TryGetValue("type", out var typeObj) && typeObj is string typeStr)
             {
