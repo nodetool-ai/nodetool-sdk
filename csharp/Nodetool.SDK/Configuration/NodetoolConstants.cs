@@ -15,7 +15,8 @@ public static class NodetoolConstants
         public const string NodeExecute = "/api/nodes/execute"; // NOT IMPLEMENTED
         
         // Workflow operations  
-        public const string Workflows = "/api/workflows/";
+        /// <summary>No trailing slash — avoids 404 on servers that distinguish exact paths.</summary>
+        public const string Workflows = "/api/workflows";
         public const string WorkflowById = "/api/workflows/{0}";
         public const string WorkflowRun = "/api/workflows/{0}/run";
         public const string WorkflowRunSyncPlus = "/api/workflows/{0}/run_sync_plus_fetch_outputs";

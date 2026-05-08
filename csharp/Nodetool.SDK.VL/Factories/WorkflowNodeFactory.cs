@@ -190,7 +190,11 @@ namespace Nodetool.SDK.VL.Factories
                 var metadataService = new WorkflowMetadataService();
 
                 // Ensure the metadata service uses the same API base URL as the Connect node.
-                metadataService.Configure(new NodetoolOptions { BaseUrl = apiBase });
+                metadataService.Configure(new NodetoolOptions
+                {
+                    BaseUrl = apiBase,
+                    ApiKey = NodeToolClientProvider.CurrentAuthToken
+                });
                 
                 // Since we can't use async in static constructor context, we need to handle this differently
                 // For now, we'll use Task.Run to block synchronously - this isn't ideal but works for initialization

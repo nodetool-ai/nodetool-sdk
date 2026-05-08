@@ -52,7 +52,10 @@ public class NodetoolClient : INodetoolClient
     {
         _logger?.LogDebug("Fetching node types");
         
-        var response = await _httpClient.GetAsync(NodetoolConstants.Endpoints.NodesMetadata, cancellationToken);
+        // Server defaults to slim summaries without ?fields=full — VL and SDK clients need properties/outputs.
+        var response = await _httpClient.GetAsync(
+            $"{NodetoolConstants.Endpoints.NodesMetadata}?fields=full",
+            cancellationToken);
         response.EnsureSuccessStatusCode();
         
         var json = await response.Content.ReadAsStringAsync(cancellationToken);

@@ -293,7 +293,7 @@ namespace Nodetool.SDK.VL.Factories
             try
             {
                 using var client = new Nodetool.SDK.Api.NodetoolClient();
-                client.Configure(apiBase);
+                client.Configure(apiBase, NodeToolClientProvider.CurrentAuthToken);
                 VlLog.Debug("NodesFactory: fetching node metadata...");
                 var task = Task.Run(async () => await client.GetNodeTypesAsync());
                 

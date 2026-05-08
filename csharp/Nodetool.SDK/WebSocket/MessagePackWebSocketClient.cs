@@ -73,6 +73,8 @@ public class MessagePackWebSocketClient : IDisposable
             }
 
             _webSocket = new ClientWebSocket();
+            // WebSocket-level keepalive frames (independent of NodeTool's application-level ping/pong).
+            _webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(30);
             _cancellationTokenSource = new CancellationTokenSource();
 
             _logger.LogInformation("Connecting to NodeTool WebSocket: {Uri}", uri);
@@ -373,6 +375,24 @@ public class MessagePackWebSocketClient : IDisposable
 
             if (message != null)
             {
+                // Server sends { type: "ping", ts } every ~25s; reply so middleboxes and future server logic stay happy.
+                if (message is Dictionary<string, object?> appDict &&
+                    appDict.TryGetValue("type", out var appType) &&
+                    appType is string appTypeStr &&
+                    appTypeStr == "ping")
+                {
+                    var pong = new Dictionary<string, object?>
+                    {
+                        ["type"] = "pong",
+                        ["ts"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                    };
+                    if (!await SendMessageAsync(pong, CancellationToken.None))
+                    {
+                        _logger.LogDebug("Failed to send pong reply to server ping");
+                    }
+                    return;
+                }
+
                 typeName = ExtractTypeName(message);
                 
                 OnMessageReceived(new MessageReceivedEventArgs

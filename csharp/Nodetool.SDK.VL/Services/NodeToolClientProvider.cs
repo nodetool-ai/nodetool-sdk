@@ -1,3 +1,4 @@
+using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.Configuration;
 using Nodetool.SDK.Execution;
 using Nodetool.SDK.VL.Factories;
@@ -304,6 +305,28 @@ public static class NodeToolClientProvider
 
         public Task<IExecutionSession> ExecuteNodeAsync(string nodeType, Dictionary<string, object>? inputs = null, CancellationToken cancellationToken = default)
             => Task.FromException<IExecutionSession>(new InvalidOperationException("Not connected."));
+
+        public Task<List<NodeMetadataResponse>> GetNodeTypesAsync(CancellationToken cancellationToken = default)
+            => Task.FromException<List<NodeMetadataResponse>>(new InvalidOperationException("Not connected."));
+
+        public Task<NodeMetadataResponse?> GetNodeAsync(string nodeType, CancellationToken cancellationToken = default)
+            => Task.FromException<NodeMetadataResponse?>(new InvalidOperationException("Not connected."));
+
+        public Task<List<WorkflowResponse>> GetWorkflowsAsync(CancellationToken cancellationToken = default)
+            => Task.FromException<List<WorkflowResponse>>(new InvalidOperationException("Not connected."));
+
+        public Task<WorkflowResponse?> GetWorkflowAsync(string workflowId, CancellationToken cancellationToken = default)
+            => Task.FromException<WorkflowResponse?>(new InvalidOperationException("Not connected."));
+
+        public Task<List<AssetResponse>> GetAssetsAsync(
+            string? contentType = null,
+            string? parentId = null,
+            int pageSize = 10000,
+            CancellationToken cancellationToken = default)
+            => Task.FromException<List<AssetResponse>>(new InvalidOperationException("Not connected."));
+
+        public Task<AssetResponse?> GetAssetAsync(string assetId, CancellationToken cancellationToken = default)
+            => Task.FromException<AssetResponse?>(new InvalidOperationException("Not connected."));
 
         public void Dispose() { }
     }
