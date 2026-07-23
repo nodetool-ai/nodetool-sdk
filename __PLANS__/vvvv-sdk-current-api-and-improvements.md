@@ -291,8 +291,8 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [ ] Replace `async void` workflow execution with a tracked task and explicit exception propagation.
 - [x] Route bound execution updates by server job ID; accept unscoped updates only when exactly one bound session exists.
 - [ ] Maintain a per-run output routing table keyed by output node ID, public output name, `node_name`, and `output_name`.
-- [ ] Apply `output_update.disposition` (`append` versus `replace`) and `done` semantics.
-- [ ] Treat live output updates as progressive state and terminal `result.outputs` as authoritative reconciliation.
+- [x] Apply `output_update.disposition` (`append` versus `replace`) and `done` semantics.
+- [x] Treat live output updates as progressive state and terminal `result.outputs` as authoritative reconciliation.
 - [x] Correctly unwrap the current nested terminal result.
 - [ ] Preserve the latest valid media value if a terminal result contains only a URI/reference and no inline bytes.
 - [ ] Use the workflow interface type when encoding every input, including graph-derived image/audio/video/document inputs.

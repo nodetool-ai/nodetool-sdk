@@ -267,12 +267,6 @@ namespace Nodetool.SDK.VL.Nodes
 
                 // Collect inputs from pins (excluding Trigger) and adapt values based on workflow schema.
                 var parameters = await BuildWorkflowParametersAsync(linked.Token);
-                var expectedOutputNames = new HashSet<string>(
-                    _workflow.GetOutputProperties().Select(p => p.Name),
-                    StringComparer.Ordinal);
-                var receivedCompletedOutputs = new HashSet<string>(StringComparer.Ordinal);
-                var outputsReadyTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
                 // Execute by ID so repeated runs do not pay the HTTP name lookup cost.
                 var session = await client.ExecuteWorkflowAsync(_workflow.Id, parameters, linked.Token);
                 _activeSession = session;
@@ -329,8 +323,6 @@ namespace Nodetool.SDK.VL.Nodes
                             if (string.Equals(typeDisc, "chunk", StringComparison.OrdinalIgnoreCase))
                             {
                                 var content = map.TryGetValue("content", out var c) ? (c.AsString() ?? "") : "";
-                                var done = map.TryGetValue("done", out var d) && d.TryGetBool(out var b) && b;
-
                                 if (!_chunkBuffers.TryGetValue(update.OutputName, out var sb))
                                 {
                                     sb = new StringBuilder();
@@ -352,10 +344,6 @@ namespace Nodetool.SDK.VL.Nodes
 
                                 // Show accumulated content even when we get the final done=true message (often empty content).
                                 pin.Value = sb.ToString();
-                                if (done || update.Done)
-                                {
-                                    MarkOutputReady(update.OutputName, expectedOutputNames, receivedCompletedOutputs, outputsReadyTcs);
-                                }
                                 return;
                             }
                         }
@@ -376,7 +364,6 @@ namespace Nodetool.SDK.VL.Nodes
                                     }
                                     _latestImages[update.OutputName] = img;
                                     pin.Value = img;
-                                    MarkOutputReady(update.OutputName, expectedOutputNames, receivedCompletedOutputs, outputsReadyTcs);
                                     return;
                                 }
 
@@ -386,27 +373,12 @@ namespace Nodetool.SDK.VL.Nodes
                         }
 
                         pin.Value = ConvertNodeToolValueToExpectedType(update.Value, expectedType);
-                        MarkOutputReady(update.OutputName, expectedOutputNames, receivedCompletedOutputs, outputsReadyTcs);
                     }
                 };
 
-                var sessionCompletionTask = session.WaitForCompletionAsync(linked.Token);
-                var completionSourceTask = expectedOutputNames.Count > 0
-                    ? WaitForOutputsReadyAsync(outputsReadyTcs.Task, linked.Token)
-                    : Task.FromResult(false);
-
-                var completedTask = expectedOutputNames.Count > 0
-                    ? await Task.WhenAny(sessionCompletionTask, completionSourceTask)
-                    : sessionCompletionTask;
-
-                var ok = ReferenceEquals(completedTask, completionSourceTask)
-                    ? completionSourceTask.Result
-                    : sessionCompletionTask.Result;
-
-                if (ReferenceEquals(completedTask, completionSourceTask) && ok)
-                {
-                    AppendDebug("completed: ok (outputs)");
-                }
+                // Live output updates are progressive only. A workflow is finished when the
+                // terminal job_update arrives; its result is the authoritative final snapshot.
+                var ok = await session.WaitForCompletionAsync(linked.Token);
 
                 if (!ok)
                 {
@@ -481,39 +453,6 @@ namespace Nodetool.SDK.VL.Nodes
                 {
                     // ignore
                 }
-            }
-        }
-
-        private static void MarkOutputReady(
-            string outputName,
-            ISet<string> expectedOutputNames,
-            ISet<string> receivedCompletedOutputs,
-            TaskCompletionSource<bool> outputsReadyTcs)
-        {
-            if (!expectedOutputNames.Contains(outputName))
-            {
-                return;
-            }
-
-            receivedCompletedOutputs.Add(outputName);
-            if (receivedCompletedOutputs.Count >= expectedOutputNames.Count)
-            {
-                outputsReadyTcs.TrySetResult(true);
-            }
-        }
-
-        private static async Task<bool> WaitForOutputsReadyAsync(Task outputsReadyTask, CancellationToken cancellationToken)
-        {
-            try
-            {
-                await outputsReadyTask.WaitAsync(cancellationToken);
-                // Short grace period so an immediate failure can still win over the optimistic output path.
-                await Task.Delay(100, cancellationToken);
-                return true;
-            }
-            catch (OperationCanceledException)
-            {
-                return false;
             }
         }
 
