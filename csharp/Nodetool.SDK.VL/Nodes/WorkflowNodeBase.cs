@@ -267,6 +267,7 @@ namespace Nodetool.SDK.VL.Nodes
 
                 // Collect inputs from pins (excluding Trigger) and adapt values based on workflow schema.
                 var parameters = await BuildWorkflowParametersAsync(linked.Token);
+                var outputRoutes = BuildOutputRoutingTable(_workflow);
                 // Execute by ID so repeated runs do not pay the HTTP name lookup cost.
                 var session = await client.ExecuteWorkflowAsync(_workflow.Id, parameters, linked.Token);
                 _activeSession = session;
@@ -304,13 +305,16 @@ namespace Nodetool.SDK.VL.Nodes
 
                 session.OutputReceived += update =>
                 {
-                    // Canonical mapping: for Output nodes, the backend sets output_name=node.name (e.g. "inverted").
-                    var hasPin = _outputPins.TryGetValue(update.OutputName, out var pin);
+                    var pinName = ResolveOutputPinName(outputRoutes, update);
+                    var pin = pinName != null && _outputPins.TryGetValue(pinName, out var routedPin)
+                        ? routedPin
+                        : null;
+                    var hasPin = pin != null;
                     Console.WriteLine(
-                        $"WorkflowNodeBase: output_update received: output_name='{update.OutputName}' node_name='{update.NodeName}' output_type='{update.OutputType}' hasPin={hasPin}");
-                    AppendDebug($"output_update: {update.OutputName} type={update.OutputType}");
+                        $"WorkflowNodeBase: output_update received: node_id='{update.NodeId}' output_name='{update.OutputName}' node_name='{update.NodeName}' output_type='{update.OutputType}' pin='{pinName ?? "<none>"}'");
+                    AppendDebug($"output_update: {update.OutputName} type={update.OutputType} pin={pinName ?? "<none>"}");
 
-                    if (pin != null)
+                    if (hasPin && pin != null && pinName != null)
                     {
                         // IVLPin doesn't expose Type; our InternalPin does.
                         var expectedType = (pin as InternalPin)?.Type ?? typeof(string);
@@ -323,10 +327,10 @@ namespace Nodetool.SDK.VL.Nodes
                             if (string.Equals(typeDisc, "chunk", StringComparison.OrdinalIgnoreCase))
                             {
                                 var content = map.TryGetValue("content", out var c) ? (c.AsString() ?? "") : "";
-                                if (!_chunkBuffers.TryGetValue(update.OutputName, out var sb))
+                                if (!_chunkBuffers.TryGetValue(pinName, out var sb))
                                 {
                                     sb = new StringBuilder();
-                                    _chunkBuffers[update.OutputName] = sb;
+                                    _chunkBuffers[pinName] = sb;
                                 }
 
                                 if (string.Equals(
@@ -358,16 +362,16 @@ namespace Nodetool.SDK.VL.Nodes
                                 var img = SKImage.FromEncodedData(bytes);
                                 if (img != null)
                                 {
-                                    if (_latestImages.TryGetValue(update.OutputName, out var prev))
+                                    if (_latestImages.TryGetValue(pinName, out var prev))
                                     {
                                         prev.Dispose();
                                     }
-                                    _latestImages[update.OutputName] = img;
+                                    _latestImages[pinName] = img;
                                     pin.Value = img;
                                     return;
                                 }
 
-                                SetError($"Failed to decode image bytes for output '{update.OutputName}'.");
+                                SetError($"Failed to decode image bytes for output '{pinName}'.");
                                 return;
                             }
                         }
@@ -454,6 +458,40 @@ namespace Nodetool.SDK.VL.Nodes
                     // ignore
                 }
             }
+        }
+
+        private static IReadOnlyDictionary<string, string> BuildOutputRoutingTable(
+            WorkflowDetail workflow)
+        {
+            var routes = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var output in workflow.Interface?.Outputs ?? [])
+            {
+                routes[$"node:{output.NodeId}"] = output.Name;
+                routes[$"output:{output.Name}"] = output.Name;
+                routes[$"name:{output.Name}"] = output.Name;
+            }
+            return routes;
+        }
+
+        private static string? ResolveOutputPinName(
+            IReadOnlyDictionary<string, string> routes,
+            ExecutionOutputUpdate update)
+        {
+            // A scoped node ID is authoritative. Do not let Preview or upstream
+            // node updates overwrite a workflow output merely because they use
+            // the same generic handle name (commonly "output").
+            if (!string.IsNullOrWhiteSpace(update.NodeId))
+            {
+                return routes.TryGetValue($"node:{update.NodeId}", out var byNode)
+                    ? byNode
+                    : null;
+            }
+
+            if (routes.TryGetValue($"output:{update.OutputName}", out var byOutput))
+                return byOutput;
+            return routes.TryGetValue($"name:{update.NodeName}", out var byName)
+                ? byName
+                : null;
         }
 
         private string ComputeInputSignature()
