@@ -22,8 +22,6 @@ namespace Nodetool.SDK.VL.Nodes
     /// </summary>
     public class WorkflowNodeBase : IVLNode, IDisposable
     {
-        private const int DefaultWorkflowTimeoutSeconds = 300;
-
         private readonly NodeContext _nodeContext;
         private readonly WorkflowDetail _workflow;
         private readonly WorkflowNodeDescription _description;
@@ -64,6 +62,7 @@ namespace Nodetool.SDK.VL.Nodes
             _inputPins["Cancel"] = new InternalPin("Cancel", typeof(bool), false);
             _inputPins["AutoRun"] = new InternalPin("AutoRun", typeof(bool), false);
             _inputPins["RestartOnChange"] = new InternalPin("RestartOnChange", typeof(bool), false);
+            _inputPins["ExecutionTimeoutSeconds"] = new InternalPin("ExecutionTimeoutSeconds", typeof(int), 0);
             
             // Add workflow input pins
             foreach (var property in _workflow.GetInputProperties())
@@ -228,6 +227,9 @@ namespace Nodetool.SDK.VL.Nodes
         {
             if (_isRunning) return;
             _isRunning = true;
+            CancellationTokenSource? timeoutCts = null;
+            var timeoutSeconds = NodeToolClientProvider.ResolveExecutionTimeoutSeconds(
+                _inputPins.TryGetValue("ExecutionTimeoutSeconds", out var timeoutPin) && timeoutPin.Value is int value ? value : 0);
             try
             {
                 AppendDebug($"start workflow='{_workflow.Name}'");
@@ -256,7 +258,7 @@ namespace Nodetool.SDK.VL.Nodes
                     Console.WriteLine($"WorkflowNodeBase: Input schema keys: {keys}");
                 }
 
-                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(DefaultWorkflowTimeoutSeconds));
+                timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
                 var localManual = _manualCancelCts;
                 using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, localManual?.Token ?? CancellationToken.None);
 
@@ -414,8 +416,9 @@ namespace Nodetool.SDK.VL.Nodes
                 }
                 else
                 {
-                    SetError("Execution cancelled.");
-                    AppendDebug("cancelled");
+                    var timedOut = timeoutCts?.IsCancellationRequested == true && _manualCancelCts?.IsCancellationRequested != true;
+                    SetError(timedOut ? $"Execution timed out after {timeoutSeconds} seconds." : "Execution cancelled.");
+                    AppendDebug(timedOut ? $"timed out after {timeoutSeconds}s" : "cancelled");
                     SetIsRunning(false);
                 }
             }
@@ -428,6 +431,7 @@ namespace Nodetool.SDK.VL.Nodes
             }
             finally
             {
+                timeoutCts?.Dispose();
                 _activeSession = null;
                 _isRunning = false;
                 _executionTask = Task.CompletedTask;
@@ -509,7 +513,7 @@ namespace Nodetool.SDK.VL.Nodes
             var sb = new StringBuilder();
             foreach (var kvp in _inputPins.OrderBy(k => k.Key, StringComparer.Ordinal))
             {
-                if (kvp.Key is "Trigger" or "Cancel" or "AutoRun" or "RestartOnChange")
+                if (kvp.Key is "Trigger" or "Cancel" or "AutoRun" or "RestartOnChange" or "ExecutionTimeoutSeconds")
                     continue;
 
                 sb.Append(kvp.Key);
@@ -1042,7 +1046,7 @@ namespace Nodetool.SDK.VL.Nodes
 
             foreach (var kvp in _inputPins)
             {
-                if (kvp.Key is "Trigger" or "Cancel" or "AutoRun" or "RestartOnChange")
+                if (kvp.Key is "Trigger" or "Cancel" or "AutoRun" or "RestartOnChange" or "ExecutionTimeoutSeconds")
                     continue;
 
                 var raw = kvp.Value.Value;

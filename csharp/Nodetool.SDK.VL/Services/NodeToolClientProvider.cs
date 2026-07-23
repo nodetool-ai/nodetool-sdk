@@ -12,12 +12,16 @@ namespace Nodetool.SDK.VL.Services;
 /// </summary>
 public static class NodeToolClientProvider
 {
+    public const int DefaultExecutionTimeoutSeconds = 300;
+    public const int MaximumExecutionTimeoutSeconds = 86400;
+
     private static NodeToolExecutionClient? _client;
     private static readonly object _lock = new();
     private static string _currentUrl = "ws://localhost:7777";
     private static string? _currentApiKey;
     private static Uri? _currentApiBaseUrl;
     private static readonly INodeToolExecutionClient _nullClient = new NullNodeToolExecutionClient();
+    private static int _executionTimeoutSeconds = DefaultExecutionTimeoutSeconds;
 
     /// <summary>
     /// Current connection status.
@@ -50,6 +54,27 @@ public static class NodeToolClientProvider
     /// Used for HTTP requests (assets/workflow discovery) and WS payload auth token.
     /// </summary>
     public static string? CurrentAuthToken => _currentApiKey;
+
+    /// <summary>
+    /// Default timeout used by VL execution nodes. Individual nodes can override it.
+    /// </summary>
+    public static int ExecutionTimeoutSeconds => _executionTimeoutSeconds;
+
+    /// <summary>
+    /// Updates the shared execution timeout without resetting discovery or the connection.
+    /// </summary>
+    public static void SetExecutionTimeoutSeconds(int timeoutSeconds)
+    {
+        _executionTimeoutSeconds = Math.Clamp(timeoutSeconds, 1, MaximumExecutionTimeoutSeconds);
+    }
+
+    /// <summary>
+    /// Resolves a per-node timeout. Zero or a negative value inherits the shared default.
+    /// </summary>
+    public static int ResolveExecutionTimeoutSeconds(int perNodeTimeoutSeconds)
+        => perNodeTimeoutSeconds > 0
+            ? Math.Clamp(perNodeTimeoutSeconds, 1, MaximumExecutionTimeoutSeconds)
+            : _executionTimeoutSeconds;
 
     /// <summary>
     /// Event raised when connection status changes.

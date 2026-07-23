@@ -118,7 +118,7 @@ namespace Nodetool.SDK.VL.Factories
                                     inputPins.Add(bc.Pin("AutoRun", typeof(bool), false,
                                         "🔁 Execute on input change",
                                         "When enabled, this node automatically executes whenever any *data input* changes.\n\n"
-                                        + "- This watches all input pins except Execute/Cancel/AutoRun/RestartOnChange.\n"
+                                        + "- This watches data pins, not execution-control pins.\n"
                                         + "- Useful for chaining nodes and building autorun patches.\n"
                                         + "- If an input changes while a run is active, behavior depends on RestartOnChange."));
 
@@ -132,6 +132,10 @@ namespace Nodetool.SDK.VL.Factories
                                         + "- the node finishes the current run, then reruns once.\n\n"
                                         + "Tip: enable this for interactive tweaking (sliders/knobs). Leave it off for expensive or non-cancellable nodes."));
                                     
+                                    inputPins.Add(bc.Pin("ExecutionTimeoutSeconds", typeof(int), 0,
+                                        "Execution timeout override",
+                                        "Maximum duration of this node run in seconds. Use 0 to inherit the default from the Nodetool Connect node."));
+
                                     // Add input pins from node properties with documentation
                                     if (nodeMetadata.Properties != null)
                                     {
@@ -544,4 +548,4 @@ namespace Nodetool.SDK.VL.Factories
             return TrimTrailingPeriod(nodeType);
         }
     }
-} 
+}

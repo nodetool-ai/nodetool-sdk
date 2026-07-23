@@ -52,6 +52,12 @@ internal static class DiagnosticsNodeFactory
                 var reconnectTriggerPin = bc.Pin("Reconnect", typeof(bool), false,
                     "⚡ Reconnect", "Trigger to force reconnection");
 
+                var executionTimeoutPin = bc.Pin("ExecutionTimeoutSeconds", typeof(int),
+                    NodeToolClientProvider.DefaultExecutionTimeoutSeconds,
+                    "Execution timeout",
+                    "Default maximum duration of workflow and node runs in seconds. "
+                    + $"Clamped to 1-{NodeToolClientProvider.MaximumExecutionTimeoutSeconds}; individual execution nodes can override it.");
+
                 // Output pins
                 var isConnectedPin = bc.Pin("IsConnected", typeof(bool), false,
                     "✅ Connected", "True when connected to the server");
@@ -61,7 +67,7 @@ internal static class DiagnosticsNodeFactory
                     "❌ Last Error", "Last error message if connection failed");
 
                 return bc.Node(
-                    inputs: new IVLPinDescription[] { baseUrlPin, apiKeyPin, autoReconnectPin, reconnectTriggerPin },
+                    inputs: new IVLPinDescription[] { baseUrlPin, apiKeyPin, autoReconnectPin, reconnectTriggerPin, executionTimeoutPin },
                     outputs: new IVLPinDescription[] { isConnectedPin, statusPin, lastErrorPin },
                     newNode: ibc =>
                     {
@@ -114,7 +120,8 @@ internal static class DiagnosticsNodeFactory
                                         hasConnected = true;
                                         _ = NodeToolClientProvider.ConnectAsync();
                                     }
-                                })
+                                }),
+                                ibc.Input<int>(NodeToolClientProvider.SetExecutionTimeoutSeconds)
                             },
                             outputs: new IVLPin[]
                             {

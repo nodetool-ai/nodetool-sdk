@@ -24,6 +24,7 @@ namespace Nodetool.SDK.VL.Nodes
         public const string CancelInputName = "Cancel";
         public const string AutoRunInputName = "AutoRun";
         public const string RestartOnChangeInputName = "RestartOnChange";
+        public const string ExecutionTimeoutSecondsInputName = "ExecutionTimeoutSeconds";
         public const string IsRunningOutputName = "IsRunning";
         public const string ErrorOutputName = "Error";
         public const string DebugOutputName = "Debug";
@@ -76,7 +77,7 @@ namespace Nodetool.SDK.VL.Nodes
             inputPins.Add(new PinDescription(AutoRunInputName, typeof(bool), false,
                 "🔁 Execute on input change",
                 "When enabled, this workflow automatically executes whenever any *workflow input pin* changes.\n\n"
-                + "- This watches all workflow input pins (not Trigger/Cancel/AutoRun/RestartOnChange).\n"
+                + "- This watches workflow data pins (not execution-control pins).\n"
                 + "- Useful for chaining workflows and building autorun patches.\n"
                 + "- If an input changes while a run is active, behavior depends on RestartOnChange."));
 
@@ -89,6 +90,10 @@ namespace Nodetool.SDK.VL.Nodes
                 + "If false:\n"
                 + "- the workflow finishes the current run, then reruns once.\n\n"
                 + "Tip: enable this for interactive tweaking. Leave it off when the workflow is expensive or you prefer stable completion."));
+
+            inputPins.Add(new PinDescription(ExecutionTimeoutSecondsInputName, typeof(int), 0,
+                "Execution timeout override",
+                "Maximum duration of this workflow run in seconds. Use 0 to inherit the default from the Nodetool Connect node."));
 
             // Add workflow input pins
             foreach (var property in _workflow.GetInputProperties())
@@ -332,4 +337,4 @@ namespace Nodetool.SDK.VL.Nodes
             public bool IsVisible { get; }
         }
     }
-} 
+}

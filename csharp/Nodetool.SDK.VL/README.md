@@ -59,9 +59,15 @@ Local default endpoint:
 
 - BaseUrl (worker WS): `ws://localhost:7777`
 
+Execution timeout:
+
+- `ExecutionTimeoutSeconds` sets the shared default for workflow and single-node runs (default: 300 seconds).
+- Each generated execution node has its own `ExecutionTimeoutSeconds` input. Leave it at `0` to inherit the Connect-node default, or set a positive value for that node.
+- Values are capped at 86400 seconds (24 hours).
+
 ### Workflow nodes
 
-Generated from `GET /api/workflows/`.
+Generated from the authoritative workflow interface exposed by `GET /api/sdk/v1/workflow-interfaces`.
 
 Category:
 

@@ -77,6 +77,7 @@ namespace Nodetool.SDK.VL.Nodes
             _inputPins["Cancel"] = new InternalPin("Cancel", typeof(bool), false);
             _inputPins["AutoRun"] = new InternalPin("AutoRun", typeof(bool), false);
             _inputPins["RestartOnChange"] = new InternalPin("RestartOnChange", typeof(bool), false);
+            _inputPins["ExecutionTimeoutSeconds"] = new InternalPin("ExecutionTimeoutSeconds", typeof(int), 0);
 
             // Add input pins from node properties
             if (_nodeMetadata.Properties != null)
@@ -264,6 +265,12 @@ namespace Nodetool.SDK.VL.Nodes
             SetError("");
             InvalidateOutputs();
 
+            var timeoutSeconds = NodeToolClientProvider.ResolveExecutionTimeoutSeconds(
+                _inputPins.TryGetValue("ExecutionTimeoutSeconds", out var timeoutPin) && timeoutPin.Value is int value ? value : 0);
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+            var localManual = _manualCancelCts;
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, localManual?.Token ?? CancellationToken.None);
+
             try
             {
                 AppendDebug($"start node='{_nodeMetadata.NodeType}'");
@@ -277,7 +284,7 @@ namespace Nodetool.SDK.VL.Nodes
                 // Ensure we have a connected client (user can also do this explicitly via the Connect node)
                 if (!NodeToolClientProvider.IsConnected)
                 {
-                    var connected = await NodeToolClientProvider.ConnectAsync();
+                    var connected = await NodeToolClientProvider.ConnectAsync(linked.Token);
                     if (!connected)
                         throw new InvalidOperationException($"Not connected: {NodeToolClientProvider.LastError ?? "unknown error"}");
                 }
@@ -302,10 +309,6 @@ namespace Nodetool.SDK.VL.Nodes
                         }
                     }
                 }
-
-                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(300));
-                var localManual = _manualCancelCts;
-                using var linked = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, localManual?.Token ?? CancellationToken.None);
 
                 IExecutionSession? session = null;
                 // For single-node execution, node_update is often the most reliable completion signal.
@@ -447,9 +450,13 @@ namespace Nodetool.SDK.VL.Nodes
                 {
                     lock (_lock)
                     {
-                        _lastError = "Execution cancelled.";
+                        _lastError = timeoutCts.IsCancellationRequested && localManual?.IsCancellationRequested != true
+                            ? $"Execution timed out after {timeoutSeconds} seconds."
+                            : "Execution cancelled.";
                     }
-                    AppendDebug("cancelled");
+                    AppendDebug(timeoutCts.IsCancellationRequested && localManual?.IsCancellationRequested != true
+                        ? $"timed out after {timeoutSeconds}s"
+                        : "cancelled");
                 }
             }
             catch (Exception ex)
@@ -575,12 +582,12 @@ namespace Nodetool.SDK.VL.Nodes
         private string ComputeInputSignature()
         {
             // Cheap stable signature (no JSON serialization) to detect input changes.
-            // Excludes Execute/Cancel/AutoRun/RestartOnChange pins.
+            // Excludes execution-control pins.
             var sb = new StringBuilder();
 
             foreach (var kvp in _inputPins.OrderBy(k => k.Key, StringComparer.Ordinal))
             {
-                if (kvp.Key is "Execute" or "Cancel" or "AutoRun" or "RestartOnChange")
+                if (kvp.Key is "Execute" or "Cancel" or "AutoRun" or "RestartOnChange" or "ExecutionTimeoutSeconds")
                     continue;
 
                 sb.Append(kvp.Key);
@@ -1164,4 +1171,4 @@ namespace Nodetool.SDK.VL.Nodes
             public IReadOnlyList<string> Tags => new List<string>().AsReadOnly();
         }
     }
-} 
+}
