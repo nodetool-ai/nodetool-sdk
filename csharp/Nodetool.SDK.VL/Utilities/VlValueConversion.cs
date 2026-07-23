@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Collections;
 using System.Reflection;
 using System.Text.Json;
+using Nodetool.SDK.Values;
 using VL.Lib.Collections;
 
 namespace Nodetool.SDK.VL.Utilities;
@@ -65,6 +66,15 @@ internal static class VlValueConversion
         var elementType = value.GetType().GetGenericArguments()[0];
         var items = enumerable.Cast<object?>().ToArray();
         return CreateCollection(elementType.MakeArrayType(), elementType, items);
+    }
+
+    public static NodeToolValue UnwrapTerminalResultEnvelope(NodeToolValue value)
+    {
+        if (value.Kind != NodeToolValueKind.List)
+            return value;
+
+        var values = value.AsListOrEmpty();
+        return values.Count == 1 ? values[0] : value;
     }
 
     private static object CreateSpread(Type elementType, IReadOnlyList<object?> items)

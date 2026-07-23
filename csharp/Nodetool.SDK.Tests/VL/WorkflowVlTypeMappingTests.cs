@@ -109,6 +109,40 @@ public class WorkflowVlTypeMappingTests
     }
 
     [Fact]
+    public void TerminalNestedListEnvelope_BecomesAFlatVlSpread()
+    {
+        var terminalValue = NodeToolValue.From(new object[]
+        {
+            new object[] { "1", "2", "2" }
+        });
+        var value = VlValueConversion.UnwrapTerminalResultEnvelope(terminalValue);
+
+        var converted = WorkflowNodeBase.ConvertNodeToolValueToExpectedType(
+            value,
+            typeof(Spread<string>));
+
+        Assert.Equal(
+            new[] { "1", "2", "2" },
+            Assert.IsType<Spread<string>>(converted).ToArray());
+    }
+
+    [Fact]
+    public void TerminalEmptyListEnvelope_BecomesAnEmptyVlSpread()
+    {
+        var terminalValue = NodeToolValue.From(new object[]
+        {
+            Array.Empty<object>()
+        });
+        var value = VlValueConversion.UnwrapTerminalResultEnvelope(terminalValue);
+
+        var converted = WorkflowNodeBase.ConvertNodeToolValueToExpectedType(
+            value,
+            typeof(Spread<string>));
+
+        Assert.Empty(Assert.IsType<Spread<string>>(converted));
+    }
+
+    [Fact]
     public void WorkflowListType_UsesVlSpread()
     {
         var metadata = new TypeMetadata

@@ -678,20 +678,22 @@ namespace Nodetool.SDK.VL.Nodes
                     if (_outputPins.TryGetValue(outputName, out var pin))
                     {
                         var expectedType = (pin as InternalPin)?.Type ?? typeof(string);
+                        var terminalValue =
+                            VlValueConversion.UnwrapTerminalResultEnvelope(kvp.Value);
 
                         // Final outputs: for images, prefer returning a decoded SKImage.
                         // IMPORTANT: do not overwrite an already-received SKImage with null/default if the final
                         // job_update.result omits a usable byte payload or URI.
                         if (expectedType == typeof(SKImage))
                         {
-                            ApplyOrScheduleImageOutput(outputName, pin, kvp.Value);
+                            ApplyOrScheduleImageOutput(outputName, pin, terminalValue);
                             continue;
                         }
 
                         SetOutputPinValue(
                             outputName,
                             pin,
-                            ConvertNodeToolValueToExpectedType(kvp.Value, expectedType));
+                            ConvertNodeToolValueToExpectedType(terminalValue, expectedType));
                     }
                 }
             }

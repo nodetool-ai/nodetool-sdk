@@ -524,7 +524,8 @@ namespace Nodetool.SDK.VL.Nodes
                 {
                     if (buffered.TryGetValue($"job_result:{output.Name}", out var terminalValue))
                     {
-                        _lastOutputs[output.Name] = terminalValue;
+                        _lastOutputs[output.Name] =
+                            VlValueConversion.UnwrapTerminalResultEnvelope(terminalValue);
                         continue;
                     }
 
