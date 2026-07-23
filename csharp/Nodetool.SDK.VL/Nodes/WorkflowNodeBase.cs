@@ -12,6 +12,7 @@ using Nodetool.SDK.Api;
 using VL.Core;
 using Nodetool.SDK.Execution;
 using Nodetool.SDK.Values;
+using Nodetool.SDK.Types.Assets;
 using Nodetool.SDK.VL.Models;
 using Nodetool.SDK.VL.Services;
 using Nodetool.SDK.VL.Utilities;
@@ -858,6 +859,12 @@ namespace Nodetool.SDK.VL.Nodes
                 return value.AsString() ?? value.ToJsonString();
             }
 
+            if (typeof(AssetRef).IsAssignableFrom(expectedType) &&
+                ExtractFirstMap(value) is { } assetMap)
+            {
+                return ConvertAssetRefValue(assetMap, expectedType);
+            }
+
             if (expectedType == typeof(object))
             {
                 if (value.Kind == NodeToolValueKind.Map)
@@ -909,6 +916,32 @@ namespace Nodetool.SDK.VL.Nodes
             }
 
             return ConvertToExpectedType(value.Raw ?? value.AsString() ?? value.ToJsonString(), expectedType);
+        }
+
+        private static AssetRef ConvertAssetRefValue(
+            IReadOnlyDictionary<string, NodeToolValue> map,
+            Type expectedType)
+        {
+            var result = (AssetRef)(Activator.CreateInstance(expectedType)
+                ?? throw new InvalidOperationException($"Cannot create asset reference type {expectedType.Name}."));
+            if (map.TryGetValue("uri", out var uri))
+                result.Uri = uri.AsString() ?? "";
+            if (map.TryGetValue("asset_id", out var assetId))
+                result.AssetId = assetId.AsString();
+            if (map.TryGetValue("data", out var data))
+            {
+                result.Data = data.TryGetBytes(out var bytes)
+                    ? bytes
+                    : data.Raw;
+            }
+            if (result is VideoRef video)
+            {
+                if (map.TryGetValue("duration", out var duration) && duration.TryGetDouble(out var seconds))
+                    video.Duration = (float)seconds;
+                if (map.TryGetValue("format", out var format))
+                    video.Format = format.AsString();
+            }
+            return result;
         }
 
         private static bool TryRenderTypedText(NodeToolValue value, out string text)
@@ -1052,7 +1085,7 @@ namespace Nodetool.SDK.VL.Nodes
             var interfaceType = _workflow.Interface?.Inputs
                 .FirstOrDefault(input => string.Equals(input.Name, inputName, StringComparison.Ordinal))
                 ?.Type.Type.ToLowerInvariant();
-            if (interfaceType is "image" or "audio" or "video" or "document")
+            if (interfaceType is "image" or "audio" or "video" or "document" or "asset" or "asset_ref")
                 return await ConvertMediaInputAsync(inputName, interfaceType, rawValue, cancellationToken);
 
             // If we don't have schema, pass through as string for compatibility with TEST_SDK_01.
@@ -1159,10 +1192,37 @@ namespace Nodetool.SDK.VL.Nodes
             object? rawValue,
             CancellationToken cancellationToken)
         {
+            mediaType = mediaType == "asset_ref" ? "asset" : mediaType;
             byte[]? bytes = rawValue as byte[];
             string? uriText = null;
 
-            if (rawValue is SKImage image)
+            if (rawValue is AssetRef assetRef)
+            {
+                bytes = assetRef.Data as byte[];
+                uriText = assetRef.Uri;
+                if (bytes is { Length: > 0 } && ShouldUploadMedia(bytes.LongLength))
+                {
+                    return await UploadMediaBytesAsync(
+                        inputName,
+                        mediaType,
+                        bytes,
+                        GetDefaultExtension(mediaType),
+                        GetDefaultContentType(mediaType),
+                        cancellationToken);
+                }
+
+                if (!assetRef.IsEmpty())
+                {
+                    return new Dictionary<string, object?>
+                    {
+                        ["type"] = mediaType,
+                        ["asset_id"] = assetRef.AssetId,
+                        ["uri"] = assetRef.Uri,
+                        ["data"] = assetRef.Data
+                    };
+                }
+            }
+            else if (rawValue is SKImage image)
             {
                 using var encoded = image.Encode(SKEncodedImageFormat.Png, 100)
                     ?? throw new InvalidOperationException($"Could not encode image input '{inputName}'.");

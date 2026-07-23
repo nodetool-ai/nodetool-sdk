@@ -269,8 +269,8 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Map primitive NodeTool types to native VL types.
 - [x] Map lists to appropriate spreads/arrays rather than always using `string[]`.
 - [ ] Bind structured NodeTool types through the C# type registry where a generated type exists.
-- [ ] Map image inputs/outputs to the selected VL image type and document ownership/disposal rules.
-- [ ] Define corresponding audio, video, document, and generic asset-reference mappings.
+- [x] Map image inputs/outputs to `SKImage` and document ownership/disposal rules.
+- [x] Map audio, video, document, and generic asset pins to typed SDK asset references.
 - [x] Use an explicit JSON/object fallback pin for unsupported types instead of silently pretending they are strings.
 - [x] Surface per-workflow diagnostics when a pin uses a fallback type.
 - [ ] Keep standard execution pins (`Trigger`, `Cancel`, `AutoRun`, status, error) stable for existing patches.

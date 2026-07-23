@@ -1,4 +1,5 @@
 using Nodetool.SDK.Types;
+using Nodetool.SDK.Types.Assets;
 using SkiaSharp;
 
 namespace Nodetool.SDK.VL.Utilities;
@@ -16,6 +17,10 @@ internal static class WorkflowVlTypeMapping
             "bool" or "boolean" => (typeof(bool), false),
             "list" or "array" => GetArrayTypeAndDefault(metadata),
             "image" => (typeof(SKImage), null),
+            "audio" => (typeof(AudioRef), new AudioRef()),
+            "video" => (typeof(VideoRef), new VideoRef()),
+            "document" => (typeof(DocumentRef), new DocumentRef()),
+            "asset" or "asset_ref" => (typeof(GenericAssetRef), new GenericAssetRef()),
             _ => (typeof(object), null)
         };
     }

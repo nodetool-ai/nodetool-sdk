@@ -73,6 +73,19 @@ public class ImageRef : AssetRef
 }
 
 /// <summary>
+/// Reference to an asset whose more specific media kind is not known.
+/// </summary>
+public class GenericAssetRef : AssetRef
+{
+    public override string Type => "asset";
+
+    static GenericAssetRef()
+    {
+        RegisterType(typeof(GenericAssetRef), "asset");
+    }
+}
+
+/// <summary>
 /// Reference to an audio asset
 /// </summary>
 public class AudioRef : AssetRef
@@ -160,4 +173,4 @@ public class ModelRef : AssetRef
     {
         RegisterType(typeof(ModelRef), "model_ref");
     }
-} 
+}

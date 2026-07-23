@@ -69,6 +69,8 @@ Media transport:
 
 - `InlineMediaLimitBytes` defaults to 4 MiB. Larger local media is uploaded through the asset API and represented by `asset_id` during execution.
 - Set the limit to `0` to upload all binary media, or raise it up to 64 MiB when inline transport is preferable.
+- Workflow audio, video, document, and generic asset pins use the typed SDK asset-reference classes (`AudioRef`, `VideoRef`, `DocumentRef`, and `GenericAssetRef`).
+- Image pins use `SKImage`. A workflow node owns images it produces and disposes them when replaced or when the node is disposed; downstream patches should treat output images as borrowed and must not dispose them. Input images remain owned by the caller.
 
 ### Workflow nodes
 
