@@ -205,15 +205,15 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 **Outcome:** New SDK clients can request an authoritative interface without changing existing APIs.
 
 - [x] Add the v1 workflow-interface schemas and types to `@nodetool-ai/protocol`.
-- [ ] Implement a registry-aware workflow-interface service outside the HTTP/tRPC router layer.
+- [x] Implement a registry-aware workflow-interface service outside the HTTP/tRPC router layer.
 - [x] Add protected tRPC `workflows.interface` using the existing workflow viewer authorization rules.
 - [ ] Add protected, bounded tRPC `workflows.interfaces` for one discovery page.
 - [x] Add a slim, cursor-paginated SDK workflow-summary query that selects only identity/revision columns and never serializes graph nodes, edges, or inline media.
-- [ ] Add `GET /api/workflows/:id/interface?version=1` as a thin bridge to the same service.
+- [x] Add `GET /api/workflows/:id/interface?version=1` as a thin bridge to the same service.
 - [ ] Add `POST /api/workflow-interfaces/query` as the bounded REST bulk bridge.
 - [ ] Add WebSocket `get_workflow_interface` as a thin RPC bridge to the same service.
 - [ ] Add WebSocket `get_workflow_interfaces` as the bounded bulk RPC bridge.
-- [ ] Guard all three entry points with `NODETOOL_ENABLE_SDK_WORKFLOW_INTERFACE_V1` for the initial rollout. (The first tRPC entry point is guarded; REST and WebSocket remain.)
+- [ ] Guard all three entry points with `NODETOOL_ENABLE_SDK_WORKFLOW_INTERFACE_V1` for the initial rollout. (tRPC and REST are guarded; WebSocket remains.)
 - [x] Return a stable feature-disabled/not-supported API error that the SDK can recognize.
 - [ ] Do not populate or alter existing workflow `input_schema`/`output_schema` fields in this phase.
 - [ ] Add authorization tests for owner, collaborator viewer, public workflow, unauthorized user, and missing workflow.
