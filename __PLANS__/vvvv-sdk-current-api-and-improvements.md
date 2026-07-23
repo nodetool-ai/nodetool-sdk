@@ -154,7 +154,7 @@ Use NodeTool `TypeMetadata`-style data instead of lossy JSON Schema wherever pos
 - [x] Normalize terminal job results from the current `result.outputs` shape.
 - [x] Add current streaming fields such as `disposition` and `done` to the C# protocol models.
 - [ ] Replace silent empty-list fallbacks on malformed contracts with typed SDK exceptions carrying endpoint, command, and payload-shape context.
-- [ ] Remove active usage of the unimplemented HTTP node-execution endpoint.
+- [x] Remove active usage of the unimplemented HTTP node/workflow-execution endpoints; VL execution uses the current WebSocket worker protocol exclusively.
 - [ ] Remove obsolete DTOs and execution helpers that implement unsupported past contracts.
 
 ### Phase 1 acceptance gate

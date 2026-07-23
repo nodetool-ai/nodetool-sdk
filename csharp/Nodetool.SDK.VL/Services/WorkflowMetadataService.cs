@@ -184,26 +184,6 @@ public class WorkflowMetadataService : IDisposable
     }
 
     /// <summary>
-    /// Execute a workflow with the provided parameters
-    /// </summary>
-    public async Task<Dictionary<string, object>> ExecuteWorkflowAsync(string workflowId, Dictionary<string, object> parameters)
-    {
-        _logger?.LogInformation("Executing workflow {WorkflowId} with {ParamCount} parameters", workflowId, parameters.Count);
-        
-        try
-        {
-            var result = await _client.ExecuteWorkflowAsync(workflowId, parameters);
-            _logger?.LogInformation("Workflow {WorkflowId} executed successfully with {OutputCount} outputs", workflowId, result.Count);
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Error executing workflow {WorkflowId}", workflowId);
-            throw;
-        }
-    }
-
-    /// <summary>
     /// Clear the workflow cache
     /// </summary>
     public void ClearCache()
