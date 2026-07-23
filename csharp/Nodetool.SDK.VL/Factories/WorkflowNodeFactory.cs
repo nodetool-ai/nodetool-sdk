@@ -68,8 +68,7 @@ namespace Nodetool.SDK.VL.Factories
                     PerformGlobalDataFetchAndStore();
 
                     var allDescriptions = new List<IVLNodeDescription>();
-                    var usedNodeNames = new HashSet<string>();
-                    var nameCounters = new Dictionary<string, int>();
+                    var nodeNames = BuildStableNodeNames(_fetchedWorkflows);
                     int successfullyProcessedCount = 0;
                     int failedToProcessCount = 0;
 
@@ -85,8 +84,7 @@ namespace Nodetool.SDK.VL.Factories
                         try
                         {
                             // Generate unique VL node name
-                            string vlNodeName = GenerateUniqueNodeName(workflow, usedNodeNames, nameCounters);
-                            usedNodeNames.Add(vlNodeName);
+                            string vlNodeName = nodeNames[workflow];
 
                             // Create WorkflowNodeDescription (following VL.NodetoolNodes pattern)
                             try
@@ -332,36 +330,82 @@ namespace Nodetool.SDK.VL.Factories
         /// <summary>
         /// Generates a unique VL-compatible workflow name
         /// </summary>
-        private static string GenerateUniqueNodeName(WorkflowDetail workflow, HashSet<string> usedNames, Dictionary<string, int> nameCounters)
+        private static IReadOnlyDictionary<WorkflowDetail, string> BuildStableNodeNames(
+            IEnumerable<WorkflowDetail> workflows)
         {
-            // Use the workflow name as the base name
-            string baseName = !string.IsNullOrWhiteSpace(workflow.Name) 
-                ? workflow.Name 
-                : "UnknownWorkflow";
+            var result = new Dictionary<WorkflowDetail, string>();
+            var groups = workflows
+                .Where(workflow => workflow != null)
+                .GroupBy(GetBaseNodeName, StringComparer.Ordinal);
 
-            // Sanitize for VL compatibility
-            baseName = SanitizeNodeName(baseName);
-
-            if (string.IsNullOrWhiteSpace(baseName))
+            foreach (var group in groups)
             {
-                baseName = "UnknownWorkflow";
-            }
-
-            // Ensure uniqueness
-            string finalName = baseName;
-            if (usedNames.Contains(finalName))
-            {
-                int counter = nameCounters.TryGetValue(baseName, out int lastCounter) ? lastCounter + 1 : 1;
-                do
+                var items = group.ToArray();
+                if (items.Length == 1)
                 {
-                    finalName = $"{baseName}_{counter:D2}";
-                    counter++;
-                } while (usedNames.Contains(finalName));
-                
-                nameCounters[baseName] = counter - 1;
+                    result[items[0]] = group.Key;
+                    continue;
+                }
+
+                var idTokens = items.ToDictionary(
+                    workflow => workflow,
+                    workflow => GetStableIdToken(workflow.Id));
+                if (idTokens.Values.Distinct(StringComparer.Ordinal).Count() != items.Length)
+                {
+                    throw new InvalidOperationException(
+                        $"Duplicate workflow IDs found for node name '{group.Key}'.");
+                }
+
+                foreach (var workflow in items)
+                {
+                    var token = idTokens[workflow];
+                    var prefixLength = Math.Min(8, token.Length);
+                    while (prefixLength < token.Length && items.Any(other =>
+                        !ReferenceEquals(other, workflow) &&
+                        idTokens[other].StartsWith(token[..prefixLength], StringComparison.Ordinal)))
+                    {
+                        prefixLength++;
+                    }
+
+                    result[workflow] = $"{group.Key}_{token[..prefixLength]}";
+                }
             }
 
-            return finalName;
+            // Also handle the rare case where a generated duplicate name collides with
+            // another workflow's literal display name. Full ID tokens keep this pass
+            // deterministic and independent of discovery order.
+            foreach (var collision in result
+                .GroupBy(entry => entry.Value, StringComparer.Ordinal)
+                .Where(group => group.Count() > 1))
+            {
+                foreach (var entry in collision)
+                    result[entry.Key] = $"{GetBaseNodeName(entry.Key)}_{GetStableIdToken(entry.Key.Id)}";
+            }
+
+            if (result.Values.Distinct(StringComparer.Ordinal).Count() != result.Count)
+                throw new InvalidOperationException("Workflow IDs and names do not produce unique VL node identities.");
+
+            return result;
+        }
+
+        private static string GetBaseNodeName(WorkflowDetail workflow)
+        {
+            var baseName = SanitizeNodeName(
+                !string.IsNullOrWhiteSpace(workflow.Name)
+                    ? workflow.Name
+                    : "UnknownWorkflow");
+            return string.IsNullOrWhiteSpace(baseName) ? "UnknownWorkflow" : baseName;
+        }
+
+        private static string GetStableIdToken(string workflowId)
+        {
+            var token = new string((workflowId ?? string.Empty)
+                .Where(char.IsLetterOrDigit)
+                .Select(char.ToLowerInvariant)
+                .ToArray());
+            if (token.Length == 0)
+                throw new InvalidOperationException("A workflow ID is required to disambiguate duplicate node names.");
+            return token;
         }
 
         /// <summary>
@@ -451,4 +495,4 @@ namespace Nodetool.SDK.VL.Factories
             };
         }
     }
-} 
+}
