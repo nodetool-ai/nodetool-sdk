@@ -17,7 +17,7 @@
       <group targetFramework="net8.0">
         <dependency id="VL.Core" version="2025.7.0" />
         <dependency id="MessagePack" version="3.0.300" />
-        <dependency id="Microsoft.Extensions.Logging" version="8.0.0" />
+        <dependency id="Microsoft.Extensions.Logging" version="8.0.1" />
         <dependency id="SkiaSharp" version="2.88.8" />
       </group>
 
