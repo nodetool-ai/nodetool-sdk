@@ -35,7 +35,7 @@ The preferred end state is:
 
 ### Implementation audit — 2026-07-23
 
-- 130 of 181 checkable items are complete after reviewing the implementation, commits, and targeted test results in both repositories.
+- 132 of 181 checkable items are complete after reviewing the implementation, commits, and targeted test results in both repositories.
 - The focused C# suite passes 38 tests, and the gamma 7.1 headless VL suite compiles both shipped VL documents offline. The NodeTool workflow-interface, WebSocket/interface, and protocol suites pass their targeted tests.
 - Full NodeTool package verification remains blocked by pre-existing Sharp TypeScript import errors in the runtime and WebSocket packages. The unrelated package-manifest and lockfile changes in the working tree are not part of this plan.
 - The open Phase 1 graph-normalization items describe a legacy client-side inference path that authoritative workflow-interface v1 no longer uses. Before implementing them, decide whether to delete the remaining public legacy graph DTOs or retain them as a separate, non-workflow API.
@@ -45,6 +45,7 @@ The preferred end state is:
 - All seven historical `vvvv-tests/*.vl` files were audited under gamma 7.1. They depend on retired factory names or local workflow nodes and old pin contracts, so they remain migration evidence rather than release smoke tests.
 - The live hybrid registry currently exposes 2,527 node definitions and 100 distinct recursive type tokens. It combines TypeScript registrations, Python package JSON metadata, and bridge-only Python metadata. The bridge merge is now centralized, preserves existing TypeScript/package metadata, maps current dynamic/streaming flags, and advances the shared registry revision when bridge-only nodes appear.
 - The current node metadata contract names structured types but does not provide a global structured-type schema catalog (`type_name` was absent from the live registry response). A future catalog can enumerate availability and recursive type usage, but generated CLR shapes still require an authoritative schema source rather than inference from names.
+- The current VL factory API supports an invalidation observable. Workflow discovery now publishes immutable snapshots asynchronously, marshals invalidation through the AppHost synchronization context, coalesces rapid refresh requests, retries startup discovery, and retains the last successful snapshot after later failures.
 
 ## Current-client safety rules
 
@@ -259,12 +260,12 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Remove the graph-bearing list-then-sequential-detail discovery path entirely; pagination alone is insufficient for image-heavy graphs.
 - [x] Use the single-workflow interface request only for diagnostics, targeted refresh, or a changed workflow.
 - [x] Cache normalized metadata and workflow interfaces by workflow ID, workflow revision, node-registry revision, and authoritative interface `etag`.
-- [ ] Replace synchronous `GetAwaiter().GetResult()` factory initialization with asynchronous stale-while-revalidate loading.
+- [x] Replace synchronous `GetAwaiter().GetResult()` factory initialization with asynchronous stale-while-revalidate loading.
 - [x] Keep the last successful factory contents when refresh fails.
 - [x] Do not permanently cache an empty factory after a transient startup failure.
 - [x] Add explicit `Refresh`, `Last Refresh`, `Server Version`, `Interface Source`, and `Last Error` diagnostics for vvvv.
 - [x] Reuse unchanged workflow node descriptions and replace only descriptions whose workflow revision, registry revision, interface etag, or generated name changed.
-- [ ] Debounce rapid server/workflow changes so vvvv is not repeatedly rebuilding the factory.
+- [x] Debounce rapid server/workflow changes so vvvv is not repeatedly rebuilding the factory.
 - [x] Ensure changing the Connect node endpoint/auth resets both discovery and execution state exactly once.
 
 ### Phase 4 acceptance gate

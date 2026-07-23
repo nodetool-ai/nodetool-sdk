@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reactive.Subjects;
+using System.Threading;
+using System.Threading.Tasks;
 using VL.Core;
 using VL.Core.CompilerServices;
 using Nodetool.SDK.VL.Models;
@@ -24,12 +27,29 @@ namespace Nodetool.SDK.VL.Factories
             IVLNodeDescriptionFactory Factory,
             WorkflowNodeDescription Description);
 
+        private sealed record WorkflowFetchResult(
+            ImmutableList<WorkflowDetail> Workflows,
+            string StatusMessage,
+            DateTimeOffset? LastSuccessfulRefreshUtc,
+            string ServerVersion,
+            string InterfaceSource,
+            string LastError,
+            string DiscoveryTransport);
+
         private static NodeBuilding.FactoryImpl? _factoryImpl = null;
-        private static bool _isInitialized = false;
-        private static DateTimeOffset _retryAfter = DateTimeOffset.MinValue;
         private static readonly object _lock = new object();
         private static readonly TimeSpan DiscoveryTimeout = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan RefreshDebounce = TimeSpan.FromMilliseconds(250);
+        private static readonly ISubject<object> FactoryInvalidated =
+            Subject.Synchronize(new Subject<object>());
+        private static CancellationTokenSource _refreshCancellation = new();
+        private static Task? _refreshTask;
+        private static long _refreshRequestVersion;
+        private static long _resetGeneration;
+        private static bool _hasSuccessfulSnapshot;
+        private static bool _factoryWasRequested;
+        private static SynchronizationContext? _synchronizationContext;
 
         // Cached data from the Nodetool API
         private static ImmutableList<WorkflowDetail> _fetchedWorkflows = ImmutableList<WorkflowDetail>.Empty;
@@ -45,26 +65,38 @@ namespace Nodetool.SDK.VL.Factories
         public static string CurrentApiStatusMessage => _apiStatusMessage;
         public static string CurrentProcessingSummary => _processingSummary;
 
+        public static void Configure(SynchronizationContext? synchronizationContext)
+        {
+            lock (_lock)
+                _synchronizationContext = synchronizationContext;
+        }
+
         public static void RequestRefresh()
         {
             lock (_lock)
             {
-                _factoryImpl = null;
-                _isInitialized = false;
-                _retryAfter = DateTimeOffset.MinValue;
                 _apiStatusMessage = _fetchedWorkflows.Count > 0
                     ? "Workflow refresh requested; current nodes remain available."
                     : "Workflow refresh requested.";
+                _refreshRequestVersion++;
+                if (_factoryWasRequested)
+                    StartRefreshLoopLocked();
             }
         }
 
         public static void Reset()
         {
+            CancellationTokenSource cancellation;
             lock (_lock)
             {
+                cancellation = _refreshCancellation;
+                _refreshCancellation = new CancellationTokenSource();
+                _refreshTask = null;
+                _refreshRequestVersion = 0;
+                _resetGeneration++;
+                _hasSuccessfulSnapshot = false;
+                _factoryWasRequested = false;
                 _factoryImpl = null;
-                _isInitialized = false;
-                _retryAfter = DateTimeOffset.MinValue;
                 _fetchedWorkflows = ImmutableList<WorkflowDetail>.Empty;
                 _apiStatusMessage = "API data not fetched.";
                 _processingSummary = "Workflow processing summary not yet available.";
@@ -74,6 +106,10 @@ namespace Nodetool.SDK.VL.Factories
                 _lastError = "";
                 _descriptionCache.Clear();
             }
+
+            cancellation.Cancel();
+            cancellation.Dispose();
+            SignalFactoryInvalidated();
         }
 
         /// <summary>
@@ -81,241 +117,354 @@ namespace Nodetool.SDK.VL.Factories
         /// </summary>
         public static NodeBuilding.FactoryImpl GetFactory(IVLNodeDescriptionFactory vlSelfFactory)
         {
-            // Add safety check for vlSelfFactory
             if (vlSelfFactory == null)
             {
                 VlLog.Error("WorkflowNodeFactory: vlSelfFactory is null");
-                return NodeBuilding.NewFactoryImpl(ImmutableArray<IVLNodeDescription>.Empty);
+                return NodeBuilding.NewFactoryImpl(
+                    ImmutableArray<IVLNodeDescription>.Empty,
+                    FactoryInvalidated);
             }
-            
+
             lock (_lock)
             {
-                if (_factoryImpl != null &&
-                    (_isInitialized || DateTimeOffset.UtcNow < _retryAfter))
-                {
+                _factoryWasRequested = true;
+                if (_factoryImpl != null)
                     return _factoryImpl;
-                }
-                
-                try
+
+                if (!_hasSuccessfulSnapshot)
+                    QueueRefreshLocked();
+
+                _factoryImpl = BuildFactoryLocked(vlSelfFactory);
+                return _factoryImpl;
+            }
+        }
+
+        private static NodeBuilding.FactoryImpl BuildFactoryLocked(
+            IVLNodeDescriptionFactory vlSelfFactory)
+        {
+            try
+            {
+                var allDescriptions = new List<IVLNodeDescription>();
+                var nodeNames = BuildStableNodeNames(_fetchedWorkflows);
+                int successfullyProcessedCount = 0;
+                int failedToProcessCount = 0;
+                int reusedDescriptionCount = 0;
+
+                foreach (var workflow in _fetchedWorkflows)
                 {
-                    var fetchSucceeded = PerformGlobalDataFetchAndStore();
-
-                    var allDescriptions = new List<IVLNodeDescription>();
-                    var nodeNames = BuildStableNodeNames(_fetchedWorkflows);
-                    int successfullyProcessedCount = 0;
-                    int failedToProcessCount = 0;
-                    int reusedDescriptionCount = 0;
-
-                    // Process each workflow definition from the metadata
-                    foreach (var workflow in _fetchedWorkflows)
+                    if (workflow == null)
                     {
-                        if (workflow == null)
-                        {
-                            failedToProcessCount++;
-                            continue;
-                        }
-
-                        try
-                        {
-                            // Generate unique VL node name
-                            string vlNodeName = nodeNames[workflow];
-
-                            // Create WorkflowNodeDescription (following VL.NodetoolNodes pattern)
-                            try
-                            {
-                                var category = "Nodetool Workflows";
-                                
-                                var revisionKey = CreateDescriptionRevisionKey(workflow);
-                                WorkflowNodeDescription workflowNodeDesc;
-                                if (_descriptionCache.TryGetValue(workflow.Id, out var cachedDescription) &&
-                                    ReferenceEquals(cachedDescription.Factory, vlSelfFactory) &&
-                                    string.Equals(cachedDescription.NodeName, vlNodeName, StringComparison.Ordinal) &&
-                                    string.Equals(cachedDescription.RevisionKey, revisionKey, StringComparison.Ordinal))
-                                {
-                                    workflowNodeDesc = cachedDescription.Description;
-                                    reusedDescriptionCount++;
-                                }
-                                else
-                                {
-                                    workflowNodeDesc = new Nodes.WorkflowNodeDescription(
-                                        workflow,
-                                        vlNodeName,
-                                        category,
-                                        vlSelfFactory);
-                                    _descriptionCache[workflow.Id] = new CachedNodeDescription(
-                                        revisionKey,
-                                        vlNodeName,
-                                        vlSelfFactory,
-                                        workflowNodeDesc);
-                                }
-
-                                allDescriptions.Add(workflowNodeDesc);
-                                successfullyProcessedCount++;
-                            }
-                            catch (Exception ex)
-                            {
-                                failedToProcessCount++;
-                                VlLog.Error($"WorkflowNodeFactory: error creating node for '{workflow.Name}': {ex.Message}");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            failedToProcessCount++;
-                            VlLog.Error($"WorkflowNodeFactory: error processing workflow '{workflow.Name}': {ex.Message}");
-                        }
+                        failedToProcessCount++;
+                        continue;
                     }
 
-                    _processingSummary = $"Processed {successfullyProcessedCount} workflows successfully "
-                        + $"(reused descriptions: {reusedDescriptionCount}, failed: {failedToProcessCount}) "
-                        + $"from {_fetchedWorkflows.Count} total definitions.";
-                    var activeWorkflowIds = _fetchedWorkflows
-                        .Select(workflow => workflow.Id)
-                        .ToHashSet(StringComparer.Ordinal);
-                    foreach (var removedId in _descriptionCache.Keys
-                        .Where(id => !activeWorkflowIds.Contains(id))
-                        .ToArray())
-                    {
-                        _descriptionCache.Remove(removedId);
-                    }
-                    VlLog.Info(_processingSummary);
-
-                    // Add diagnostic status node using lambda-based factory approach
                     try
                     {
-                        var statusNode = vlSelfFactory?.NewNodeDescription(
-                            name: "WorkflowAPIStatus",
-                            category: "Nodetool Workflows",
-                            fragmented: false,
-                            bc =>
-                            {
-                                var statusPin = bc.Pin("Status", typeof(string));
-                                var summaryPin = bc.Pin("ProcessingSummary", typeof(string));
-                                var workflowCountPin = bc.Pin("WorkflowCount", typeof(int));
-                                var refreshPin = bc.Pin("Refresh", typeof(bool), false,
-                                    "Refresh workflow discovery",
-                                    "Request fresh workflow metadata. Current nodes remain available if refresh fails.");
-                                var lastRefreshPin = bc.Pin("LastRefreshUtc", typeof(string));
-                                var serverVersionPin = bc.Pin("ServerVersion", typeof(string));
-                                var interfaceSourcePin = bc.Pin("InterfaceSource", typeof(string));
-                                var lastErrorPin = bc.Pin("LastError", typeof(string));
-
-                                return bc.Node(
-                                    inputs: new IVLPinDescription[] { refreshPin },
-                                    outputs: new IVLPinDescription[] {
-                                        statusPin, summaryPin, workflowCountPin, lastRefreshPin,
-                                        serverVersionPin, interfaceSourcePin, lastErrorPin
-                                    },
-                                    newNode: ibc =>
-                                    {
-                                        var lastRefreshState = false;
-                                        return ibc.Node(
-                                            inputs: new IVLPin[] {
-                                                ibc.Input<bool>(value =>
-                                                {
-                                                    if (value && !lastRefreshState)
-                                                        RequestRefresh();
-                                                    lastRefreshState = value;
-                                                })
-                                            },
-                                            outputs: new IVLPin[] {
-                                                ibc.Output<string>(() => _apiStatusMessage),
-                                                ibc.Output<string>(() => _processingSummary),
-                                                ibc.Output<int>(() => _fetchedWorkflows.Count),
-                                                ibc.Output<string>(() => _lastSuccessfulRefreshUtc?.ToString("O") ?? ""),
-                                                ibc.Output<string>(() => _serverVersion),
-                                                ibc.Output<string>(() => _interfaceSource),
-                                                ibc.Output<string>(() => _lastError)
-                                            }
-                                        );
-                                    }
-                                );
-                            }
-                        );
-                        
-                        if (statusNode != null)
+                        var vlNodeName = nodeNames[workflow];
+                        var revisionKey = CreateDescriptionRevisionKey(workflow);
+                        WorkflowNodeDescription workflowNodeDescription;
+                        if (_descriptionCache.TryGetValue(workflow.Id, out var cachedDescription) &&
+                            ReferenceEquals(cachedDescription.Factory, vlSelfFactory) &&
+                            string.Equals(cachedDescription.NodeName, vlNodeName, StringComparison.Ordinal) &&
+                            string.Equals(cachedDescription.RevisionKey, revisionKey, StringComparison.Ordinal))
                         {
-                            allDescriptions.Add(statusNode);
+                            workflowNodeDescription = cachedDescription.Description;
+                            reusedDescriptionCount++;
                         }
                         else
                         {
-                            VlLog.Error("WorkflowNodeFactory: failed to create WorkflowAPIStatus node (vlSelfFactory returned null)");
+                            workflowNodeDescription = new WorkflowNodeDescription(
+                                workflow,
+                                vlNodeName,
+                                "Nodetool Workflows",
+                                vlSelfFactory);
+                            _descriptionCache[workflow.Id] = new CachedNodeDescription(
+                                revisionKey,
+                                vlNodeName,
+                                vlSelfFactory,
+                                workflowNodeDescription);
                         }
+
+                        allDescriptions.Add(workflowNodeDescription);
+                        successfullyProcessedCount++;
                     }
                     catch (Exception ex)
                     {
-                        VlLog.Error($"WorkflowNodeFactory: error creating WorkflowAPIStatus node: {ex.Message}");
+                        failedToProcessCount++;
+                        VlLog.Error($"WorkflowNodeFactory: error processing workflow '{workflow.Name}': {ex.Message}");
                     }
+                }
 
-                    _factoryImpl = NodeBuilding.NewFactoryImpl(ImmutableArray.CreateRange(allDescriptions));
-                    _isInitialized = fetchSucceeded;
-                    _retryAfter = fetchSucceeded
-                        ? DateTimeOffset.MinValue
-                        : DateTimeOffset.UtcNow.Add(RetryDelay);
-                    return _factoryImpl;
+                _processingSummary = $"Processed {successfullyProcessedCount} workflows successfully "
+                    + $"(reused descriptions: {reusedDescriptionCount}, failed: {failedToProcessCount}) "
+                    + $"from {_fetchedWorkflows.Count} total definitions.";
+                var activeWorkflowIds = _fetchedWorkflows
+                    .Select(workflow => workflow.Id)
+                    .ToHashSet(StringComparer.Ordinal);
+                foreach (var removedId in _descriptionCache.Keys
+                    .Where(id => !activeWorkflowIds.Contains(id))
+                    .ToArray())
+                {
+                    _descriptionCache.Remove(removedId);
+                }
+                VlLog.Info(_processingSummary);
+
+                try
+                {
+                    var statusNode = vlSelfFactory.NewNodeDescription(
+                        name: "WorkflowAPIStatus",
+                        category: "Nodetool Workflows",
+                        fragmented: false,
+                        bc =>
+                        {
+                            var statusPin = bc.Pin("Status", typeof(string));
+                            var summaryPin = bc.Pin("ProcessingSummary", typeof(string));
+                            var workflowCountPin = bc.Pin("WorkflowCount", typeof(int));
+                            var refreshPin = bc.Pin("Refresh", typeof(bool), false,
+                                "Refresh workflow discovery",
+                                "Request fresh workflow metadata. Current nodes remain available if refresh fails.");
+                            var lastRefreshPin = bc.Pin("LastRefreshUtc", typeof(string));
+                            var serverVersionPin = bc.Pin("ServerVersion", typeof(string));
+                            var interfaceSourcePin = bc.Pin("InterfaceSource", typeof(string));
+                            var lastErrorPin = bc.Pin("LastError", typeof(string));
+
+                            return bc.Node(
+                                inputs: new IVLPinDescription[] { refreshPin },
+                                outputs: new IVLPinDescription[] {
+                                    statusPin, summaryPin, workflowCountPin, lastRefreshPin,
+                                    serverVersionPin, interfaceSourcePin, lastErrorPin
+                                },
+                                newNode: ibc =>
+                                {
+                                    var lastRefreshState = false;
+                                    return ibc.Node(
+                                        inputs: new IVLPin[] {
+                                            ibc.Input<bool>(value =>
+                                            {
+                                                if (value && !lastRefreshState)
+                                                    RequestRefresh();
+                                                lastRefreshState = value;
+                                            })
+                                        },
+                                        outputs: new IVLPin[] {
+                                            ibc.Output<string>(() => _apiStatusMessage),
+                                            ibc.Output<string>(() => _processingSummary),
+                                            ibc.Output<int>(() => _fetchedWorkflows.Count),
+                                            ibc.Output<string>(() => _lastSuccessfulRefreshUtc?.ToString("O") ?? ""),
+                                            ibc.Output<string>(() => _serverVersion),
+                                            ibc.Output<string>(() => _interfaceSource),
+                                            ibc.Output<string>(() => _lastError)
+                                        });
+                                });
+                        });
+
+                    if (statusNode != null)
+                        allDescriptions.Add(statusNode);
+                    else
+                        VlLog.Error("WorkflowNodeFactory: failed to create WorkflowAPIStatus node");
                 }
                 catch (Exception ex)
                 {
-                    VlLog.Error($"WorkflowNodeFactory: initialization failed: {ex.GetType().Name}: {ex.Message}");
-                    
-                    // Return empty factory to prevent VL from considering it "not found"
-                    _factoryImpl = NodeBuilding.NewFactoryImpl(ImmutableArray<IVLNodeDescription>.Empty);
-                    _isInitialized = false;
-                    _retryAfter = DateTimeOffset.UtcNow.Add(RetryDelay);
-                    return _factoryImpl;
+                    VlLog.Error($"WorkflowNodeFactory: error creating WorkflowAPIStatus node: {ex.Message}");
+                }
+
+                return NodeBuilding.NewFactoryImpl(
+                    ImmutableArray.CreateRange(allDescriptions),
+                    FactoryInvalidated);
+            }
+            catch (Exception ex)
+            {
+                VlLog.Error($"WorkflowNodeFactory: factory build failed: {ex.GetType().Name}: {ex.Message}");
+                return NodeBuilding.NewFactoryImpl(
+                    ImmutableArray<IVLNodeDescription>.Empty,
+                    FactoryInvalidated);
+            }
+        }
+
+        private static void QueueRefreshLocked()
+        {
+            _refreshRequestVersion++;
+            StartRefreshLoopLocked();
+        }
+
+        private static void StartRefreshLoopLocked()
+        {
+            if (_refreshTask is { IsCompleted: false })
+                return;
+
+            var generation = _resetGeneration;
+            var cancellationToken = _refreshCancellation.Token;
+            _refreshTask = Task.Run(
+                () => RunRefreshLoopAsync(generation, cancellationToken),
+                CancellationToken.None);
+        }
+
+        private static async Task RunRefreshLoopAsync(
+            long generation,
+            CancellationToken cancellationToken)
+        {
+            long processedVersion = 0;
+            try
+            {
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    long requestedVersion;
+                    lock (_lock)
+                    {
+                        if (generation != _resetGeneration)
+                            return;
+
+                        requestedVersion = _refreshRequestVersion;
+                        if (requestedVersion == processedVersion)
+                            return;
+                    }
+
+                    await Task.Delay(RefreshDebounce, cancellationToken).ConfigureAwait(false);
+
+                    lock (_lock)
+                    {
+                        if (generation != _resetGeneration)
+                            return;
+                        processedVersion = _refreshRequestVersion;
+                    }
+
+                    try
+                    {
+                        var result = await FetchWorkflowMetadataAsync(cancellationToken)
+                            .ConfigureAwait(false);
+                        lock (_lock)
+                        {
+                            if (generation != _resetGeneration)
+                                return;
+
+                            _fetchedWorkflows = result.Workflows;
+                            _apiStatusMessage = result.StatusMessage;
+                            _lastSuccessfulRefreshUtc = result.LastSuccessfulRefreshUtc;
+                            _serverVersion = result.ServerVersion;
+                            _interfaceSource = result.InterfaceSource;
+                            _lastError = result.LastError;
+                            _hasSuccessfulSnapshot = true;
+                            _factoryImpl = null;
+                        }
+
+                        VlLog.Debug(
+                            $"WorkflowNodeFactory: {result.StatusMessage} via {result.DiscoveryTransport} "
+                            + $"({result.Workflows.Count} workflows)");
+                        SignalFactoryInvalidated();
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        bool retry;
+                        lock (_lock)
+                        {
+                            if (generation != _resetGeneration)
+                                return;
+                            HandleWorkflowApiError(ex);
+                            retry = !_hasSuccessfulSnapshot;
+                        }
+
+                        if (retry)
+                        {
+                            await Task.Delay(RetryDelay, cancellationToken).ConfigureAwait(false);
+                            lock (_lock)
+                            {
+                                if (generation != _resetGeneration)
+                                    return;
+                                if (_refreshRequestVersion == processedVersion)
+                                    _refreshRequestVersion++;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Reset/configuration changes cancel the old refresh generation.
+            }
+            finally
+            {
+                lock (_lock)
+                {
+                    if (generation == _resetGeneration)
+                        _refreshTask = null;
                 }
             }
         }
 
+        private static void SignalFactoryInvalidated()
+        {
+            void Publish()
+            {
+                try
+                {
+                    FactoryInvalidated.OnNext(new object());
+                }
+                catch (Exception ex)
+                {
+                    VlLog.Error($"WorkflowNodeFactory: invalidation failed: {ex.Message}");
+                }
+            }
+
+            SynchronizationContext? synchronizationContext;
+            lock (_lock)
+                synchronizationContext = _synchronizationContext;
+
+            if (synchronizationContext != null)
+            {
+                try
+                {
+                    synchronizationContext.Post(_ => Publish(), null);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    VlLog.Error($"WorkflowNodeFactory: failed to post invalidation: {ex.Message}");
+                }
+            }
+
+            ThreadPool.QueueUserWorkItem(_ => Publish());
+        }
+
         /// <summary>
-        /// Fetches workflow metadata from the API and stores it
+        /// Fetches workflow metadata without blocking the VL factory thread.
         /// </summary>
-        private static bool PerformGlobalDataFetchAndStore()
+        private static async Task<WorkflowFetchResult> FetchWorkflowMetadataAsync(
+            CancellationToken cancellationToken)
         {
             var apiBase = NodeToolClientProvider.CurrentApiBaseUrl?.ToString().TrimEnd('/')
                           ?? NodetoolConstants.Defaults.BaseUrl;
             VlLog.Debug($"WorkflowNodeFactory: Target URL: {apiBase}{NodetoolConstants.Endpoints.Workflows}");
-            
-            try
-            {
-                var webSocketClient = NodeToolClientProvider.UseWebSocketDiscovery &&
-                                      NodeToolClientProvider.IsConnected
-                    ? NodeToolClientProvider.GetClient()
-                    : null;
-                using var metadataService = new WorkflowMetadataService(
-                    webSocketClient: webSocketClient);
 
-                // Ensure the metadata service uses the same API base URL as the Connect node.
-                metadataService.Configure(new NodetoolOptions
-                {
-                    BaseUrl = apiBase,
-                    ApiKey = NodeToolClientProvider.CurrentAuthToken
-                });
-                
-                using var timeout = new CancellationTokenSource(DiscoveryTimeout);
-                var workflows = metadataService
-                    .FetchWorkflowMetadataAsync(timeout.Token)
-                    .GetAwaiter()
-                    .GetResult();
-                _fetchedWorkflows = workflows?.ToImmutableList() ?? ImmutableList<WorkflowDetail>.Empty;
-                _apiStatusMessage = metadataService.StatusMessage;
-                _lastSuccessfulRefreshUtc = metadataService.LastSuccessfulRefreshUtc;
-                _serverVersion = metadataService.ServerVersion;
-                _interfaceSource = metadataService.InterfaceSource;
-                _lastError = metadataService.LastError ?? "";
-                VlLog.Debug($"WorkflowNodeFactory: {_apiStatusMessage} via {metadataService.DiscoveryTransport} ({_fetchedWorkflows.Count} workflows)");
-                return true;
-            }
-            catch (AggregateException aggEx)
+            var webSocketClient = NodeToolClientProvider.UseWebSocketDiscovery &&
+                                  NodeToolClientProvider.IsConnected
+                ? NodeToolClientProvider.GetClient()
+                : null;
+            using var metadataService = new WorkflowMetadataService(
+                webSocketClient: webSocketClient);
+
+            metadataService.Configure(new NodetoolOptions
             {
-                var innerEx = aggEx.InnerException ?? aggEx;
-                HandleWorkflowApiError(innerEx);
-                return false;
-            }
-            catch (Exception ex)
-            {
-                HandleWorkflowApiError(ex);
-                return false;
-            }
+                BaseUrl = apiBase,
+                ApiKey = NodeToolClientProvider.CurrentAuthToken
+            });
+
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(DiscoveryTimeout);
+            var workflows = await metadataService
+                .FetchWorkflowMetadataAsync(timeout.Token)
+                .ConfigureAwait(false);
+            return new WorkflowFetchResult(
+                workflows?.ToImmutableList() ?? ImmutableList<WorkflowDetail>.Empty,
+                metadataService.StatusMessage,
+                metadataService.LastSuccessfulRefreshUtc,
+                metadataService.ServerVersion,
+                metadataService.InterfaceSource,
+                metadataService.LastError ?? "",
+                metadataService.DiscoveryTransport);
         }
 
         /// <summary>

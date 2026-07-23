@@ -52,6 +52,7 @@ namespace Nodetool.SDK.VL
                 );
                 
                 // Register the workflow node factory
+                WorkflowNodeFactory.Configure(appHost?.SynchronizationContext);
                 appHost?.RegisterNodeFactory("Nodetool.Workflows", 
                     vlSelfFactory => WorkflowNodeFactory.GetFactory(vlSelfFactory)
                 );
@@ -119,4 +120,4 @@ namespace Nodetool.SDK.VL
             }
         }
     }
-} 
+}
