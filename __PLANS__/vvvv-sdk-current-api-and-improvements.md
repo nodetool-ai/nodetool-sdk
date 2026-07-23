@@ -219,7 +219,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [ ] Add authorization tests for owner, collaborator viewer, public workflow, unauthorized user, and missing workflow.
 - [ ] Add parity tests proving REST, tRPC, and WebSocket return equivalent v1 payloads.
 - [ ] Add tests for TypeScript-native nodes, Python-bridge nodes, dynamic nodes, and unavailable node packs.
-- [ ] Add an upper bound on interface computation cost and cache by workflow `etag` plus node-registry revision.
+- [x] Bound bulk computation to 100 workflows and cache derived interfaces by workflow `etag` plus node-registry revision, with a 512-entry per-registry cap.
 
 ### Phase 3 acceptance gate
 
