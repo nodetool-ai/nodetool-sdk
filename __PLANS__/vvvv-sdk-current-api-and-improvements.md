@@ -266,13 +266,13 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Define deterministic duplicate-name handling using a short workflow-ID suffix.
 - [x] Generate input and output pins exclusively from the normalized workflow interface.
 - [ ] Preserve defaults, min/max ranges, descriptions, required/optional state, enums, and list element types.
-- [ ] Map primitive NodeTool types to native VL types.
-- [ ] Map lists to appropriate spreads/arrays rather than always using `string[]`.
+- [x] Map primitive NodeTool types to native VL types.
+- [x] Map lists to appropriate spreads/arrays rather than always using `string[]`.
 - [ ] Bind structured NodeTool types through the C# type registry where a generated type exists.
 - [ ] Map image inputs/outputs to the selected VL image type and document ownership/disposal rules.
 - [ ] Define corresponding audio, video, document, and generic asset-reference mappings.
-- [ ] Use an explicit JSON/object fallback pin for unsupported types instead of silently pretending they are strings.
-- [ ] Surface per-workflow diagnostics when a pin uses a fallback type.
+- [x] Use an explicit JSON/object fallback pin for unsupported types instead of silently pretending they are strings.
+- [x] Surface per-workflow diagnostics when a pin uses a fallback type.
 - [ ] Keep standard execution pins (`Trigger`, `Cancel`, `AutoRun`, status, error) stable for existing patches.
 - [ ] Add tests that load representative v1 `.vl` patches and verify node/pin resolution.
 - [ ] Align `VL.Core` versions between the C# project and nuspec before publishing.

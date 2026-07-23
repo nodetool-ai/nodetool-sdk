@@ -68,7 +68,7 @@ namespace Nodetool.SDK.VL.Nodes
             foreach (var property in _workflow.GetInputProperties())
             {
                 // Get consistent VL type and default value
-                var (vlType, typeDefault) = GetVLTypeAndDefault(property.Type.Type);
+                var (vlType, typeDefault) = WorkflowVlTypeMapping.GetTypeAndDefault(property.Type);
                 var defaultValue = property.DefaultValue != null 
                     ? ConvertToExpectedType(property.DefaultValue, vlType) 
                     : typeDefault;
@@ -112,7 +112,7 @@ namespace Nodetool.SDK.VL.Nodes
             foreach (var property in _workflow.GetOutputProperties())
             {
                 // Get consistent VL type and default value
-                var (vlType, defaultValue) = GetVLTypeAndDefault(property.Type.Type);
+                var (vlType, defaultValue) = WorkflowVlTypeMapping.GetTypeAndDefault(property.Type);
                 _outputPins[property.Name] = new InternalPin(property.Name, vlType, defaultValue);
             }
 
@@ -719,24 +719,6 @@ namespace Nodetool.SDK.VL.Nodes
         }
 
         /// <summary>
-        /// Get VL type and default value that are consistent with each other
-        /// </summary>
-        private static (Type, object) GetVLTypeAndDefault(string? type)
-        {
-            return type?.ToLowerInvariant() switch
-            {
-                "string" or "str" => (typeof(string), ""),
-                "int" or "integer" => (typeof(int), 0),
-                "float" or "number" => (typeof(float), 0.0f),
-                "bool" or "boolean" => (typeof(bool), false),
-                "list" or "array" => (typeof(string[]), new string[0]),
-                "any" => (typeof(object), null!),
-                "image" => (typeof(SKImage), null!),
-                _ => (typeof(string), "")
-            };
-        }
-
-        /// <summary>
         /// Get default value for a specific .NET type to ensure type safety
         /// </summary>
         private static object GetDefaultValueForVLType(Type vlType)
@@ -745,7 +727,8 @@ namespace Nodetool.SDK.VL.Nodes
             if (vlType == typeof(int)) return 0;
             if (vlType == typeof(float)) return 0.0f;
             if (vlType == typeof(bool)) return false;
-            if (vlType == typeof(string[])) return new string[0];
+            if (vlType.IsArray && vlType.GetElementType() is Type elementType)
+                return Array.CreateInstance(elementType, 0);
             if (vlType == typeof(SKImage)) return null!;
             
             try
@@ -908,13 +891,20 @@ namespace Nodetool.SDK.VL.Nodes
             }
 
             // Array outputs: render as JSON string array when possible.
-            if (expectedType == typeof(string[]))
+            if (expectedType.IsArray && expectedType.GetElementType() is Type elementType)
             {
                 if (value.Kind == NodeToolValueKind.List)
                 {
-                    return value.AsListOrEmpty().Select(v => v.AsString() ?? v.ToJsonString()).ToArray();
+                    var items = value.AsListOrEmpty();
+                    var array = Array.CreateInstance(elementType, items.Count);
+                    for (var i = 0; i < items.Count; i++)
+                        array.SetValue(ConvertNodeToolValueToExpectedType(items[i], elementType), i);
+                    return array;
                 }
-                return new[] { value.AsString() ?? value.ToJsonString() };
+
+                var single = Array.CreateInstance(elementType, 1);
+                single.SetValue(ConvertNodeToolValueToExpectedType(value, elementType), 0);
+                return single;
             }
 
             return ConvertToExpectedType(value.Raw ?? value.AsString() ?? value.ToJsonString(), expectedType);

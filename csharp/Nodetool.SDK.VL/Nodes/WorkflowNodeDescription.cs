@@ -102,7 +102,7 @@ namespace Nodetool.SDK.VL.Nodes
                 var remarks = BuildInputRemarks(property);
                 
                 // Get consistent VL type and default value
-                var (vlType, typeDefault) = GetVLTypeAndDefault(property.Type.Type);
+                var (vlType, typeDefault) = WorkflowVlTypeMapping.GetTypeAndDefault(property.Type);
                 var defaultValue = property.DefaultValue != null 
                     ? ConvertToVLType(property.DefaultValue, vlType) 
                     : typeDefault;
@@ -146,7 +146,7 @@ namespace Nodetool.SDK.VL.Nodes
                 var remarks = BuildOutputRemarks(property);
                 
                 // Get consistent VL type and default value
-                var (vlType, defaultValue) = GetVLTypeAndDefault(property.Type.Type);
+                var (vlType, defaultValue) = WorkflowVlTypeMapping.GetTypeAndDefault(property.Type);
 
                 outputPins.Add(new PinDescription(property.Name, vlType, defaultValue, summary, remarks));
             }
@@ -244,6 +244,9 @@ namespace Nodetool.SDK.VL.Nodes
             if (property.Type.Optional)
                 parts.Add("(Optional)");
 
+            if (WorkflowVlTypeMapping.UsesObjectFallback(property.Type))
+                parts.Add("VL fallback: Object");
+
             parts.Add("Workflow input");
 
             return string.Join(" | ", parts);
@@ -259,27 +262,12 @@ namespace Nodetool.SDK.VL.Nodes
             if (property.Type.Optional)
                 parts.Add("(Optional)");
 
+            if (WorkflowVlTypeMapping.UsesObjectFallback(property.Type))
+                parts.Add("VL fallback: Object");
+
             parts.Add("Workflow output");
 
             return string.Join(" | ", parts);
-        }
-
-        /// <summary>
-        /// Get VL type and default value that are consistent with each other
-        /// </summary>
-        private static (Type, object) GetVLTypeAndDefault(string? type)
-        {
-            return type?.ToLowerInvariant() switch
-            {
-                "string" or "str" => (typeof(string), ""),
-                "int" or "integer" => (typeof(int), 0),
-                "float" or "number" => (typeof(float), 0.0f),
-                "bool" or "boolean" => (typeof(bool), false),
-                "list" or "array" => (typeof(string[]), new string[0]),
-                "any" => (typeof(object), null!),
-                "image" => (typeof(SKImage), null!),
-                _ => (typeof(string), "")
-            };
         }
 
         /// <summary>
@@ -299,7 +287,8 @@ namespace Nodetool.SDK.VL.Nodes
             if (vlType == typeof(int)) return 0;
             if (vlType == typeof(float)) return 0.0f;
             if (vlType == typeof(bool)) return false;
-            if (vlType == typeof(string[])) return Array.Empty<string>();
+            if (vlType.IsArray && vlType.GetElementType() is Type elementType)
+                return Array.CreateInstance(elementType, 0);
             if (vlType == typeof(SKImage)) return null!;
 
             try

@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Collections;
 using System.Text.Json;
 
 namespace Nodetool.SDK.VL.Utilities;
@@ -37,16 +38,21 @@ internal static class VlValueConversion
             if (targetType == typeof(bool))
                 return Convert.ToBoolean(value, CultureInfo.InvariantCulture);
 
-            if (targetType == typeof(string[]))
+            if (targetType.IsArray && targetType.GetElementType() is Type elementType)
             {
-                if (value is Array array)
+                if (value is IEnumerable enumerable and not string)
                 {
-                    var stringArray = new string[array.Length];
-                    for (int i = 0; i < array.Length; i++)
-                        stringArray[i] = array.GetValue(i)?.ToString() ?? "";
-                    return stringArray;
+                    var items = enumerable.Cast<object?>().ToArray();
+                    var convertedArray = Array.CreateInstance(elementType, items.Length);
+                    var elementFallback = GetDefaultValue(elementType);
+                    for (var i = 0; i < items.Length; i++)
+                        convertedArray.SetValue(ConvertOrFallback(items[i], elementType, elementFallback), i);
+                    return convertedArray;
                 }
-                return new[] { value.ToString() ?? "" };
+
+                var single = Array.CreateInstance(elementType, 1);
+                single.SetValue(ConvertOrFallback(value, elementType, GetDefaultValue(elementType)), 0);
+                return single;
             }
 
             return Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
@@ -129,35 +135,56 @@ internal static class VlValueConversion
             return false;
         }
 
-        if (targetType == typeof(string[]))
+        if (targetType.IsArray && targetType.GetElementType() is Type elementType)
         {
             if (je.ValueKind == JsonValueKind.Array)
             {
-                var list = new string[je.GetArrayLength()];
+                var list = Array.CreateInstance(elementType, je.GetArrayLength());
                 var idx = 0;
                 foreach (var item in je.EnumerateArray())
-                    list[idx++] = item.ValueKind == JsonValueKind.String ? (item.GetString() ?? "") : (item.ToString() ?? "");
+                {
+                    if (!TryConvertJsonElement(item, elementType, out var itemValue))
+                        itemValue = GetDefaultValue(elementType);
+                    list.SetValue(itemValue, idx++);
+                }
                 converted = list;
                 return true;
             }
             return false;
         }
 
-        // Fallback: allow assigning a string representation into object pins, etc.
+        // Preserve structured JSON for object fallback pins and MessagePack execution inputs.
         if (targetType == typeof(object))
         {
-            converted = je.ValueKind switch
-            {
-                JsonValueKind.String => je.GetString(),
-                JsonValueKind.Number when je.TryGetDouble(out var d) => d,
-                JsonValueKind.True or JsonValueKind.False => je.GetBoolean(),
-                _ => je.ToString()
-            };
+            converted = ConvertJsonElementToClr(je);
             return true;
         }
 
         return false;
     }
+
+    private static object? ConvertJsonElementToClr(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.Object => element.EnumerateObject().ToDictionary(
+                property => property.Name,
+                property => ConvertJsonElementToClr(property.Value),
+                StringComparer.Ordinal),
+            JsonValueKind.Array => element.EnumerateArray().Select(ConvertJsonElementToClr).ToArray(),
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number when element.TryGetInt32(out var i) => i,
+            JsonValueKind.Number when element.TryGetInt64(out var l) => l,
+            JsonValueKind.Number when element.TryGetDouble(out var d) => d,
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null or JsonValueKind.Undefined => null,
+            _ => element.ToString()
+        };
+    }
+
+    private static object? GetDefaultValue(Type type)
+        => type.IsValueType ? Activator.CreateInstance(type) : null;
 }
 
 
