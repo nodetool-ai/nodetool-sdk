@@ -35,8 +35,8 @@ The preferred end state is:
 
 ### Implementation audit — 2026-07-23
 
-- 133 of 181 checkable items are complete after reviewing the implementation, commits, and targeted test results in both repositories.
-- The focused C# suite passes 38 tests, and the gamma 7.1 headless VL suite compiles both shipped VL documents offline. The NodeTool workflow-interface, WebSocket/interface, and protocol suites pass their targeted tests.
+- 135 of 183 checkable items are complete after reviewing the implementation, commits, and targeted test results in both repositories.
+- The focused C# suite passes 39 tests. The gamma 7.1 headless VL suite compiles both shipped VL documents with the live NodeTool metadata service; offline compilation of documents that reference dynamic individual nodes remains a separate cache/packaging decision. The NodeTool workflow-interface, WebSocket/interface, and protocol suites pass their targeted tests.
 - Full NodeTool package verification remains blocked by pre-existing Sharp TypeScript import errors in the runtime and WebSocket packages. The unrelated package-manifest and lockfile changes in the working tree are not part of this plan.
 - The open Phase 1 graph-normalization items describe a legacy client-side inference path that authoritative workflow-interface v1 no longer uses. Before implementing them, decide whether to delete the remaining public legacy graph DTOs or retain them as a separate, non-workflow API.
 - The cross-transport flag-on/flag-off integration harness is complete. The highest-value remaining proof is the representative headless and interactive vvvv smoke suite.
@@ -47,6 +47,9 @@ The preferred end state is:
 - The current node metadata contract names structured types but does not provide a global structured-type schema catalog (`type_name` was absent from the live registry response). A future catalog can enumerate availability and recursive type usage, but generated CLR shapes still require an authoritative schema source rather than inference from names.
 - The current VL factory API supports an invalidation observable. Workflow discovery now publishes immutable snapshots asynchronously, marshals invalidation through the AppHost synchronization context, coalesces rapid refresh requests, retries startup discovery, and retains the last successful snapshot after later failures.
 - A flag-gated SDK node/type inventory now reports registry revision, Python-bridge readiness, TypeScript/Python metadata provenance, recursive pin-type usage, and unavailable packs. REST and correlated WebSocket pages are capped at 100 types, with bounded enum values and examples; this remains a usage catalog rather than an inferred structured-type schema catalog.
+- Live validation of the type inventory reports 2,527 TypeScript nodes, 1,051 distinct structural type signatures, registry revision 2,528, and explicit `python_bridge_ready: false`. This proves the inventory does not silently imply Python coverage when the bridge is unavailable; bridge-ready validation remains open.
+- The current `IVLNodeDescription` API has no identity field separate from `Name`, `Category`, and pins, and `NodeDescriptionComparer` uses those values. Workflow-ID-stable rename behavior therefore requires an explicit stable-name or alias/migration policy rather than a hidden factory key.
+- Individual-node discovery now performs background stale-while-revalidate refresh, retains the last successful snapshot, retries transient startup failures, and has a five-second maximum initial grace period so existing `.vl` documents can resolve nodes from a fast local server without the previous 30-second offline stall.
 - The node-sdk mutation command is currently blocked before mutation by eight pre-existing Windows-only dry-run failures in metadata caching and pack path assertions. Focused registry/inventory tests pass; this blocker is separate from the existing Sharp typecheck failure.
 
 ## Current-client safety rules
@@ -265,6 +268,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Use the single-workflow interface request only for diagnostics, targeted refresh, or a changed workflow.
 - [x] Cache normalized metadata and workflow interfaces by workflow ID, workflow revision, node-registry revision, and authoritative interface `etag`.
 - [x] Replace synchronous `GetAwaiter().GetResult()` factory initialization with asynchronous stale-while-revalidate loading.
+- [x] Replace the individual-node factory's unbounded 30-second startup wait with background stale-while-revalidate loading and a five-second maximum first-snapshot grace period.
 - [x] Keep the last successful factory contents when refresh fails.
 - [x] Do not permanently cache an empty factory after a transient startup failure.
 - [x] Add explicit `Refresh`, `Last Refresh`, `Server Version`, `Interface Source`, and `Last Error` diagnostics for vvvv.
@@ -285,7 +289,8 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 
 **Outcome:** Generated workflow nodes have stable identities and accurate, useful pins.
 
-- [ ] Use workflow ID as the stable internal identity; treat workflow name as display metadata.
+- [x] Verify current VL identity semantics: node descriptions expose no identity separate from name/category/pins, so workflow ID cannot be attached as a transparent internal key.
+- [ ] Choose and implement an explicit workflow rename strategy (stable ID-derived node name, retained alias, or patch migration) before claiming rename-safe identity.
 - [x] Define deterministic duplicate-name handling using a short workflow-ID suffix.
 - [x] Generate input and output pins exclusively from the normalized workflow interface.
 - [x] Preserve defaults, min/max ranges, descriptions, required/optional state, enum values, and list element types in normalized metadata and VL pin diagnostics.

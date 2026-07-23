@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reactive.Subjects;
+using System.Threading;
 using System.Threading.Tasks;
 using VL.Core;
 using VL.Core.CompilerServices;
@@ -19,8 +21,20 @@ namespace Nodetool.SDK.VL.Factories
     internal static class NodesFactory
     {
         private static NodeBuilding.FactoryImpl? _factoryImpl = null;
-        private static bool _isInitialized = false;
         private static readonly object _lock = new object();
+        private static readonly TimeSpan DiscoveryTimeout = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan InitialSnapshotGrace = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan RefreshDebounce = TimeSpan.FromMilliseconds(250);
+        private static readonly ISubject<object> FactoryInvalidated =
+            Subject.Synchronize(new Subject<object>());
+        private static CancellationTokenSource _refreshCancellation = new();
+        private static Task? _refreshTask;
+        private static long _refreshRequestVersion;
+        private static long _resetGeneration;
+        private static bool _hasSuccessfulSnapshot;
+        private static bool _factoryWasRequested;
+        private static SynchronizationContext? _synchronizationContext;
 
         // Cached data from the Nodetool API
         private static ImmutableList<NodeMetadataResponse> _fetchedNodes = ImmutableList<NodeMetadataResponse>.Empty;
@@ -31,16 +45,46 @@ namespace Nodetool.SDK.VL.Factories
         public static string CurrentApiStatusMessage => _apiStatusMessage;
         public static string CurrentProcessingSummary => _processingSummary;
 
-        public static void Reset()
+        public static void Configure(SynchronizationContext? synchronizationContext)
+        {
+            lock (_lock)
+                _synchronizationContext = synchronizationContext;
+        }
+
+        public static void RequestRefresh()
         {
             lock (_lock)
             {
+                _apiStatusMessage = _fetchedNodes.Count > 0
+                    ? "Node metadata refresh requested; current nodes remain available."
+                    : "Node metadata refresh requested.";
+                _refreshRequestVersion++;
+                if (_factoryWasRequested)
+                    StartRefreshLoopLocked();
+            }
+        }
+
+        public static void Reset()
+        {
+            CancellationTokenSource cancellation;
+            lock (_lock)
+            {
+                cancellation = _refreshCancellation;
+                _refreshCancellation = new CancellationTokenSource();
+                _refreshTask = null;
+                _refreshRequestVersion = 0;
+                _resetGeneration++;
+                _hasSuccessfulSnapshot = false;
+                _factoryWasRequested = false;
                 _factoryImpl = null;
-                _isInitialized = false;
                 _fetchedNodes = ImmutableList<NodeMetadataResponse>.Empty;
                 _apiStatusMessage = "API data not fetched.";
                 _processingSummary = "Node processing summary not yet available.";
             }
+
+            cancellation.Cancel();
+            cancellation.Dispose();
+            SignalFactoryInvalidated();
         }
 
         /// <summary>
@@ -52,20 +96,54 @@ namespace Nodetool.SDK.VL.Factories
             if (vlSelfFactory == null)
             {
                 VlLog.Error("NodesFactory: vlSelfFactory is null");
-                return NodeBuilding.NewFactoryImpl(ImmutableArray<IVLNodeDescription>.Empty);
+                return NodeBuilding.NewFactoryImpl(
+                    ImmutableArray<IVLNodeDescription>.Empty,
+                    FactoryInvalidated);
             }
             
+            Task? initialRefreshTask = null;
             lock (_lock)
             {
-                if (_isInitialized && _factoryImpl != null)
-                {
+                _factoryWasRequested = true;
+                if (_factoryImpl != null)
                     return _factoryImpl;
+
+                if (!_hasSuccessfulSnapshot)
+                {
+                    QueueRefreshLocked();
+                    initialRefreshTask = _refreshTask;
                 }
-                
+            }
+
+            // Existing VL documents resolve factory nodes during their first compilation.
+            // Give a fast local server a short grace period to provide that initial snapshot,
+            // while keeping offline startup bounded far below the old 30-second wait.
+            if (initialRefreshTask != null)
+            {
                 try
                 {
-                    PerformGlobalDataFetchAndStore();
+                    initialRefreshTask.Wait(InitialSnapshotGrace);
+                }
+                catch (AggregateException ex)
+                {
+                    VlLog.Error($"NodesFactory: initial refresh failed: {ex.GetBaseException().Message}");
+                }
+            }
 
+            lock (_lock)
+            {
+                if (_factoryImpl != null)
+                    return _factoryImpl;
+                _factoryImpl = BuildFactoryLocked(vlSelfFactory);
+                return _factoryImpl;
+            }
+        }
+
+        private static NodeBuilding.FactoryImpl BuildFactoryLocked(
+            IVLNodeDescriptionFactory vlSelfFactory)
+        {
+            try
+            {
                     var allDescriptions = new List<IVLNodeDescription>();
                     var usedNodeNames = new HashSet<string>();
                     var nameCounters = new Dictionary<string, int>();
@@ -269,62 +347,181 @@ namespace Nodetool.SDK.VL.Factories
                     // Note: diagnostics nodes (Connect/ConnectionStatus) are provided by DiagnosticsNodeFactory.
                     // Avoid duplicating them here to prevent duplicate node descriptions under the same category/name.
 
-                    _factoryImpl = NodeBuilding.NewFactoryImpl(ImmutableArray.CreateRange(allDescriptions));
-                    _isInitialized = true;
-                    return _factoryImpl;
-                }
-                catch (Exception ex)
+                return NodeBuilding.NewFactoryImpl(
+                    ImmutableArray.CreateRange(allDescriptions),
+                    FactoryInvalidated);
+            }
+            catch (Exception ex)
+            {
+                VlLog.Error($"NodesFactory: factory build failed: {ex.GetType().Name}: {ex.Message}");
+
+                return NodeBuilding.NewFactoryImpl(
+                    ImmutableArray<IVLNodeDescription>.Empty,
+                    FactoryInvalidated);
+            }
+        }
+
+        private static void QueueRefreshLocked()
+        {
+            _refreshRequestVersion++;
+            StartRefreshLoopLocked();
+        }
+
+        private static void StartRefreshLoopLocked()
+        {
+            if (_refreshTask is { IsCompleted: false })
+                return;
+
+            var generation = _resetGeneration;
+            var cancellationToken = _refreshCancellation.Token;
+            _refreshTask = Task.Run(
+                () => RunRefreshLoopAsync(generation, cancellationToken),
+                CancellationToken.None);
+        }
+
+        private static async Task RunRefreshLoopAsync(
+            long generation,
+            CancellationToken cancellationToken)
+        {
+            long processedVersion = 0;
+            try
+            {
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    VlLog.Error($"NodesFactory: initialization failed: {ex.GetType().Name}: {ex.Message}");
-                    
-                    // Return empty factory to prevent VL from considering it "not found"
-                    _factoryImpl = NodeBuilding.NewFactoryImpl(ImmutableArray<IVLNodeDescription>.Empty);
-                    _isInitialized = true;
-                    return _factoryImpl;
+                    lock (_lock)
+                    {
+                        if (generation != _resetGeneration)
+                            return;
+                        if (_refreshRequestVersion == processedVersion)
+                            return;
+                    }
+
+                    await Task.Delay(RefreshDebounce, cancellationToken).ConfigureAwait(false);
+
+                    lock (_lock)
+                    {
+                        if (generation != _resetGeneration)
+                            return;
+                        processedVersion = _refreshRequestVersion;
+                    }
+
+                    try
+                    {
+                        var nodes = await FetchNodeMetadataAsync(cancellationToken)
+                            .ConfigureAwait(false);
+                        lock (_lock)
+                        {
+                            if (generation != _resetGeneration)
+                                return;
+
+                            _fetchedNodes = nodes;
+                            _apiStatusMessage =
+                                $"Successfully fetched {_fetchedNodes.Count} node definitions";
+                            _hasSuccessfulSnapshot = true;
+                            _factoryImpl = null;
+                        }
+
+                        VlLog.Debug($"NodesFactory: {_apiStatusMessage}");
+                        SignalFactoryInvalidated();
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        bool retry;
+                        lock (_lock)
+                        {
+                            if (generation != _resetGeneration)
+                                return;
+                            HandleApiError(ex);
+                            retry = !_hasSuccessfulSnapshot;
+                        }
+
+                        if (retry)
+                        {
+                            await Task.Delay(RetryDelay, cancellationToken).ConfigureAwait(false);
+                            lock (_lock)
+                            {
+                                if (generation != _resetGeneration)
+                                    return;
+                                if (_refreshRequestVersion == processedVersion)
+                                    _refreshRequestVersion++;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Reset/configuration changes cancel the old refresh generation.
+            }
+            finally
+            {
+                lock (_lock)
+                {
+                    if (generation == _resetGeneration)
+                    {
+                        _refreshTask = null;
+                        if (!cancellationToken.IsCancellationRequested &&
+                            _refreshRequestVersion != processedVersion)
+                        {
+                            StartRefreshLoopLocked();
+                        }
+                    }
                 }
             }
         }
 
-        /// <summary>
-        /// Fetches node metadata from the API and stores it
-        /// </summary>
-        private static void PerformGlobalDataFetchAndStore()
+        private static async Task<ImmutableList<NodeMetadataResponse>> FetchNodeMetadataAsync(
+            CancellationToken cancellationToken)
         {
             var apiBase = NodeToolClientProvider.CurrentApiBaseUrl?.ToString().TrimEnd('/')
                           ?? NodetoolConstants.Defaults.BaseUrl;
             VlLog.Debug($"NodesFactory: Target URL: {apiBase}{NodetoolConstants.Endpoints.NodesMetadata}");
-            
-            try
+
+            using var client = new Nodetool.SDK.Api.NodetoolClient();
+            client.Configure(apiBase, NodeToolClientProvider.CurrentAuthToken);
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(DiscoveryTimeout);
+            VlLog.Debug("NodesFactory: fetching node metadata...");
+            var nodes = await client.GetNodeTypesAsync(timeout.Token).ConfigureAwait(false);
+            return nodes?.ToImmutableList() ?? ImmutableList<NodeMetadataResponse>.Empty;
+        }
+
+        private static void SignalFactoryInvalidated()
+        {
+            void Publish()
             {
-                using var client = new Nodetool.SDK.Api.NodetoolClient();
-                client.Configure(apiBase, NodeToolClientProvider.CurrentAuthToken);
-                VlLog.Debug("NodesFactory: fetching node metadata...");
-                var task = Task.Run(async () => await client.GetNodeTypesAsync());
-                
-                bool completed = task.Wait(TimeSpan.FromSeconds(NodetoolConstants.Defaults.TimeoutSeconds));
-                
-                if (!completed)
+                try
                 {
-                    _apiStatusMessage = $"Timeout waiting for API response after {NodetoolConstants.Defaults.TimeoutSeconds} seconds";
-                    VlLog.Error($"NodesFactory: {_apiStatusMessage}");
-                    _fetchedNodes = ImmutableList<NodeMetadataResponse>.Empty;
+                    FactoryInvalidated.OnNext(new object());
+                }
+                catch (Exception ex)
+                {
+                    VlLog.Error($"NodesFactory: invalidation failed: {ex.Message}");
+                }
+            }
+
+            SynchronizationContext? synchronizationContext;
+            lock (_lock)
+                synchronizationContext = _synchronizationContext;
+
+            if (synchronizationContext != null)
+            {
+                try
+                {
+                    synchronizationContext.Post(_ => Publish(), null);
                     return;
                 }
-                
-                var nodes = task.Result;
-                _fetchedNodes = nodes?.ToImmutableList() ?? ImmutableList<NodeMetadataResponse>.Empty;
-                _apiStatusMessage = $"Successfully fetched {_fetchedNodes.Count} node definitions";
-                VlLog.Debug($"NodesFactory: {_apiStatusMessage}");
+                catch (Exception ex)
+                {
+                    VlLog.Error($"NodesFactory: failed to post invalidation: {ex.Message}");
+                }
             }
-            catch (AggregateException aggEx)
-            {
-                var innerEx = aggEx.InnerException ?? aggEx;
-                HandleApiError(innerEx);
-            }
-            catch (Exception ex)
-            {
-                HandleApiError(ex);
-            }
+
+            ThreadPool.QueueUserWorkItem(_ => Publish());
         }
 
         /// <summary>
@@ -332,6 +529,7 @@ namespace Nodetool.SDK.VL.Factories
         /// </summary>
         private static void HandleApiError(Exception ex)
         {
+            var hasStaleNodes = _fetchedNodes.Count > 0;
             string errorCategory = "Unknown";
             string userGuidance = "";
             
@@ -344,9 +542,9 @@ namespace Nodetool.SDK.VL.Factories
                     userGuidance = GetNetworkErrorGuidance();
                     break;
                     
-                case TaskCanceledException when ex.Message.Contains("timeout"):
+                case OperationCanceledException:
                     errorCategory = "Request Timeout";
-                    _apiStatusMessage = $"⏱️ API Timeout: Nodetool API did not respond within {NodetoolConstants.Defaults.TimeoutSeconds} seconds";
+                    _apiStatusMessage = $"API Timeout: Nodetool API did not respond within {DiscoveryTimeout.TotalSeconds:0} seconds";
                     userGuidance = GetTimeoutErrorGuidance();
                     break;
                     
@@ -368,6 +566,9 @@ namespace Nodetool.SDK.VL.Factories
                     userGuidance = "Check the console output for detailed error information.";
                     break;
             }
+
+            if (hasStaleNodes)
+                _apiStatusMessage = $"Stale node descriptions retained. {_apiStatusMessage}";
 
             // Keep default startup logs concise; show full troubleshooting only in verbose mode.
             VlLog.Error($"Nodes API error ({errorCategory}): {_apiStatusMessage}");
@@ -392,7 +593,7 @@ namespace Nodetool.SDK.VL.Factories
                 {
                     Console.WriteLine($"   Inner Error: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
                 }
-                Console.WriteLine($"   Timeout Setting: {NodetoolConstants.Defaults.TimeoutSeconds} seconds");
+                Console.WriteLine($"   Timeout Setting: {DiscoveryTimeout.TotalSeconds:0} seconds");
                 Console.WriteLine("");
                 Console.WriteLine("🔍 Troubleshooting Steps:");
                 Console.WriteLine("   1. Verify Nodetool server is running");
@@ -404,7 +605,6 @@ namespace Nodetool.SDK.VL.Factories
                 Console.WriteLine("");
             }
             
-            _fetchedNodes = ImmutableList<NodeMetadataResponse>.Empty;
         }
 
         /// <summary>

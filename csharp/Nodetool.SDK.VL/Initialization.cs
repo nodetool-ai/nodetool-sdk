@@ -58,6 +58,7 @@ namespace Nodetool.SDK.VL
                 );
                 
                 // Register the individual nodes factory
+                NodesFactory.Configure(appHost?.SynchronizationContext);
                 appHost?.RegisterNodeFactory("Nodetool.Nodes", 
                     vlSelfFactory => NodesFactory.GetFactory(vlSelfFactory)
                 );

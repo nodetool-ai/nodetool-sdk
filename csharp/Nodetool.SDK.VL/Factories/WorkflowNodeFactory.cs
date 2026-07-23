@@ -390,7 +390,14 @@ namespace Nodetool.SDK.VL.Factories
                 lock (_lock)
                 {
                     if (generation == _resetGeneration)
+                    {
                         _refreshTask = null;
+                        if (!cancellationToken.IsCancellationRequested &&
+                            _refreshRequestVersion != processedVersion)
+                        {
+                            StartRefreshLoopLocked();
+                        }
+                    }
                 }
             }
         }

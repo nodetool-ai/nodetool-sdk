@@ -312,6 +312,8 @@ public static class NodeToolClientProvider
         {
             LastError = _client.LastError;
         }
+        if (status == "connected")
+            NodesFactory.RequestRefresh();
         if (status == "connected" && _useWebSocketDiscovery)
             WorkflowNodeFactory.RequestRefresh();
         StatusChanged?.Invoke(status);
