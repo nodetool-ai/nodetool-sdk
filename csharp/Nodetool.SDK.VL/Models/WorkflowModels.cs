@@ -191,7 +191,14 @@ public class WorkflowDetail
     /// <summary>
     /// Get input properties as TypeMetadata for VL pin creation
     /// </summary>
-    public IEnumerable<(string Name, TypeMetadata Type, string Description, object? DefaultValue)> GetInputProperties()
+    public IEnumerable<(
+        string Name,
+        TypeMetadata Type,
+        string Description,
+        object? DefaultValue,
+        bool Required,
+        double? Minimum,
+        double? Maximum)> GetInputProperties()
     {
         if (Interface == null)
             yield break;
@@ -200,11 +207,14 @@ public class WorkflowDetail
         {
             yield return (
                 Name: input.Name,
-                Type: ConvertType(input.Type),
+                Type: ConvertType(input.Type, optional: !input.Required),
                 Description: input.Description,
                 DefaultValue: input.Default.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
                     ? null
-                    : input.Default
+                    : input.Default,
+                Required: input.Required,
+                Minimum: input.Min,
+                Maximum: input.Max
             );
         }
     }
@@ -227,15 +237,16 @@ public class WorkflowDetail
         }
     }
 
-    private static TypeMetadata ConvertType(NodeTypeDefinition type)
+    private static TypeMetadata ConvertType(NodeTypeDefinition type, bool? optional = null)
     {
         return new TypeMetadata
         {
             Type = type.Type,
-            Optional = type.Optional,
+            Optional = optional ?? type.Optional,
             Values = type.Values,
             TypeName = type.TypeName,
-            TypeArgs = type.TypeArgs?.Select(ConvertType).ToList() ?? new List<TypeMetadata>()
+            TypeArgs = type.TypeArgs?.Select(typeArg => ConvertType(typeArg)).ToList()
+                ?? new List<TypeMetadata>()
         };
     }
 

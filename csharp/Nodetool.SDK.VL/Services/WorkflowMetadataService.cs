@@ -330,15 +330,21 @@ public class WorkflowMetadataService : IDisposable
         var schema = new WorkflowSchemaDefinition();
         foreach (var pin in pins)
         {
-            schema.Properties[pin.Name] = ConvertInterfaceType(
+            var property = ConvertInterfaceType(
                 pin.Type,
                 pin.Description,
                 pin is WorkflowInterfaceInput input &&
                 input.Default.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined)
                     ? input.Default
                     : null);
-            if (pin is WorkflowInterfaceInput { Required: true })
-                schema.Required.Add(pin.Name);
+            if (pin is WorkflowInterfaceInput inputPin)
+            {
+                property.Minimum = inputPin.Min;
+                property.Maximum = inputPin.Max;
+                if (inputPin.Required)
+                    schema.Required.Add(pin.Name);
+            }
+            schema.Properties[pin.Name] = property;
         }
         return schema;
     }

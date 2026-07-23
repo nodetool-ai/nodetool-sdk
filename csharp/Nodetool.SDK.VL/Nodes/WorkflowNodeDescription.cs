@@ -231,7 +231,14 @@ namespace Nodetool.SDK.VL.Nodes
             return string.Join("\n", parts);
         }
 
-        private static string BuildInputRemarks((string Name, Nodetool.SDK.Types.TypeMetadata Type, string Description, object? DefaultValue) property)
+        private static string BuildInputRemarks((
+            string Name,
+            Nodetool.SDK.Types.TypeMetadata Type,
+            string Description,
+            object? DefaultValue,
+            bool Required,
+            double? Minimum,
+            double? Maximum) property)
         {
             var parts = new List<string>();
 
@@ -241,8 +248,16 @@ namespace Nodetool.SDK.VL.Nodes
             if (property.DefaultValue != null)
                 parts.Add($"Default: {property.DefaultValue}");
 
-            if (property.Type.Optional)
-                parts.Add("(Optional)");
+            parts.Add(property.Required ? "Required" : "Optional");
+
+            if (property.Minimum.HasValue)
+                parts.Add($"Min: {property.Minimum.Value}");
+
+            if (property.Maximum.HasValue)
+                parts.Add($"Max: {property.Maximum.Value}");
+
+            if (property.Type.Values is { Count: > 0 })
+                parts.Add($"Values: {string.Join(", ", property.Type.Values)}");
 
             if (WorkflowVlTypeMapping.UsesObjectFallback(property.Type))
                 parts.Add("VL fallback: Object");

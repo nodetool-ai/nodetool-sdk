@@ -265,7 +265,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [ ] Use workflow ID as the stable internal identity; treat workflow name as display metadata.
 - [x] Define deterministic duplicate-name handling using a short workflow-ID suffix.
 - [x] Generate input and output pins exclusively from the normalized workflow interface.
-- [ ] Preserve defaults, min/max ranges, descriptions, required/optional state, enums, and list element types.
+- [x] Preserve defaults, min/max ranges, descriptions, required/optional state, enum values, and list element types in normalized metadata and VL pin diagnostics.
 - [x] Map primitive NodeTool types to native VL types.
 - [x] Map lists to appropriate spreads/arrays rather than always using `string[]`.
 - [ ] Bind structured NodeTool types through the C# type registry where a generated type exists.
