@@ -1045,6 +1045,12 @@ namespace Nodetool.SDK.VL.Nodes
 
         private async Task<object> ConvertInputValueForWorkflowAsync(string inputName, object? rawValue, CancellationToken cancellationToken)
         {
+            var interfaceType = _workflow.Interface?.Inputs
+                .FirstOrDefault(input => string.Equals(input.Name, inputName, StringComparison.Ordinal))
+                ?.Type.Type.ToLowerInvariant();
+            if (interfaceType is "image" or "audio" or "video" or "document")
+                return await ConvertMediaInputAsync(inputName, interfaceType, rawValue, cancellationToken);
+
             // If we don't have schema, pass through as string for compatibility with TEST_SDK_01.
             var propDef = _workflow.InputSchema?.Properties != null && _workflow.InputSchema.Properties.TryGetValue(inputName, out var p)
                 ? p
@@ -1141,6 +1147,58 @@ namespace Nodetool.SDK.VL.Nodes
             }
 
             return rawValue ?? "";
+        }
+
+        private static async Task<object> ConvertMediaInputAsync(
+            string inputName,
+            string mediaType,
+            object? rawValue,
+            CancellationToken cancellationToken)
+        {
+            byte[]? bytes = rawValue as byte[];
+            string? uriText = null;
+
+            if (rawValue is SKImage image)
+            {
+                using var encoded = image.Encode(SKEncodedImageFormat.Png, 100)
+                    ?? throw new InvalidOperationException($"Could not encode image input '{inputName}'.");
+                bytes = encoded.ToArray();
+            }
+            else if (bytes == null)
+            {
+                uriText = rawValue switch
+                {
+                    string text => text.Trim().Trim('"'),
+                    Uri uri => uri.ToString(),
+                    null => null,
+                    _ => rawValue.ToString()?.Trim()
+                };
+
+                if (!string.IsNullOrWhiteSpace(uriText))
+                {
+                    var fullPath = uriText;
+                    try { fullPath = Path.GetFullPath(uriText); } catch { /* keep original URI */ }
+                    if (File.Exists(fullPath))
+                    {
+                        bytes = await File.ReadAllBytesAsync(fullPath, cancellationToken);
+                        uriText = new Uri(fullPath).AbsoluteUri;
+                    }
+                }
+            }
+
+            if ((bytes == null || bytes.Length == 0) && string.IsNullOrWhiteSpace(uriText))
+            {
+                throw new InvalidOperationException(
+                    $"{mediaType} input '{inputName}' is empty. Provide a value, file path, URL, or bytes.");
+            }
+
+            return new Dictionary<string, object?>
+            {
+                ["type"] = mediaType,
+                ["asset_id"] = null,
+                ["uri"] = uriText ?? "",
+                ["data"] = bytes
+            };
         }
 
         private static bool IsImageSchema(WorkflowPropertyDefinition? prop, WorkflowSchemaDefinition? rootSchema)

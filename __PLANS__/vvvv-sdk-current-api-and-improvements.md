@@ -295,7 +295,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Treat live output updates as progressive state and terminal `result.outputs` as authoritative reconciliation.
 - [x] Correctly unwrap the current nested terminal result.
 - [ ] Preserve the latest valid media value if a terminal result contains only a URI/reference and no inline bytes.
-- [ ] Use the workflow interface type when encoding every input, including graph-derived image/audio/video/document inputs.
+- [x] Use the workflow interface type when encoding every input, including graph-derived image/audio/video/document inputs.
 - [ ] Prefer asset/reference transport for large media; set and test explicit inline payload limits.
 - [ ] Make execution timeout configurable globally and per node.
 - [ ] Support cancellation while server-queued; cancellation before job-ID assignment is now deferred and sent once, and running cancellation is supported.
