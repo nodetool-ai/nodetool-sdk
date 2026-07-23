@@ -39,6 +39,7 @@ namespace Nodetool.SDK.VL.Factories
         private static NodeBuilding.FactoryImpl? _factoryImpl = null;
         private static readonly object _lock = new object();
         private static readonly TimeSpan DiscoveryTimeout = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan InitialSnapshotGrace = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan RefreshDebounce = TimeSpan.FromMilliseconds(250);
         private static readonly ISubject<object> FactoryInvalidated =
@@ -89,6 +90,7 @@ namespace Nodetool.SDK.VL.Factories
             CancellationTokenSource cancellation;
             lock (_lock)
             {
+                var retainedWorkflowCount = _fetchedWorkflows.Count;
                 cancellation = _refreshCancellation;
                 _refreshCancellation = new CancellationTokenSource();
                 _refreshTask = null;
@@ -97,14 +99,10 @@ namespace Nodetool.SDK.VL.Factories
                 _hasSuccessfulSnapshot = false;
                 _factoryWasRequested = false;
                 _factoryImpl = null;
-                _fetchedWorkflows = ImmutableList<WorkflowDetail>.Empty;
-                _apiStatusMessage = "API data not fetched.";
-                _processingSummary = "Workflow processing summary not yet available.";
-                _lastSuccessfulRefreshUtc = null;
-                _serverVersion = "unknown";
-                _interfaceSource = "unknown";
                 _lastError = "";
-                _descriptionCache.Clear();
+                _apiStatusMessage = retainedWorkflowCount > 0
+                    ? $"Connection changed; retaining {retainedWorkflowCount} workflow nodes until discovery refresh completes."
+                    : "Connection changed; workflow discovery refresh pending.";
             }
 
             cancellation.Cancel();
@@ -125,6 +123,7 @@ namespace Nodetool.SDK.VL.Factories
                     FactoryInvalidated);
             }
 
+            Task? initialRefreshTask = null;
             lock (_lock)
             {
                 _factoryWasRequested = true;
@@ -132,8 +131,35 @@ namespace Nodetool.SDK.VL.Factories
                     return _factoryImpl;
 
                 if (!_hasSuccessfulSnapshot)
+                {
                     QueueRefreshLocked();
+                    // A retained snapshot can be rebuilt immediately while its
+                    // replacement is fetched in the background.
+                    if (_fetchedWorkflows.Count == 0)
+                        initialRefreshTask = _refreshTask;
+                }
+            }
 
+            // Existing VL documents resolve dynamic workflow nodes during their
+            // first compilation. Give a fast local backend a bounded opportunity
+            // to provide the initial snapshot; later refreshes remain asynchronous.
+            if (initialRefreshTask != null)
+            {
+                try
+                {
+                    initialRefreshTask.Wait(InitialSnapshotGrace);
+                }
+                catch (AggregateException ex)
+                {
+                    VlLog.Error(
+                        $"WorkflowNodeFactory: initial refresh failed: {ex.GetBaseException().Message}");
+                }
+            }
+
+            lock (_lock)
+            {
+                if (_factoryImpl != null)
+                    return _factoryImpl;
                 _factoryImpl = BuildFactoryLocked(vlSelfFactory);
                 return _factoryImpl;
             }
@@ -304,6 +330,7 @@ namespace Nodetool.SDK.VL.Factories
             CancellationToken cancellationToken)
         {
             long processedVersion = 0;
+            var consecutiveEmptySnapshots = 0;
             try
             {
                 while (!cancellationToken.IsCancellationRequested)
@@ -332,19 +359,53 @@ namespace Nodetool.SDK.VL.Factories
                     {
                         var result = await FetchWorkflowMetadataAsync(cancellationToken)
                             .ConfigureAwait(false);
+                        bool retainForConfirmation;
                         lock (_lock)
                         {
                             if (generation != _resetGeneration)
                                 return;
 
-                            _fetchedWorkflows = result.Workflows;
-                            _apiStatusMessage = result.StatusMessage;
-                            _lastSuccessfulRefreshUtc = result.LastSuccessfulRefreshUtc;
-                            _serverVersion = result.ServerVersion;
-                            _interfaceSource = result.InterfaceSource;
-                            _lastError = result.LastError;
-                            _hasSuccessfulSnapshot = true;
-                            _factoryImpl = null;
+                            retainForConfirmation = ShouldRetainSnapshotForConfirmation(
+                                result.Workflows.Count,
+                                consecutiveEmptySnapshots);
+                            if (retainForConfirmation)
+                            {
+                                consecutiveEmptySnapshots++;
+                                _apiStatusMessage = _fetchedWorkflows.Count > 0
+                                    ? $"Discovery returned an empty workflow snapshot; retaining {_fetchedWorkflows.Count} workflow nodes while confirming."
+                                    : "Discovery returned an empty workflow snapshot; confirming before publishing.";
+                                _lastError = "Unconfirmed empty workflow discovery snapshot.";
+                            }
+                            else
+                            {
+                                consecutiveEmptySnapshots = result.Workflows.Count == 0
+                                    ? consecutiveEmptySnapshots + 1
+                                    : 0;
+                                _fetchedWorkflows = result.Workflows;
+                                _apiStatusMessage = result.StatusMessage;
+                                _lastSuccessfulRefreshUtc = result.LastSuccessfulRefreshUtc;
+                                _serverVersion = result.ServerVersion;
+                                _interfaceSource = result.InterfaceSource;
+                                _lastError = result.LastError;
+                                _hasSuccessfulSnapshot = true;
+                                _factoryImpl = null;
+                            }
+                        }
+
+                        if (retainForConfirmation)
+                        {
+                            VlLog.Info(
+                                "WorkflowNodeFactory: ignored an unconfirmed empty discovery snapshot; "
+                                + "the current factory remains available.");
+                            await Task.Delay(RetryDelay, cancellationToken).ConfigureAwait(false);
+                            lock (_lock)
+                            {
+                                if (generation != _resetGeneration)
+                                    return;
+                                if (_refreshRequestVersion == processedVersion)
+                                    _refreshRequestVersion++;
+                            }
+                            continue;
                         }
 
                         VlLog.Debug(
@@ -363,6 +424,7 @@ namespace Nodetool.SDK.VL.Factories
                         {
                             if (generation != _resetGeneration)
                                 return;
+                            consecutiveEmptySnapshots = 0;
                             HandleWorkflowApiError(ex);
                             retry = !_hasSuccessfulSnapshot;
                         }
@@ -401,6 +463,11 @@ namespace Nodetool.SDK.VL.Factories
                 }
             }
         }
+
+        internal static bool ShouldRetainSnapshotForConfirmation(
+            int fetchedWorkflowCount,
+            int consecutiveEmptySnapshots)
+            => fetchedWorkflowCount == 0 && consecutiveEmptySnapshots == 0;
 
         private static void SignalFactoryInvalidated()
         {

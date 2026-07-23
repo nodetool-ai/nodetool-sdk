@@ -77,6 +77,7 @@ Workflow discovery transport:
 - HTTP remains the default bootstrap transport, so loading the package does not require an open execution socket.
 - Enable `UseWebSocketDiscovery` on the Connect node to switch workflow summaries and interface batches to correlated MessagePack RPC after the shared socket connects.
 - When the socket first connects, the workflow factory requests a refresh. A later disconnect keeps the last successful workflow nodes available.
+- Connection changes retain the last workflow factory while the replacement is fetched. A single empty discovery response is treated as provisional and must be confirmed before existing workflow nodes are removed.
 
 Media transport:
 
@@ -84,6 +85,7 @@ Media transport:
 - Set the limit to `0` to upload all binary media, or raise it up to 64 MiB when inline transport is preferable.
 - Workflow audio, video, document, and generic asset pins use the typed SDK asset-reference classes (`AudioRef`, `VideoRef`, `DocumentRef`, and `GenericAssetRef`).
 - Image pins use `SKImage`. A workflow node owns images it produces and disposes them when replaced or when the node is disposed; downstream patches should treat output images as borrowed and must not dispose them. Input images remain owned by the caller.
+- Workflow outputs are latched and reapplied on each VL update so event-driven scalar and media results remain visible after the execution frame.
 - Structured workflow pins use generated `Nodetool.Types` DTOs when the interface discriminator or `type_name` resolves in the SDK registry. Unknown structures remain explicit `Object` fallback pins.
 
 ### Workflow nodes

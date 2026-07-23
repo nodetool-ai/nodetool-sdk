@@ -269,8 +269,10 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Cache normalized metadata and workflow interfaces by workflow ID, workflow revision, node-registry revision, and authoritative interface `etag`.
 - [x] Replace synchronous `GetAwaiter().GetResult()` factory initialization with asynchronous stale-while-revalidate loading.
 - [x] Replace the individual-node factory's unbounded 30-second startup wait with background stale-while-revalidate loading and a five-second maximum first-snapshot grace period.
+- [x] Give the workflow factory the same bounded five-second first-snapshot grace period so existing patches can resolve against a fast local backend.
 - [x] Keep the last successful factory contents when refresh fails.
 - [x] Do not permanently cache an empty factory after a transient startup failure.
+- [x] Retain the last workflow snapshot across connection resets and require two consecutive empty discovery responses before publishing an empty factory.
 - [x] Add explicit `Refresh`, `Last Refresh`, `Server Version`, `Interface Source`, and `Last Error` diagnostics for vvvv.
 - [x] Reuse unchanged workflow node descriptions and replace only descriptions whose workflow revision, registry revision, interface etag, or generated name changed.
 - [x] Debounce rapid server/workflow changes so vvvv is not repeatedly rebuilding the factory.
@@ -326,6 +328,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Unwrap singleton terminal value arrays for scalar integer, float, boolean, enum, and string pins without flattening spread outputs.
 - [x] Preserve the latest valid media value if a terminal result contains only a URI/reference and no inline bytes.
 - [x] Resolve image outputs by the derived pin type even when generic output nodes report `output_type: any`; decode inline/base64/data-URI values and fetch materialized storage URLs asynchronously.
+- [x] Latch workflow outputs and reapply them on every VL update so scalar value-type outputs do not reset one frame after an execution event.
 - [x] Use the workflow interface type when encoding every input, including graph-derived image/audio/video/document inputs.
 - [x] Prefer asset/reference transport for large media; set and test explicit inline payload limits.
 - [x] Make execution timeout configurable globally and per node.

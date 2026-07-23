@@ -50,6 +50,7 @@ namespace Nodetool.SDK.VL.Nodes
         private readonly ConcurrentQueue<Action> _pendingStateUpdates = new();
         private readonly Dictionary<string, StringBuilder> _chunkBuffers = new(StringComparer.Ordinal);
         private readonly Dictionary<string, SKImage> _latestImages = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, object?> _latchedOutputValues = new(StringComparer.Ordinal);
         private readonly ConcurrentDictionary<string, long> _imageLoadVersions = new(StringComparer.Ordinal);
         private readonly CancellationTokenSource _disposeCts = new();
         private readonly Queue<string> _debugLines = new();
@@ -125,6 +126,9 @@ namespace Nodetool.SDK.VL.Nodes
                 _outputPins[property.Name] = new InternalPin(property.Name, vlType, defaultValue);
             }
 
+            foreach (var output in _outputPins)
+                _latchedOutputValues[output.Key] = output.Value.Value;
+
             Console.WriteLine($"WorkflowNodeBase: Created workflow node '{_workflow.Name}' with {_inputPins.Count} inputs and {_outputPins.Count} outputs");
         }
 
@@ -148,6 +152,7 @@ namespace Nodetool.SDK.VL.Nodes
             if (_isDisposed) return;
 
             DrainStateUpdates();
+            ReapplyLatchedOutputs(_latchedOutputValues, _outputPins);
 
             try
             {
@@ -464,7 +469,7 @@ namespace Nodetool.SDK.VL.Nodes
             if (TryAccumulateChunk(_chunkBuffers, pinName, update, out var chunkText))
             {
                 // Keep accumulated content when done=true carries an empty final chunk.
-                pin.Value = chunkText;
+                SetOutputPinValue(pinName, pin, chunkText);
                 return;
             }
 
@@ -476,7 +481,10 @@ namespace Nodetool.SDK.VL.Nodes
                 return;
             }
 
-            pin.Value = ConvertNodeToolValueToExpectedType(update.Value, expectedType);
+            SetOutputPinValue(
+                pinName,
+                pin,
+                ConvertNodeToolValueToExpectedType(update.Value, expectedType));
         }
 
         internal static bool TryAccumulateChunk(
@@ -592,7 +600,7 @@ namespace Nodetool.SDK.VL.Nodes
 
                 if (_outputPins.TryGetValue("Debug", out var pin))
                 {
-                    pin.Value = string.Join(Environment.NewLine, _debugLines);
+                    SetOutputPinValue("Debug", pin, string.Join(Environment.NewLine, _debugLines));
                 }
             }
             catch
@@ -680,7 +688,10 @@ namespace Nodetool.SDK.VL.Nodes
                             continue;
                         }
 
-                        pin.Value = ConvertNodeToolValueToExpectedType(kvp.Value, expectedType);
+                        SetOutputPinValue(
+                            outputName,
+                            pin,
+                            ConvertNodeToolValueToExpectedType(kvp.Value, expectedType));
                     }
                 }
             }
@@ -847,7 +858,7 @@ namespace Nodetool.SDK.VL.Nodes
             if (_latestImages.TryGetValue(pinName, out var previous))
                 previous.Dispose();
             _latestImages[pinName] = image;
-            pin.Value = image;
+            SetOutputPinValue(pinName, pin, image);
             AppendDebugCore($"{DateTime.Now:HH:mm:ss.fff} image ready: {pinName} {image.Width}x{image.Height}");
             Console.WriteLine(
                 $"WorkflowNodeBase: image output ready: pin='{pinName}' size={image.Width}x{image.Height}");
@@ -948,6 +959,23 @@ namespace Nodetool.SDK.VL.Nodes
                string.Equals(target.Host, origin.Host, StringComparison.OrdinalIgnoreCase) &&
                target.Port == origin.Port;
 
+        private void SetOutputPinValue(string pinName, IVLPin pin, object? value)
+        {
+            _latchedOutputValues[pinName] = value;
+            pin.Value = value;
+        }
+
+        internal static void ReapplyLatchedOutputs(
+            IReadOnlyDictionary<string, object?> latchedValues,
+            IReadOnlyDictionary<string, IVLPin> outputPins)
+        {
+            foreach (var output in latchedValues)
+            {
+                if (outputPins.TryGetValue(output.Key, out var pin))
+                    pin.Value = output.Value;
+            }
+        }
+
         private void SetIsRunning(bool isRunning)
         {
             EnqueueStateUpdate(() => SetIsRunningCore(isRunning));
@@ -957,7 +985,7 @@ namespace Nodetool.SDK.VL.Nodes
         {
             if (_outputPins.TryGetValue("IsRunning", out var pin))
             {
-                pin.Value = isRunning;
+                SetOutputPinValue("IsRunning", pin, isRunning);
             }
         }
 
@@ -970,7 +998,7 @@ namespace Nodetool.SDK.VL.Nodes
         {
             if (_outputPins.TryGetValue("Error", out var pin))
             {
-                pin.Value = error;
+                SetOutputPinValue("Error", pin, error);
             }
         }
 
@@ -1765,6 +1793,7 @@ namespace Nodetool.SDK.VL.Nodes
                     try { img.Dispose(); } catch { /* ignore */ }
                 }
                 _latestImages.Clear();
+                _latchedOutputValues.Clear();
                 _disposeCts.Dispose();
             }
         }

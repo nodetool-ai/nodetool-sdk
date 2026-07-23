@@ -1,10 +1,12 @@
 using Nodetool.SDK.Types;
 using Nodetool.SDK.Execution;
 using Nodetool.SDK.Values;
+using Nodetool.SDK.VL.Factories;
 using Nodetool.SDK.VL.Nodes;
 using Nodetool.SDK.VL.Utilities;
 using Nodetool.Types.Core;
 using System.Text;
+using VL.Core;
 
 namespace Nodetool.SDK.Tests.VL;
 
@@ -148,6 +150,54 @@ public class WorkflowVlTypeMappingTests
 
         Assert.True(WorkflowNodeBase.TryExtractImageUri(value, out var uri));
         Assert.Equal("/api/storage/roundtrip.png", uri);
+    }
+
+    [Fact]
+    public void LatchedWorkflowOutputs_AreReappliedAfterVlResetsValueTypes()
+    {
+        var count = new WorkflowNodeBase.InternalPin("count", typeof(int), 0);
+        var ratio = new WorkflowNodeBase.InternalPin("ratio", typeof(float), 0.0f);
+        var enabled = new WorkflowNodeBase.InternalPin("enabled", typeof(bool), false);
+        IReadOnlyDictionary<string, IVLPin> pins = new Dictionary<string, IVLPin>
+        {
+            ["count"] = count,
+            ["ratio"] = ratio,
+            ["enabled"] = enabled
+        };
+        IReadOnlyDictionary<string, object?> latched = new Dictionary<string, object?>
+        {
+            ["count"] = 3,
+            ["ratio"] = 0.5f,
+            ["enabled"] = true
+        };
+
+        // Reproduce VL's next-frame defaults after the event frame.
+        count.Value = 0;
+        ratio.Value = 0.0f;
+        enabled.Value = false;
+
+        WorkflowNodeBase.ReapplyLatchedOutputs(latched, pins);
+
+        Assert.Equal(3, count.Value);
+        Assert.Equal(0.5f, ratio.Value);
+        Assert.Equal(true, enabled.Value);
+    }
+
+    [Theory]
+    [InlineData(0, 0, true)]
+    [InlineData(0, 1, false)]
+    [InlineData(1, 0, false)]
+    [InlineData(75, 0, false)]
+    public void EmptyWorkflowSnapshots_MustBeConfirmedBeforePublication(
+        int fetchedWorkflowCount,
+        int consecutiveEmptySnapshots,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            WorkflowNodeFactory.ShouldRetainSnapshotForConfirmation(
+                fetchedWorkflowCount,
+                consecutiveEmptySnapshots));
     }
 
     private static ExecutionOutputUpdate Chunk(string content, string disposition, bool done = false)
