@@ -1,0 +1,10 @@
+[
+  {
+    "node_type": "nodetool.constant.String",
+    "title": "String",
+    "namespace": "nodetool.constant",
+    "description": "A current node metadata fixture.",
+    "properties": [],
+    "outputs": []
+  }
+]

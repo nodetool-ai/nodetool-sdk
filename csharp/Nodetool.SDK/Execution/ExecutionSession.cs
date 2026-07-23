@@ -23,7 +23,7 @@ public class ExecutionSession : IExecutionSession
     {
         _jobId = jobId;
         _workflowId = workflowId;
-        _completionSource = new TaskCompletionSource<bool>();
+        _completionSource = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         _latestOutputs = new Dictionary<string, NodeToolValue>(StringComparer.Ordinal);
         CurrentStatus = "pending";
     }
@@ -115,9 +115,7 @@ public class ExecutionSession : IExecutionSession
 
         try
         {
-            using var registration = cancellationToken.Register(() =>
-                _completionSource.TrySetCanceled());
-            return await _completionSource.Task;
+            return await _completionSource.Task.WaitAsync(cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -139,8 +137,14 @@ public class ExecutionSession : IExecutionSession
         if (update.job_id != null && !string.IsNullOrWhiteSpace(_jobId) && update.job_id != _jobId)
             return;
 
+        bool? completionSucceeded = null;
+        string? completionError = null;
+
         lock (_lock)
         {
+            if (IsCompleted)
+                return;
+
             CurrentStatus = update.status;
 
             switch (update.status)
@@ -152,16 +156,15 @@ public class ExecutionSession : IExecutionSession
                 case "completed":
                     IsRunning = false;
                     IsCompleted = true;
-                    if (update.result != null)
+                    if (update.result?.TryGetValue("outputs", out var outputs) == true)
                     {
-                        foreach (var kvp in update.result)
+                        foreach (var kvp in NodeToolValue.From(outputs).AsMapOrEmpty())
                         {
-                            // job_update.result is free-form; store under a synthetic key to avoid collisions
-                            _latestOutputs[$"job_result:{kvp.Key}"] = NodeToolValue.From(kvp.Value);
+                            _latestOutputs[$"job_result:{kvp.Key}"] = kvp.Value;
                         }
                     }
                     _completionSource.TrySetResult(true);
-                    Completed?.Invoke(true, null);
+                    completionSucceeded = true;
                     break;
 
                 case "failed":
@@ -169,7 +172,8 @@ public class ExecutionSession : IExecutionSession
                     IsCompleted = true;
                     ErrorMessage = update.error ?? update.message ?? "Unknown error";
                     _completionSource.TrySetResult(false);
-                    Completed?.Invoke(false, ErrorMessage);
+                    completionSucceeded = false;
+                    completionError = ErrorMessage;
                     break;
 
                 case "cancelled":
@@ -177,7 +181,8 @@ public class ExecutionSession : IExecutionSession
                     IsCompleted = true;
                     ErrorMessage = "Job cancelled";
                     _completionSource.TrySetResult(false);
-                    Completed?.Invoke(false, ErrorMessage);
+                    completionSucceeded = false;
+                    completionError = ErrorMessage;
                     break;
 
                 case "suspended":
@@ -186,6 +191,9 @@ public class ExecutionSession : IExecutionSession
                     break;
             }
         }
+
+        if (completionSucceeded.HasValue)
+            Completed?.Invoke(completionSucceeded.Value, completionError);
     }
 
     /// <summary>

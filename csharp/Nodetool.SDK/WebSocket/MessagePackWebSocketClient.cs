@@ -15,7 +15,7 @@ namespace Nodetool.SDK.WebSocket;
 /// </summary>
 public class MessagePackWebSocketClient : IDisposable
 {
-    private readonly ILogger<MessagePackWebSocketClient> _logger;
+    private readonly ILogger _logger;
     private ClientWebSocket? _webSocket;
     private CancellationTokenSource? _cancellationTokenSource;
     private readonly SemaphoreSlim _sendSemaphore = new(1, 1);
@@ -43,9 +43,9 @@ public class MessagePackWebSocketClient : IDisposable
     /// </summary>
     public bool IsConnected => _webSocket?.State == WebSocketState.Open;
 
-    public MessagePackWebSocketClient(ILogger<MessagePackWebSocketClient>? logger = null)
+    public MessagePackWebSocketClient(ILogger? logger = null)
     {
-        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<MessagePackWebSocketClient>.Instance;
+        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
 
         // We need to interop with Python msgpack which uses map/dict structures.
         // Contractless resolver handles Dictionary<string, object> value trees well.
@@ -188,11 +188,11 @@ public class MessagePackWebSocketClient : IDisposable
 
     /// <summary>
     /// Send a request command and await the correlated response.
-    /// Adds a <c>request_id</c> to <paramref name="data"/> automatically and waits for
+    /// Adds a top-level <c>request_id</c> to the command envelope and waits for
     /// a server message with the same <c>request_id</c> echoed back.
     /// </summary>
     /// <param name="command">Command name (e.g. "get_node_metadata").</param>
-    /// <param name="data">Command data payload. Will be mutated to include <c>request_id</c>.</param>
+    /// <param name="data">Command data payload.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <param name="timeout">Response timeout (default 30 s).</param>
     /// <returns>The raw response message as a string-keyed dictionary, or null on failure.</returns>
@@ -203,12 +203,11 @@ public class MessagePackWebSocketClient : IDisposable
         TimeSpan? timeout = null)
     {
         var requestId = Guid.NewGuid().ToString("N");
-        data["request_id"] = requestId;
 
         var tcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pendingRequests[requestId] = tcs;
 
-        var envelope = new Dictionary<string, object?> { ["command"] = command, ["data"] = data };
+        var envelope = CreateRequestEnvelope(command, data, requestId);
         if (!await SendMessageAsync(envelope, cancellationToken))
         {
             _pendingRequests.TryRemove(requestId, out _);
@@ -229,6 +228,16 @@ public class MessagePackWebSocketClient : IDisposable
             _pendingRequests.TryRemove(requestId, out _);
         }
     }
+
+    internal static Dictionary<string, object?> CreateRequestEnvelope(
+        string command,
+        Dictionary<string, object?> data,
+        string requestId) => new()
+        {
+            ["command"] = command,
+            ["request_id"] = requestId,
+            ["data"] = data
+        };
 
     /// <summary>
     /// Send a workflow execution request.
@@ -473,7 +482,7 @@ public class MessagePackWebSocketClient : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to deserialize MessagePack data");
+            _logger.LogWarning(ex, "Failed to deserialize MessagePack data ({Size} bytes)", data.Length);
             return Task.FromResult<object?>(null);
         }
     }
@@ -538,4 +547,4 @@ public class ConnectionStatusEventArgs : EventArgs
     public string Status { get; init; } = "";
     public string? Message { get; init; }
     public Dictionary<string, object>? Metadata { get; init; }
-} 
+}

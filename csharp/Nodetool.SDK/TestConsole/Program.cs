@@ -23,13 +23,13 @@ class Program
 
         if (args.Contains("run-workflow", StringComparer.OrdinalIgnoreCase))
         {
-            await RunWorkflowMode(args, loggerFactory, logger);
+            await RunModeSafelyAsync(() => RunWorkflowMode(args, loggerFactory, logger), logger);
             return;
         }
 
         if (args.Contains("fetch", StringComparer.OrdinalIgnoreCase))
         {
-            await FetchMode(args, loggerFactory, logger);
+            await RunModeSafelyAsync(() => FetchMode(args, loggerFactory, logger), logger);
             return;
         }
 
@@ -91,6 +91,19 @@ class Program
         catch (Exception ex)
         {
             logger.LogError(ex, "❌ Test failed with error");
+        }
+    }
+
+    private static async Task RunModeSafelyAsync(Func<Task> run, ILogger logger)
+    {
+        try
+        {
+            await run();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "NodeTool SDK smoke test failed");
+            Environment.ExitCode = 1;
         }
     }
 
@@ -443,4 +456,4 @@ class Program
 
         return result;
     }
-} 
+}

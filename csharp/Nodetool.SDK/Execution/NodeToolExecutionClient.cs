@@ -5,6 +5,7 @@ using Nodetool.SDK.Api;
 using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.Configuration;
 using Nodetool.SDK.Types;
+using Nodetool.SDK.Values;
 using Nodetool.SDK.WebSocket;
 
 namespace Nodetool.SDK.Execution;
@@ -76,8 +77,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         _workflowIdsByName = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         // Create WebSocket client
-        _webSocketClient = new MessagePackWebSocketClient(
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<MessagePackWebSocketClient>.Instance);
+        _webSocketClient = new MessagePackWebSocketClient(_logger);
 
         // Subscribe to WebSocket events
         _webSocketClient.MessageReceived += OnMessageReceived;
@@ -464,21 +464,23 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             throw new InvalidOperationException($"No response received for '{command}'");
         if (raw.TryGetValue("error", out var err) && err is not null)
         {
-            var d = err as Dictionary<string, object?>;
-            var code = d?.GetValueOrDefault("code") as string ?? "UNKNOWN";
-            var msg = d?.GetValueOrDefault("message") as string ?? err.ToString()!;
+            var errorMap = NodeToolValue.From(err).AsMapOrEmpty();
+            var code = errorMap.GetValueOrDefault("code")?.AsString() ?? "UNKNOWN";
+            var msg = errorMap.GetValueOrDefault("message")?.AsString() ?? err.ToString()!;
             throw new InvalidOperationException($"[{code}] {msg}");
         }
     }
 
-    private List<T> DeserializeListResult<T>(Dictionary<string, object?>? raw, string command, string key)
+    internal List<T> DeserializeListResult<T>(Dictionary<string, object?>? raw, string command, string key)
     {
         ThrowIfRpcError(raw, command);
         if (raw is null || !raw.TryGetValue("result", out var resultObj)) return new List<T>();
-        var resultDict = resultObj as Dictionary<string, object?>;
-        if (resultDict is null || !resultDict.TryGetValue(key, out var listObj) || listObj is null)
+        var resultMap = NodeToolValue.From(resultObj).AsMapOrEmpty();
+        if (!resultMap.TryGetValue(key, out var listValue))
             return new List<T>();
-        return JsonSerializer.Deserialize<List<T>>(JsonSerializer.Serialize(listObj), _jsonOptions) ?? new List<T>();
+        return JsonSerializer.Deserialize<List<T>>(
+            listValue.ToJsonString(),
+            _jsonOptions) ?? new List<T>();
     }
 
     private T? DeserializeSingleResult<T>(Dictionary<string, object?>? raw, string command) where T : class
@@ -486,7 +488,9 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         ThrowIfRpcError(raw, command);
         if (raw is null || !raw.TryGetValue("result", out var resultObj) || resultObj is null)
             return null;
-        return JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(resultObj), _jsonOptions);
+        return JsonSerializer.Deserialize<T>(
+            NodeToolValue.From(resultObj).ToJsonString(),
+            _jsonOptions);
     }
 
     private void OnMessageReceived(object? sender, MessageReceivedEventArgs args)

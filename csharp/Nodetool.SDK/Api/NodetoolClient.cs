@@ -98,15 +98,34 @@ public class NodetoolClient : INodetoolClient
     public async Task<List<WorkflowResponse>> GetWorkflowsAsync(CancellationToken cancellationToken = default)
     {
         _logger?.LogDebug("Fetching workflows");
-        
-        var response = await _httpClient.GetAsync(NodetoolConstants.Endpoints.Workflows, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        
-        var json = await response.Content.ReadAsStringAsync(cancellationToken);
-        var workflowListResponse = JsonSerializer.Deserialize<WorkflowListResponse>(json, _jsonOptions);
-        
-        _logger?.LogDebug("Retrieved {Count} workflows", workflowListResponse?.Workflows?.Count ?? 0);
-        return workflowListResponse?.Workflows ?? new List<WorkflowResponse>();
+
+        const int pageSize = 25;
+        var workflows = new List<WorkflowResponse>();
+        var visitedCursors = new HashSet<string>(StringComparer.Ordinal);
+        string? cursor = null;
+
+        do
+        {
+            var endpoint = $"{NodetoolConstants.Endpoints.Workflows}?limit={pageSize}";
+            if (cursor != null)
+                endpoint += $"&cursor={Uri.EscapeDataString(cursor)}";
+
+            var response = await _httpClient.GetAsync(endpoint, cancellationToken);
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            var page = JsonSerializer.Deserialize<WorkflowListResponse>(json, _jsonOptions)
+                ?? throw new InvalidDataException("The workflow list response was empty or malformed.");
+            workflows.AddRange(page.Workflows);
+
+            cursor = string.IsNullOrWhiteSpace(page.Next) ? null : page.Next;
+            if (cursor != null && !visitedCursors.Add(cursor))
+                throw new InvalidDataException($"The workflow list cursor repeated ({cursor}); pagination cannot advance.");
+        }
+        while (cursor != null);
+
+        _logger?.LogDebug("Retrieved {Count} workflows", workflows.Count);
+        return workflows;
     }
 
     public async Task<WorkflowResponse> GetWorkflowAsync(string workflowId, CancellationToken cancellationToken = default)
@@ -239,4 +258,4 @@ public class NodetoolClient : INodetoolClient
         _httpClient?.Dispose();
         GC.SuppressFinalize(this);
     }
-} 
+}

@@ -12,6 +12,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $csharpDir = $PSScriptRoot
 $typesDir = Join-Path $csharpDir "Nodetool.Types"
 $sdkDir = Join-Path $csharpDir "Nodetool.SDK"
+$testsDir = Join-Path $csharpDir "Nodetool.SDK.Tests"
 
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
     $OutputDir = Join-Path $csharpDir "_vvvv_builds\Release\net8.0"
@@ -82,6 +83,7 @@ Write-Host ">>> Building C# projects..." -ForegroundColor Cyan
 dotnet build (Join-Path $typesDir "Nodetool.Types.csproj") -c Release -o $resolvedOutputDir
 dotnet build (Join-Path $sdkDir "Nodetool.SDK.csproj") -c Release -o $resolvedOutputDir
 dotnet build (Join-Path $sdkDir "TestConsole\Nodetool.SDK.TestConsole.csproj") -c Release -o $resolvedOutputDir
+dotnet test (Join-Path $testsDir "Nodetool.SDK.Tests.csproj") -c Release
 
 if ($IncludeVL) {
     Write-Host ""
@@ -92,5 +94,4 @@ if ($IncludeVL) {
 
 Write-Host ""
 Write-Host "Done" -ForegroundColor Green
-
 

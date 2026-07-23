@@ -77,6 +77,17 @@ public class OutputUpdate
     public string output_type { get; set; } = "";
 
     public Dictionary<string, object>? metadata { get; set; } = null;
+
+    /// <summary>
+    /// Whether the value appends to the current stream or replaces its snapshot.
+    /// An omitted value follows the server's default append behavior.
+    /// </summary>
+    public string? disposition { get; set; } = null;
+
+    /// <summary>
+    /// Marks the final chunk of an append stream when supplied by the server.
+    /// </summary>
+    public bool? done { get; set; } = null;
 }
 
 /// <summary>
@@ -347,6 +358,11 @@ public class WebSocketCommand
     /// Message type. For the worker protocol this should match <see cref="command"/>.
     /// </summary>
     public string type { get; set; } = "";
+
+    /// <summary>
+    /// Correlation identifier for request/response commands.
+    /// </summary>
+    public string? request_id { get; set; } = null;
 
     public object data { get; set; } = new Dictionary<string, object>();
 }
