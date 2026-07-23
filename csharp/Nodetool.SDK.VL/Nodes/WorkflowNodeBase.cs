@@ -332,36 +332,11 @@ namespace Nodetool.SDK.VL.Nodes
                         var expectedType = (pin as InternalPin)?.Type ?? typeof(string);
 
                         // Special handling for streamed "chunk" payloads: accumulate content so the pin shows useful text.
-                        if (update.Value.Kind == NodeToolValueKind.Map)
+                        if (TryAccumulateChunk(_chunkBuffers, pinName, update, out var chunkText))
                         {
-                            var map = update.Value.AsMapOrEmpty();
-                            var typeDisc = update.Value.TypeDiscriminator;
-                            if (string.Equals(typeDisc, "chunk", StringComparison.OrdinalIgnoreCase))
-                            {
-                                var content = map.TryGetValue("content", out var c) ? (c.AsString() ?? "") : "";
-                                if (!_chunkBuffers.TryGetValue(pinName, out var sb))
-                                {
-                                    sb = new StringBuilder();
-                                    _chunkBuffers[pinName] = sb;
-                                }
-
-                                if (string.Equals(
-                                    update.Disposition,
-                                    "replace",
-                                    StringComparison.OrdinalIgnoreCase))
-                                {
-                                    sb.Clear();
-                                }
-
-                                if (!string.IsNullOrEmpty(content))
-                                {
-                                    sb.Append(content);
-                                }
-
-                                // Show accumulated content even when we get the final done=true message (often empty content).
-                                pin.Value = sb.ToString();
-                                return;
-                            }
+                            // Keep accumulated content when done=true carries an empty final chunk.
+                            pin.Value = chunkText;
+                            return;
                         }
 
                         // Special handling for image outputs:
@@ -507,6 +482,36 @@ namespace Nodetool.SDK.VL.Nodes
             return routes.TryGetValue($"name:{update.NodeName}", out var byName)
                 ? byName
                 : null;
+        }
+
+        internal static bool TryAccumulateChunk(
+            IDictionary<string, StringBuilder> buffers,
+            string pinName,
+            ExecutionOutputUpdate update,
+            out string text)
+        {
+            text = "";
+            if (update.Value.Kind != NodeToolValueKind.Map ||
+                !string.Equals(update.Value.TypeDiscriminator, "chunk", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (!buffers.TryGetValue(pinName, out var buffer))
+            {
+                buffer = new StringBuilder();
+                buffers[pinName] = buffer;
+            }
+
+            if (string.Equals(update.Disposition, "replace", StringComparison.OrdinalIgnoreCase))
+                buffer.Clear();
+
+            var map = update.Value.AsMapOrEmpty();
+            if (map.TryGetValue("content", out var content))
+                buffer.Append(content.AsString() ?? "");
+
+            text = buffer.ToString();
+            return true;
         }
 
         private string ComputeInputSignature()

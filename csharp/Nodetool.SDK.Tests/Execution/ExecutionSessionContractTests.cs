@@ -1,5 +1,6 @@
 using Nodetool.SDK.Execution;
 using Nodetool.SDK.Types;
+using Nodetool.SDK.Configuration;
 
 namespace Nodetool.SDK.Tests.Execution;
 
@@ -172,5 +173,62 @@ public class ExecutionSessionContractTests
         var cancellation = Assert.Single(cancellations);
         Assert.Equal("job-1", cancellation.JobId);
         Assert.Equal("workflow-1", cancellation.WorkflowId);
+    }
+
+    [Fact]
+    public void ScopedUpdates_DoNotCrossRouteBetweenConcurrentSessions()
+    {
+        using var client = new NodeToolExecutionClient(new NodeToolClientOptions
+        {
+            WorkerWebSocketUrl = new Uri("ws://127.0.0.1:7777/ws")
+        });
+        var first = client.CreateSession("job-1", "workflow-1");
+        var second = client.CreateSession("job-2", "workflow-2");
+
+        client.RouteExecutionMessage(new OutputUpdate
+        {
+            job_id = "job-1",
+            node_id = "output",
+            output_name = "value",
+            value = "first"
+        });
+
+        Assert.Equal("first", first.GetLatestOutput("output", "value")?.AsString());
+        Assert.Null(second.GetLatestOutput("output", "value"));
+    }
+
+    [Fact]
+    public void UnscopedUpdates_AreDroppedUntilOnlyOneActiveSessionRemains()
+    {
+        using var client = new NodeToolExecutionClient(new NodeToolClientOptions
+        {
+            WorkerWebSocketUrl = new Uri("ws://127.0.0.1:7777/ws")
+        });
+        var first = client.CreateSession("job-1", "workflow-1");
+        var second = client.CreateSession("job-2", "workflow-2");
+        var unscoped = new OutputUpdate
+        {
+            node_id = "output",
+            output_name = "value",
+            value = "only-active"
+        };
+
+        client.RouteExecutionMessage(unscoped);
+        Assert.Null(first.GetLatestOutput("output", "value"));
+        Assert.Null(second.GetLatestOutput("output", "value"));
+
+        client.RouteExecutionMessage(new JobUpdate
+        {
+            job_id = "job-2",
+            status = "completed",
+            result = new Dictionary<string, object>
+            {
+                ["outputs"] = new Dictionary<string, object>()
+            }
+        });
+        client.RouteExecutionMessage(unscoped);
+
+        Assert.Equal("only-active", first.GetLatestOutput("output", "value")?.AsString());
+        Assert.Null(second.GetLatestOutput("output", "value"));
     }
 }

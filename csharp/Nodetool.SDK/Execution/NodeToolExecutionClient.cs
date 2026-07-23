@@ -398,7 +398,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         }
     }
 
-    private ExecutionSession CreateSession(string jobId, string? workflowId = null)
+    internal ExecutionSession CreateSession(string jobId, string? workflowId = null)
     {
         var session = new ExecutionSession(jobId, workflowId)
         {
@@ -575,76 +575,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     {
         try
         {
-            switch (args.Message)
-            {
-                case JobUpdate jobUpdate:
-                    if (jobUpdate.job_id != null && _sessions.TryGetValue(jobUpdate.job_id, out var session1))
-                    {
-                        session1.ProcessJobUpdate(jobUpdate);
-
-                        // Clean up completed sessions after a delay
-                        if (session1.IsCompleted)
-                        {
-                            var jobIdToRemove = jobUpdate.job_id;
-                            _ = Task.Delay(TimeSpan.FromMinutes(5)).ContinueWith(t =>
-                            {
-                                _sessions.TryRemove(jobIdToRemove, out var removed);
-                            });
-                        }
-                    }
-                    break;
-
-                case NodeUpdate nodeUpdate:
-                    // Prefer routing by job_id when available to avoid cross-talk between sessions.
-                    if (nodeUpdate.job_id != null && _sessions.TryGetValue(nodeUpdate.job_id, out var sessionNode))
-                    {
-                        sessionNode.ProcessNodeUpdate(nodeUpdate);
-                    }
-                    else
-                    {
-                        GetOnlyBoundSession()?.ProcessNodeUpdate(nodeUpdate);
-                    }
-                    break;
-
-                case NodeProgress nodeProgress:
-                    if (nodeProgress.job_id != null &&
-                        _sessions.TryGetValue(nodeProgress.job_id, out var progressSession))
-                    {
-                        progressSession.ProcessNodeProgress(nodeProgress);
-                    }
-                    else
-                        GetOnlyBoundSession()?.ProcessNodeProgress(nodeProgress);
-                    break;
-
-                case ProgressUpdate progressUpdate:
-                    if (progressUpdate.job_id != null && _sessions.TryGetValue(progressUpdate.job_id, out var session2))
-                    {
-                        session2.ProcessProgressUpdate(progressUpdate);
-                    }
-                    break;
-
-                case OutputUpdate outputUpdate:
-                    if (outputUpdate.job_id != null && _sessions.TryGetValue(outputUpdate.job_id, out var sessionOut))
-                    {
-                        sessionOut.ProcessOutputUpdate(outputUpdate);
-                    }
-                    else
-                    {
-                        GetOnlyBoundSession()?.ProcessOutputUpdate(outputUpdate);
-                    }
-                    break;
-
-                case PreviewUpdate previewUpdate:
-                    if (previewUpdate.job_id != null && _sessions.TryGetValue(previewUpdate.job_id, out var sessionPreview))
-                    {
-                        sessionPreview.ProcessPreviewUpdate(previewUpdate);
-                    }
-                    else
-                    {
-                        GetOnlyBoundSession()?.ProcessPreviewUpdate(previewUpdate);
-                    }
-                    break;
-            }
+            RouteExecutionMessage(args.Message);
         }
         catch (Exception ex)
         {
@@ -652,9 +583,86 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         }
     }
 
+    internal void RouteExecutionMessage(object message)
+    {
+        switch (message)
+        {
+            case JobUpdate jobUpdate:
+                if (jobUpdate.job_id != null && _sessions.TryGetValue(jobUpdate.job_id, out var session1))
+                {
+                    session1.ProcessJobUpdate(jobUpdate);
+
+                    // Clean up completed sessions after a delay
+                    if (session1.IsCompleted)
+                    {
+                        var jobIdToRemove = jobUpdate.job_id;
+                        _ = Task.Delay(TimeSpan.FromMinutes(5)).ContinueWith(t =>
+                        {
+                            _sessions.TryRemove(jobIdToRemove, out var removed);
+                        });
+                    }
+                }
+                break;
+
+            case NodeUpdate nodeUpdate:
+                // Prefer routing by job_id when available to avoid cross-talk between sessions.
+                if (nodeUpdate.job_id != null && _sessions.TryGetValue(nodeUpdate.job_id, out var sessionNode))
+                {
+                    sessionNode.ProcessNodeUpdate(nodeUpdate);
+                }
+                else
+                {
+                    GetOnlyBoundSession()?.ProcessNodeUpdate(nodeUpdate);
+                }
+                break;
+
+            case NodeProgress nodeProgress:
+                if (nodeProgress.job_id != null &&
+                    _sessions.TryGetValue(nodeProgress.job_id, out var progressSession))
+                {
+                    progressSession.ProcessNodeProgress(nodeProgress);
+                }
+                else
+                    GetOnlyBoundSession()?.ProcessNodeProgress(nodeProgress);
+                break;
+
+            case ProgressUpdate progressUpdate:
+                if (progressUpdate.job_id != null && _sessions.TryGetValue(progressUpdate.job_id, out var session2))
+                {
+                    session2.ProcessProgressUpdate(progressUpdate);
+                }
+                break;
+
+            case OutputUpdate outputUpdate:
+                if (outputUpdate.job_id != null && _sessions.TryGetValue(outputUpdate.job_id, out var sessionOut))
+                {
+                    sessionOut.ProcessOutputUpdate(outputUpdate);
+                }
+                else
+                {
+                    GetOnlyBoundSession()?.ProcessOutputUpdate(outputUpdate);
+                }
+                break;
+
+            case PreviewUpdate previewUpdate:
+                if (previewUpdate.job_id != null && _sessions.TryGetValue(previewUpdate.job_id, out var sessionPreview))
+                {
+                    sessionPreview.ProcessPreviewUpdate(previewUpdate);
+                }
+                else
+                {
+                    GetOnlyBoundSession()?.ProcessPreviewUpdate(previewUpdate);
+                }
+                break;
+        }
+    }
+
     private ExecutionSession? GetOnlyBoundSession()
     {
-        var sessions = _sessions.Values.Take(2).ToArray();
+        var sessions = _sessions.Values
+            .Where(session => !session.IsCompleted)
+            .Take(2)
+            .ToArray();
         if (sessions.Length == 1)
             return sessions[0];
         if (sessions.Length > 1)

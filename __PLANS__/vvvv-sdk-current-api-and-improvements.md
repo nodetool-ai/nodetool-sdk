@@ -307,9 +307,9 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 ### Phase 6 acceptance gate
 
 - [x] A workflow completing immediately after `run_job` still populates all outputs.
-- [ ] Append and replace streams produce the expected final VL value.
+- [x] Append and replace streams produce the expected final VL value.
 - [x] Terminal reconciliation fills outputs when one or more live updates were missed.
-- [ ] Concurrent runs do not cross-route updates.
+- [x] Concurrent runs do not cross-route updates.
 - [ ] Cancellation and reconnect tests leave no permanently running VL state.
 - [ ] Large image/media workflows stay below the documented memory and MessagePack payload bounds.
 
