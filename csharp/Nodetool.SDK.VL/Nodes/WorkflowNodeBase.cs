@@ -337,6 +337,14 @@ namespace Nodetool.SDK.VL.Nodes
                                     _chunkBuffers[update.OutputName] = sb;
                                 }
 
+                                if (string.Equals(
+                                    update.Disposition,
+                                    "replace",
+                                    StringComparison.OrdinalIgnoreCase))
+                                {
+                                    sb.Clear();
+                                }
+
                                 if (!string.IsNullOrEmpty(content))
                                 {
                                     sb.Append(content);
@@ -344,7 +352,7 @@ namespace Nodetool.SDK.VL.Nodes
 
                                 // Show accumulated content even when we get the final done=true message (often empty content).
                                 pin.Value = sb.ToString();
-                                if (done)
+                                if (done || update.Done)
                                 {
                                     MarkOutputReady(update.OutputName, expectedOutputNames, receivedCompletedOutputs, outputsReadyTcs);
                                 }
@@ -1299,4 +1307,4 @@ namespace Nodetool.SDK.VL.Nodes
             public object? Value { get; set; }
         }
     }
-} 
+}

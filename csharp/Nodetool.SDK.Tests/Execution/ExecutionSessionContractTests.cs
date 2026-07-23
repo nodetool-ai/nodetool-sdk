@@ -38,4 +38,51 @@ public class ExecutionSessionContractTests
         Assert.Equal("replace", update.disposition);
         Assert.True(update.done);
     }
+
+    [Fact]
+    public void OutputUpdate_PreservesDispositionAndDoneForConsumers()
+    {
+        using var session = new ExecutionSession("job-1", "workflow-1");
+        ExecutionOutputUpdate? received = null;
+        session.OutputReceived += update => received = update;
+
+        session.ProcessOutputUpdate(new OutputUpdate
+        {
+            job_id = "job-1",
+            node_id = "output-1",
+            output_name = "text",
+            output_type = "chunk",
+            value = new Dictionary<string, object>
+            {
+                ["type"] = "chunk",
+                ["content"] = "hello"
+            },
+            disposition = "replace",
+            done = true
+        });
+
+        Assert.NotNull(received);
+        Assert.Equal("replace", received.Disposition);
+        Assert.True(received.Done);
+    }
+
+    [Fact]
+    public void OutputUpdate_DefaultsMissingDispositionToAppend()
+    {
+        using var session = new ExecutionSession("job-1", "workflow-1");
+        ExecutionOutputUpdate? received = null;
+        session.OutputReceived += update => received = update;
+
+        session.ProcessOutputUpdate(new OutputUpdate
+        {
+            job_id = "job-1",
+            node_id = "output-1",
+            output_name = "text",
+            value = "hello"
+        });
+
+        Assert.NotNull(received);
+        Assert.Equal("append", received.Disposition);
+        Assert.False(received.Done);
+    }
 }

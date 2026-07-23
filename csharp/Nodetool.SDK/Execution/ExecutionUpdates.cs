@@ -9,7 +9,9 @@ public sealed record ExecutionOutputUpdate(
     string OutputType,
     NodeToolValue Value,
     IReadOnlyDictionary<string, NodeToolValue> Metadata,
-    DateTimeOffset ReceivedAt
+    DateTimeOffset ReceivedAt,
+    string Disposition,
+    bool Done
 );
 
 public sealed record ExecutionPreviewUpdate(

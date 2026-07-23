@@ -251,7 +251,14 @@ public class ExecutionSession : IExecutionSession
             OutputType: update.output_type,
             Value: value,
             Metadata: metadata,
-            ReceivedAt: receivedAt
+            ReceivedAt: receivedAt,
+            Disposition: string.Equals(
+                update.disposition,
+                "replace",
+                StringComparison.OrdinalIgnoreCase)
+                    ? "replace"
+                    : "append",
+            Done: update.done ?? false
         ));
     }
 
