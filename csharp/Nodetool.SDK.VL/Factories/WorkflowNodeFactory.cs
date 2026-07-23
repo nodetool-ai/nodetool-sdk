@@ -277,7 +277,12 @@ namespace Nodetool.SDK.VL.Factories
             
             try
             {
-                using var metadataService = new WorkflowMetadataService();
+                var webSocketClient = NodeToolClientProvider.UseWebSocketDiscovery &&
+                                      NodeToolClientProvider.IsConnected
+                    ? NodeToolClientProvider.GetClient()
+                    : null;
+                using var metadataService = new WorkflowMetadataService(
+                    webSocketClient: webSocketClient);
 
                 // Ensure the metadata service uses the same API base URL as the Connect node.
                 metadataService.Configure(new NodetoolOptions
@@ -297,7 +302,7 @@ namespace Nodetool.SDK.VL.Factories
                 _serverVersion = metadataService.ServerVersion;
                 _interfaceSource = metadataService.InterfaceSource;
                 _lastError = metadataService.LastError ?? "";
-                VlLog.Debug($"WorkflowNodeFactory: {_apiStatusMessage} ({_fetchedWorkflows.Count} workflows)");
+                VlLog.Debug($"WorkflowNodeFactory: {_apiStatusMessage} via {metadataService.DiscoveryTransport} ({_fetchedWorkflows.Count} workflows)");
                 return true;
             }
             catch (AggregateException aggEx)

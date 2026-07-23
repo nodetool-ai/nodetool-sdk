@@ -26,6 +26,7 @@ public static class NodeToolClientProvider
     private static int _executionTimeoutSeconds = DefaultExecutionTimeoutSeconds;
     private static int _inlineMediaLimitBytes = DefaultInlineMediaLimitBytes;
     private static bool _autoReconnect = true;
+    private static volatile bool _useWebSocketDiscovery;
 
     /// <summary>
     /// Current connection status.
@@ -69,11 +70,26 @@ public static class NodeToolClientProvider
     /// </summary>
     public static int InlineMediaLimitBytes => _inlineMediaLimitBytes;
 
+    /// <summary>
+    /// Whether workflow discovery should use the shared execution WebSocket when connected.
+    /// HTTP remains the bootstrap transport while the socket is unavailable.
+    /// </summary>
+    public static bool UseWebSocketDiscovery => _useWebSocketDiscovery;
+
     public static void SetAutoReconnect(bool enabled)
     {
         _autoReconnect = enabled;
         if (_client != null)
             _client.AutoReconnectEnabled = enabled;
+    }
+
+    public static void SetUseWebSocketDiscovery(bool enabled)
+    {
+        if (_useWebSocketDiscovery == enabled)
+            return;
+
+        _useWebSocketDiscovery = enabled;
+        WorkflowNodeFactory.RequestRefresh();
     }
 
     /// <summary>
@@ -296,6 +312,8 @@ public static class NodeToolClientProvider
         {
             LastError = _client.LastError;
         }
+        if (status == "connected" && _useWebSocketDiscovery)
+            WorkflowNodeFactory.RequestRefresh();
         StatusChanged?.Invoke(status);
     }
 

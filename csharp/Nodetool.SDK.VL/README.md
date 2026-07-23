@@ -72,6 +72,12 @@ Connection recovery:
 - Turning `AutoReconnect` off only disables automatic retries; the Connect node's `Reconnect` pulse remains available.
 - An intentional Disconnect does not trigger automatic reconnection.
 
+Workflow discovery transport:
+
+- HTTP remains the default bootstrap transport, so loading the package does not require an open execution socket.
+- Enable `UseWebSocketDiscovery` on the Connect node to switch workflow summaries and interface batches to correlated MessagePack RPC after the shared socket connects.
+- When the socket first connects, the workflow factory requests a refresh. A later disconnect keeps the last successful workflow nodes available.
+
 Media transport:
 
 - `InlineMediaLimitBytes` defaults to 4 MiB. Larger local media is uploaded through the asset API and represented by `asset_id` during execution.
@@ -82,7 +88,7 @@ Media transport:
 
 ### Workflow nodes
 
-Generated from the authoritative workflow interface exposed by `GET /api/sdk/v1/workflow-interfaces`.
+Generated from the authoritative workflow-interface v1 contract, over compact HTTP by default or correlated WebSocket RPC when enabled on the Connect node.
 
 Category:
 

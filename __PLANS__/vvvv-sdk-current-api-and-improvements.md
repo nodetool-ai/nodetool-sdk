@@ -236,6 +236,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Add typed C# REST DTOs and client methods for compact paginated workflow summaries and authoritative workflow-interface v1 responses.
 - [x] Convert missing, disabled, and unsupported workflow-interface REST responses into an explicit SDK compatibility exception.
 - [x] Make HTTP discovery the default bootstrap transport; do not require an open execution socket to discover nodes and workflows.
+- [x] Add an opt-in Connect-node flag that switches workflow discovery to compact correlated WebSocket RPC after the shared socket connects.
 - [x] Request workflow-interface v1 in bounded batches of at most 100 workflows.
 - [x] Never call the graph-bearing workflow list/detail routes during routine SDK discovery.
 - [x] Surface one clear incompatible-server/feature-disabled status on REST 404, feature-disabled, or unsupported version; do not create partially inferred workflow nodes.

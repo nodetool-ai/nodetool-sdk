@@ -4,6 +4,7 @@ using Nodetool.SDK.Api;
 using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.VL.Models;
 using Nodetool.SDK.Configuration;
+using Nodetool.SDK.Execution;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
@@ -24,6 +25,7 @@ public class WorkflowMetadataService : IDisposable
     private static readonly ConcurrentDictionary<CacheKey, CachedWorkflow> SharedWorkflowCache = new();
 
     private readonly INodetoolClient _client;
+    private readonly INodeToolExecutionClient? _webSocketClient;
     private readonly ILogger<WorkflowMetadataService>? _logger;
     
     // Cache management
@@ -38,10 +40,14 @@ public class WorkflowMetadataService : IDisposable
     public string InterfaceSource { get; private set; } = "unknown";
     public string? LastError { get; private set; }
     public int CacheHitCount { get; private set; }
+    public string DiscoveryTransport => _webSocketClient is null ? "HTTP" : "WebSocket";
 
-    public WorkflowMetadataService(ILogger<WorkflowMetadataService>? logger = null)
+    public WorkflowMetadataService(
+        ILogger<WorkflowMetadataService>? logger = null,
+        INodeToolExecutionClient? webSocketClient = null)
     {
         _logger = logger;
+        _webSocketClient = webSocketClient?.IsConnected == true ? webSocketClient : null;
         _client = new NodetoolClient();
         
         // Configure with default base URL - can be overridden by calling Configure
@@ -80,8 +86,11 @@ public class WorkflowMetadataService : IDisposable
         try
         {
             var healthTask = FetchHealthSafelyAsync(cancellationToken);
-            var workflows = await _client.GetWorkflowSummariesAsync(cancellationToken);
-            _logger?.LogDebug("Retrieved {Count} compact workflow summaries from API", workflows.Count);
+            var workflows = await GetWorkflowSummariesAsync(cancellationToken);
+            _logger?.LogDebug(
+                "Retrieved {Count} compact workflow summaries via {Transport}",
+                workflows.Count,
+                DiscoveryTransport);
 
             var workflowDetailsById = new Dictionary<string, WorkflowDetail>(StringComparer.Ordinal);
             var interfacesById = new Dictionary<string, WorkflowInterfaceResponse>(
@@ -109,7 +118,7 @@ public class WorkflowMetadataService : IDisposable
 
             foreach (var batch in workflowsToFetch.Chunk(100))
             {
-                var result = await _client.GetWorkflowInterfacesAsync(
+                var result = await GetWorkflowInterfacesAsync(
                     batch.Select(workflow => workflow.Id).ToArray(),
                     cancellationToken);
                 foreach (var workflowInterface in result.Interfaces)
@@ -196,8 +205,8 @@ public class WorkflowMetadataService : IDisposable
             
             var cacheSummary = cacheHitCount > 0 ? $"; reused {cacheHitCount} cached" : "";
             StatusMessage = skippedInterfaceCount == 0
-                ? $"Successfully fetched {workflowDetails.Count} workflow definitions{cacheSummary}"
-                : $"Fetched {workflowDetails.Count} workflow definitions{cacheSummary}; skipped {skippedInterfaceCount} invalid interfaces";
+                ? $"Successfully fetched {workflowDetails.Count} workflow definitions via {DiscoveryTransport}{cacheSummary}"
+                : $"Fetched {workflowDetails.Count} workflow definitions via {DiscoveryTransport}{cacheSummary}; skipped {skippedInterfaceCount} invalid interfaces";
             _logger?.LogInformation(
                 "Fetched {Count} workflow definitions ({CacheHits} cached); skipped {SkippedCount} invalid interfaces",
                 workflowDetails.Count,
@@ -240,11 +249,13 @@ public class WorkflowMetadataService : IDisposable
                 }
             }
 
-            var summary = (await _client.GetWorkflowSummariesAsync())
+            var summary = (await GetWorkflowSummariesAsync(CancellationToken.None))
                 .FirstOrDefault(workflow => workflow.Id == workflowId);
             if (summary == null)
                 return null;
-            var workflowInterface = await _client.GetWorkflowInterfaceAsync(workflowId);
+            var workflowInterface = await GetWorkflowInterfaceAsync(
+                workflowId,
+                CancellationToken.None);
             return CreateWorkflowDetail(summary, workflowInterface);
         }
         catch (WorkflowInterfaceUnavailableException)
@@ -268,6 +279,23 @@ public class WorkflowMetadataService : IDisposable
     }
 
     private CacheKey GetCacheKey(string workflowId) => new(_cacheScope, workflowId);
+
+    private Task<List<WorkflowSummaryResponse>> GetWorkflowSummariesAsync(
+        CancellationToken cancellationToken)
+        => _webSocketClient?.GetWorkflowSummariesAsync(cancellationToken)
+            ?? _client.GetWorkflowSummariesAsync(cancellationToken);
+
+    private Task<WorkflowInterfaceResponse> GetWorkflowInterfaceAsync(
+        string workflowId,
+        CancellationToken cancellationToken)
+        => _webSocketClient?.GetWorkflowInterfaceAsync(workflowId, cancellationToken)
+            ?? _client.GetWorkflowInterfaceAsync(workflowId, cancellationToken);
+
+    private Task<WorkflowInterfacesResponse> GetWorkflowInterfacesAsync(
+        IReadOnlyCollection<string> workflowIds,
+        CancellationToken cancellationToken)
+        => _webSocketClient?.GetWorkflowInterfacesAsync(workflowIds, cancellationToken)
+            ?? _client.GetWorkflowInterfacesAsync(workflowIds, cancellationToken);
 
     private async Task<HealthResponse?> FetchHealthSafelyAsync(CancellationToken cancellationToken)
     {
