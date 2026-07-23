@@ -78,6 +78,12 @@ Category:
 
 - `Nodetool Workflows`
 
+Discovery diagnostics:
+
+- `Nodetool Workflows -> WorkflowAPIStatus` reports the last successful UTC refresh, server version, authoritative interface source, workflow count, and last discovery error.
+- Pulse `Refresh` to request another compact discovery pass. Unchanged interfaces are reused by workflow revision, node-registry revision, and interface etag.
+- If a refresh fails after a successful load, the existing workflow nodes stay available and `Status` reports that their metadata is stale.
+
 ### Node nodes
 
 Generated from `GET /api/nodes/metadata`.

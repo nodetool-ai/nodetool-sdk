@@ -46,6 +46,17 @@ public class NodetoolClient : INodetoolClient
         _logger?.LogDebug("Configured Nodetool client: {BaseUrl}", baseUrl);
     }
 
+    public async Task<HealthResponse> GetHealthAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.GetAsync(
+            NodetoolConstants.Endpoints.Health,
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        return JsonSerializer.Deserialize<HealthResponse>(json, _jsonOptions)
+            ?? throw new InvalidDataException("The NodeTool health response was empty or malformed.");
+    }
+
     #region Node Operations
 
     public async Task<List<NodeMetadataResponse>> GetNodeTypesAsync(CancellationToken cancellationToken = default)

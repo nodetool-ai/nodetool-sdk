@@ -29,10 +29,27 @@ namespace Nodetool.SDK.VL.Factories
         private static ImmutableList<WorkflowDetail> _fetchedWorkflows = ImmutableList<WorkflowDetail>.Empty;
         private static string _apiStatusMessage = "API data not fetched.";
         private static string _processingSummary = "Workflow processing summary not yet available.";
+        private static DateTimeOffset? _lastSuccessfulRefreshUtc;
+        private static string _serverVersion = "unknown";
+        private static string _interfaceSource = "unknown";
+        private static string _lastError = "";
 
         // Public getters for status/debugging
         public static string CurrentApiStatusMessage => _apiStatusMessage;
         public static string CurrentProcessingSummary => _processingSummary;
+
+        public static void RequestRefresh()
+        {
+            lock (_lock)
+            {
+                _factoryImpl = null;
+                _isInitialized = false;
+                _retryAfter = DateTimeOffset.MinValue;
+                _apiStatusMessage = _fetchedWorkflows.Count > 0
+                    ? "Workflow refresh requested; current nodes remain available."
+                    : "Workflow refresh requested.";
+            }
+        }
 
         public static void Reset()
         {
@@ -44,6 +61,10 @@ namespace Nodetool.SDK.VL.Factories
                 _fetchedWorkflows = ImmutableList<WorkflowDetail>.Empty;
                 _apiStatusMessage = "API data not fetched.";
                 _processingSummary = "Workflow processing summary not yet available.";
+                _lastSuccessfulRefreshUtc = null;
+                _serverVersion = "unknown";
+                _interfaceSource = "unknown";
+                _lastError = "";
             }
         }
 
@@ -132,18 +153,43 @@ namespace Nodetool.SDK.VL.Factories
                                 var statusPin = bc.Pin("Status", typeof(string));
                                 var summaryPin = bc.Pin("ProcessingSummary", typeof(string));
                                 var workflowCountPin = bc.Pin("WorkflowCount", typeof(int));
+                                var refreshPin = bc.Pin("Refresh", typeof(bool), false,
+                                    "Refresh workflow discovery",
+                                    "Request fresh workflow metadata. Current nodes remain available if refresh fails.");
+                                var lastRefreshPin = bc.Pin("LastRefreshUtc", typeof(string));
+                                var serverVersionPin = bc.Pin("ServerVersion", typeof(string));
+                                var interfaceSourcePin = bc.Pin("InterfaceSource", typeof(string));
+                                var lastErrorPin = bc.Pin("LastError", typeof(string));
 
                                 return bc.Node(
-                                    inputs: Enumerable.Empty<IVLPinDescription>(),
-                                    outputs: new IVLPinDescription[] { statusPin, summaryPin, workflowCountPin },
-                                    newNode: ibc => ibc.Node(
-                                        inputs: Enumerable.Empty<IVLPin>(),
-                                        outputs: new IVLPin[] {
-                                            ibc.Output<string>(() => _apiStatusMessage),
-                                            ibc.Output<string>(() => _processingSummary),
-                                            ibc.Output<int>(() => _fetchedWorkflows.Count)
-                                        }
-                                    )
+                                    inputs: new IVLPinDescription[] { refreshPin },
+                                    outputs: new IVLPinDescription[] {
+                                        statusPin, summaryPin, workflowCountPin, lastRefreshPin,
+                                        serverVersionPin, interfaceSourcePin, lastErrorPin
+                                    },
+                                    newNode: ibc =>
+                                    {
+                                        var lastRefreshState = false;
+                                        return ibc.Node(
+                                            inputs: new IVLPin[] {
+                                                ibc.Input<bool>(value =>
+                                                {
+                                                    if (value && !lastRefreshState)
+                                                        RequestRefresh();
+                                                    lastRefreshState = value;
+                                                })
+                                            },
+                                            outputs: new IVLPin[] {
+                                                ibc.Output<string>(() => _apiStatusMessage),
+                                                ibc.Output<string>(() => _processingSummary),
+                                                ibc.Output<int>(() => _fetchedWorkflows.Count),
+                                                ibc.Output<string>(() => _lastSuccessfulRefreshUtc?.ToString("O") ?? ""),
+                                                ibc.Output<string>(() => _serverVersion),
+                                                ibc.Output<string>(() => _interfaceSource),
+                                                ibc.Output<string>(() => _lastError)
+                                            }
+                                        );
+                                    }
                                 );
                             }
                         );
@@ -209,6 +255,10 @@ namespace Nodetool.SDK.VL.Factories
                     .GetResult();
                 _fetchedWorkflows = workflows?.ToImmutableList() ?? ImmutableList<WorkflowDetail>.Empty;
                 _apiStatusMessage = metadataService.StatusMessage;
+                _lastSuccessfulRefreshUtc = metadataService.LastSuccessfulRefreshUtc;
+                _serverVersion = metadataService.ServerVersion;
+                _interfaceSource = metadataService.InterfaceSource;
+                _lastError = metadataService.LastError ?? "";
                 VlLog.Debug($"WorkflowNodeFactory: {_apiStatusMessage} ({_fetchedWorkflows.Count} workflows)");
                 return true;
             }
@@ -230,8 +280,10 @@ namespace Nodetool.SDK.VL.Factories
         /// </summary>
         private static void HandleWorkflowApiError(Exception ex)
         {
+            var hasStaleWorkflows = _fetchedWorkflows.Count > 0;
             string errorCategory = "Unknown";
             string userGuidance = "";
+            _lastError = ex.Message;
             
             // Categorize the error and provide specific guidance
             switch (ex)
@@ -267,6 +319,9 @@ namespace Nodetool.SDK.VL.Factories
                     break;
             }
 
+            if (hasStaleWorkflows)
+                _apiStatusMessage = $"Stale workflow nodes retained. {_apiStatusMessage}";
+
             // Log comprehensive error information
             // Keep default startup logs concise; show full troubleshooting only in verbose mode.
             VlLog.Error($"Workflows API error ({errorCategory}): {_apiStatusMessage}");
@@ -300,8 +355,6 @@ namespace Nodetool.SDK.VL.Factories
                 Console.WriteLine("=================================================================");
                 Console.WriteLine("");
             }
-            
-            _fetchedWorkflows = ImmutableList<WorkflowDetail>.Empty;
         }
 
         /// <summary>

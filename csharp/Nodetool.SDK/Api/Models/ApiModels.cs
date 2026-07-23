@@ -4,6 +4,15 @@ using Nodetool.SDK.Types;
 
 namespace Nodetool.SDK.Api.Models;
 
+public sealed class HealthResponse
+{
+    [JsonPropertyName("version")]
+    public string Version { get; set; } = string.Empty;
+
+    [JsonPropertyName("uptime")]
+    public long UptimeSeconds { get; set; }
+}
+
 /// <summary>
 /// Type definition for node properties and outputs
 /// </summary>

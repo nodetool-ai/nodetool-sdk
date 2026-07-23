@@ -242,9 +242,9 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Use the single-workflow interface request only for diagnostics, targeted refresh, or a changed workflow.
 - [x] Cache normalized metadata and workflow interfaces by workflow ID, workflow revision, node-registry revision, and authoritative interface `etag`.
 - [ ] Replace synchronous `Task.Run(...).Wait(...)` factory initialization with asynchronous stale-while-revalidate loading.
-- [ ] Keep the last successful factory contents when refresh fails.
+- [x] Keep the last successful factory contents when refresh fails.
 - [x] Do not permanently cache an empty factory after a transient startup failure.
-- [ ] Add explicit `Refresh`, `Last Refresh`, `Server Version`, `Interface Source`, and `Last Error` diagnostics for vvvv.
+- [x] Add explicit `Refresh`, `Last Refresh`, `Server Version`, `Interface Source`, and `Last Error` diagnostics for vvvv.
 - [ ] Invalidate only changed workflow node descriptions.
 - [ ] Debounce rapid server/workflow changes so vvvv is not repeatedly rebuilding the factory.
 - [ ] Ensure changing the Connect node endpoint/auth resets both discovery and execution state exactly once.

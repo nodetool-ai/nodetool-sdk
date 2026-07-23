@@ -6,6 +6,27 @@ namespace Nodetool.SDK.Tests.Api;
 public class NodetoolClientContractTests
 {
     [Fact]
+    public async Task GetHealthAsync_ReadsServerVersionAndUptime()
+    {
+        Uri? requestedUri = null;
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(request =>
+        {
+            requestedUri = request.RequestUri;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{"version":"0.7.0","uptime":123}""")
+            };
+        }));
+        var client = new NodetoolClient(httpClient);
+
+        var health = await client.GetHealthAsync();
+
+        Assert.Equal("/api/health", requestedUri?.AbsolutePath);
+        Assert.Equal("0.7.0", health.Version);
+        Assert.Equal(123, health.UptimeSeconds);
+    }
+
+    [Fact]
     public async Task GetNodeTypesAsync_ReadsCurrentBareArray()
     {
         var fixturePath = Path.Combine(AppContext.BaseDirectory, "Fixtures", "node-metadata-response.json");

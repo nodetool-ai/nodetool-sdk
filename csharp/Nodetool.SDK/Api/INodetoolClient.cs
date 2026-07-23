@@ -7,6 +7,11 @@ namespace Nodetool.SDK.Api;
 /// </summary>
 public interface INodetoolClient : IDisposable
 {
+    /// <summary>
+    /// Get server version and uptime information.
+    /// </summary>
+    Task<HealthResponse> GetHealthAsync(CancellationToken cancellationToken = default);
+
     #region Node Operations
     
     /// <summary>

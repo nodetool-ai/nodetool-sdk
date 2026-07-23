@@ -10,6 +10,8 @@ public static class NodetoolConstants
     /// </summary>
     public static class Endpoints
     {
+        public const string Health = "/api/health";
+
         // Node operations
         public const string NodesMetadata = "/api/nodes/metadata";
         public const string NodeExecute = "/api/nodes/execute"; // NOT IMPLEMENTED

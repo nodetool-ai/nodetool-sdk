@@ -33,6 +33,11 @@ public class WorkflowMetadataService : IDisposable
     private string _cacheScope = NodetoolConstants.Defaults.BaseUrl;
     
     public string StatusMessage { get; private set; } = "Not initialized";
+    public DateTimeOffset? LastSuccessfulRefreshUtc { get; private set; }
+    public string ServerVersion { get; private set; } = "unknown";
+    public string InterfaceSource { get; private set; } = "unknown";
+    public string? LastError { get; private set; }
+    public int CacheHitCount { get; private set; }
 
     public WorkflowMetadataService(ILogger<WorkflowMetadataService>? logger = null)
     {
@@ -74,6 +79,7 @@ public class WorkflowMetadataService : IDisposable
 
         try
         {
+            var healthTask = FetchHealthSafelyAsync(cancellationToken);
             var workflows = await _client.GetWorkflowSummariesAsync(cancellationToken);
             _logger?.LogDebug("Retrieved {Count} compact workflow summaries from API", workflows.Count);
 
@@ -175,6 +181,18 @@ public class WorkflowMetadataService : IDisposable
             // Update cache
             _cachedWorkflows = workflowDetails;
             _lastFetch = DateTime.Now;
+            CacheHitCount = cacheHitCount;
+            InterfaceSource = string.Join(", ", workflowDetails
+                .Select(detail => detail.Interface?.Source)
+                .Where(source => !string.IsNullOrWhiteSpace(source))
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal));
+            if (string.IsNullOrWhiteSpace(InterfaceSource))
+                InterfaceSource = "unknown";
+            var health = await healthTask;
+            ServerVersion = string.IsNullOrWhiteSpace(health?.Version) ? "unknown" : health.Version;
+            LastSuccessfulRefreshUtc = DateTimeOffset.UtcNow;
+            LastError = null;
             
             var cacheSummary = cacheHitCount > 0 ? $"; reused {cacheHitCount} cached" : "";
             StatusMessage = skippedInterfaceCount == 0
@@ -188,13 +206,16 @@ public class WorkflowMetadataService : IDisposable
 
             return workflowDetails;
         }
-        catch (WorkflowInterfaceUnavailableException)
+        catch (WorkflowInterfaceUnavailableException ex)
         {
+            LastError = ex.Message;
+            StatusMessage = ex.Message;
             throw;
         }
         catch (Exception ex)
         {
             var errorMessage = $"Failed to fetch workflow metadata: {ex.Message}";
+            LastError = ex.Message;
             StatusMessage = errorMessage;
             _logger?.LogError(ex, "Error fetching workflow metadata");
             throw new InvalidOperationException(errorMessage, ex);
@@ -247,6 +268,19 @@ public class WorkflowMetadataService : IDisposable
     }
 
     private CacheKey GetCacheKey(string workflowId) => new(_cacheScope, workflowId);
+
+    private async Task<HealthResponse?> FetchHealthSafelyAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _client.GetHealthAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Server health/version request failed during workflow discovery");
+            return null;
+        }
+    }
 
     private void PruneSharedCache(IEnumerable<string> activeWorkflowIds)
     {
