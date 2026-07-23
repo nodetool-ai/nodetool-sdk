@@ -57,6 +57,10 @@ internal static class DiagnosticsNodeFactory
                     "Execution timeout",
                     "Default maximum duration of workflow and node runs in seconds. "
                     + $"Clamped to 1-{NodeToolClientProvider.MaximumExecutionTimeoutSeconds}; individual execution nodes can override it.");
+                var inlineMediaLimitPin = bc.Pin("InlineMediaLimitBytes", typeof(int),
+                    NodeToolClientProvider.DefaultInlineMediaLimitBytes,
+                    "Inline media limit",
+                    "Media larger than this byte count is uploaded as an asset before execution. Use 0 to upload all binary media.");
 
                 // Output pins
                 var isConnectedPin = bc.Pin("IsConnected", typeof(bool), false,
@@ -67,7 +71,7 @@ internal static class DiagnosticsNodeFactory
                     "❌ Last Error", "Last error message if connection failed");
 
                 return bc.Node(
-                    inputs: new IVLPinDescription[] { baseUrlPin, apiKeyPin, autoReconnectPin, reconnectTriggerPin, executionTimeoutPin },
+                    inputs: new IVLPinDescription[] { baseUrlPin, apiKeyPin, autoReconnectPin, reconnectTriggerPin, executionTimeoutPin, inlineMediaLimitPin },
                     outputs: new IVLPinDescription[] { isConnectedPin, statusPin, lastErrorPin },
                     newNode: ibc =>
                     {
@@ -121,7 +125,8 @@ internal static class DiagnosticsNodeFactory
                                         _ = NodeToolClientProvider.ConnectAsync();
                                     }
                                 }),
-                                ibc.Input<int>(NodeToolClientProvider.SetExecutionTimeoutSeconds)
+                                ibc.Input<int>(NodeToolClientProvider.SetExecutionTimeoutSeconds),
+                                ibc.Input<int>(NodeToolClientProvider.SetInlineMediaLimitBytes)
                             },
                             outputs: new IVLPin[]
                             {

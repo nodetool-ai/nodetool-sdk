@@ -310,12 +310,19 @@ public class NodetoolClient : INodetoolClient
         string fileName, 
         Stream content, 
         CancellationToken cancellationToken = default)
+        => await UploadAssetAsync(fileName, content, "application/octet-stream", cancellationToken);
+
+    public async Task<AssetResponse> UploadAssetAsync(
+        string fileName,
+        Stream content,
+        string contentType,
+        CancellationToken cancellationToken = default)
     {
         _logger?.LogDebug("Uploading asset: {FileName}", fileName);
         
         using var form = new MultipartFormDataContent();
         using var streamContent = new StreamContent(content);
-        streamContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/octet-stream");
+        streamContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(contentType);
         form.Add(streamContent, "file", fileName);
         
         var response = await _httpClient.PostAsync(NodetoolConstants.Endpoints.Assets, form, cancellationToken);

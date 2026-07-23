@@ -14,6 +14,8 @@ public static class NodeToolClientProvider
 {
     public const int DefaultExecutionTimeoutSeconds = 300;
     public const int MaximumExecutionTimeoutSeconds = 86400;
+    public const int DefaultInlineMediaLimitBytes = 4 * 1024 * 1024;
+    public const int MaximumInlineMediaLimitBytes = 64 * 1024 * 1024;
 
     private static NodeToolExecutionClient? _client;
     private static readonly object _lock = new();
@@ -22,6 +24,7 @@ public static class NodeToolClientProvider
     private static Uri? _currentApiBaseUrl;
     private static readonly INodeToolExecutionClient _nullClient = new NullNodeToolExecutionClient();
     private static int _executionTimeoutSeconds = DefaultExecutionTimeoutSeconds;
+    private static int _inlineMediaLimitBytes = DefaultInlineMediaLimitBytes;
 
     /// <summary>
     /// Current connection status.
@@ -61,6 +64,11 @@ public static class NodeToolClientProvider
     public static int ExecutionTimeoutSeconds => _executionTimeoutSeconds;
 
     /// <summary>
+    /// Maximum media payload embedded in a run_job frame. Larger values are uploaded first.
+    /// </summary>
+    public static int InlineMediaLimitBytes => _inlineMediaLimitBytes;
+
+    /// <summary>
     /// Updates the shared execution timeout without resetting discovery or the connection.
     /// </summary>
     public static void SetExecutionTimeoutSeconds(int timeoutSeconds)
@@ -75,6 +83,11 @@ public static class NodeToolClientProvider
         => perNodeTimeoutSeconds > 0
             ? Math.Clamp(perNodeTimeoutSeconds, 1, MaximumExecutionTimeoutSeconds)
             : _executionTimeoutSeconds;
+
+    public static void SetInlineMediaLimitBytes(int limitBytes)
+    {
+        _inlineMediaLimitBytes = Math.Clamp(limitBytes, 0, MaximumInlineMediaLimitBytes);
+    }
 
     /// <summary>
     /// Event raised when connection status changes.

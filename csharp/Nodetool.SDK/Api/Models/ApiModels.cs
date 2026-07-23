@@ -336,6 +336,9 @@ public class AssetResponse
     
     [JsonPropertyName("uri")]
     public string Uri { get; set; } = string.Empty;
+
+    [JsonPropertyName("get_url")]
+    public string? GetUrl { get; set; }
     
     [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; set; }

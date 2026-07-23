@@ -65,6 +65,11 @@ Execution timeout:
 - Each generated execution node has its own `ExecutionTimeoutSeconds` input. Leave it at `0` to inherit the Connect-node default, or set a positive value for that node.
 - Values are capped at 86400 seconds (24 hours).
 
+Media transport:
+
+- `InlineMediaLimitBytes` defaults to 4 MiB. Larger local media is uploaded through the asset API and represented by `asset_id` during execution.
+- Set the limit to `0` to upload all binary media, or raise it up to 64 MiB when inline transport is preferable.
+
 ### Workflow nodes
 
 Generated from the authoritative workflow interface exposed by `GET /api/sdk/v1/workflow-interfaces`.

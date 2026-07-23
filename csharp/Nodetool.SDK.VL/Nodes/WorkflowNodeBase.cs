@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Reflection;
 using SkiaSharp;
+using Nodetool.SDK.Api;
 using VL.Core;
 using Nodetool.SDK.Execution;
 using Nodetool.SDK.Values;
@@ -1166,6 +1167,8 @@ namespace Nodetool.SDK.VL.Nodes
                 using var encoded = image.Encode(SKEncodedImageFormat.Png, 100)
                     ?? throw new InvalidOperationException($"Could not encode image input '{inputName}'.");
                 bytes = encoded.ToArray();
+                if (ShouldUploadMedia(bytes.LongLength))
+                    return await UploadMediaBytesAsync(inputName, mediaType, bytes, ".png", "image/png", cancellationToken);
             }
             else if (bytes == null)
             {
@@ -1183,6 +1186,10 @@ namespace Nodetool.SDK.VL.Nodes
                     try { fullPath = Path.GetFullPath(uriText); } catch { /* keep original URI */ }
                     if (File.Exists(fullPath))
                     {
+                        var fileInfo = new FileInfo(fullPath);
+                        if (ShouldUploadMedia(fileInfo.Length))
+                            return await UploadMediaFileAsync(inputName, mediaType, fullPath, cancellationToken);
+
                         bytes = await File.ReadAllBytesAsync(fullPath, cancellationToken);
                         uriText = new Uri(fullPath).AbsoluteUri;
                     }
@@ -1195,6 +1202,15 @@ namespace Nodetool.SDK.VL.Nodes
                     $"{mediaType} input '{inputName}' is empty. Provide a value, file path, URL, or bytes.");
             }
 
+            if (bytes is { Length: > 0 } && ShouldUploadMedia(bytes.LongLength))
+                return await UploadMediaBytesAsync(
+                    inputName,
+                    mediaType,
+                    bytes,
+                    GetDefaultExtension(mediaType),
+                    GetDefaultContentType(mediaType),
+                    cancellationToken);
+
             return new Dictionary<string, object?>
             {
                 ["type"] = mediaType,
@@ -1203,6 +1219,98 @@ namespace Nodetool.SDK.VL.Nodes
                 ["data"] = bytes
             };
         }
+
+        private static bool ShouldUploadMedia(long byteCount)
+            => byteCount > NodeToolClientProvider.InlineMediaLimitBytes;
+
+        private static async Task<object> UploadMediaFileAsync(
+            string inputName,
+            string mediaType,
+            string path,
+            CancellationToken cancellationToken)
+        {
+            await using var stream = File.OpenRead(path);
+            return await UploadMediaStreamAsync(
+                inputName,
+                mediaType,
+                Path.GetFileName(path),
+                GetContentType(path, mediaType),
+                stream,
+                cancellationToken);
+        }
+
+        private static async Task<object> UploadMediaBytesAsync(
+            string inputName,
+            string mediaType,
+            byte[] bytes,
+            string extension,
+            string contentType,
+            CancellationToken cancellationToken)
+        {
+            using var stream = new MemoryStream(bytes, writable: false);
+            return await UploadMediaStreamAsync(
+                inputName,
+                mediaType,
+                $"vvvv-{mediaType}-{Guid.NewGuid():N}{extension}",
+                contentType,
+                stream,
+                cancellationToken);
+        }
+
+        private static async Task<object> UploadMediaStreamAsync(
+            string inputName,
+            string mediaType,
+            string fileName,
+            string contentType,
+            Stream stream,
+            CancellationToken cancellationToken)
+        {
+            var apiBase = NodeToolClientProvider.CurrentApiBaseUrl
+                ?? throw new InvalidOperationException(
+                    $"Cannot upload large {mediaType} input '{inputName}': no HTTP API URL is configured.");
+
+            using var httpClient = new HttpClient();
+            var client = new NodetoolClient(httpClient);
+            client.Configure(apiBase.ToString(), NodeToolClientProvider.CurrentAuthToken);
+            var asset = await client.UploadAssetAsync(fileName, stream, contentType, cancellationToken);
+
+            return new Dictionary<string, object?>
+            {
+                ["type"] = mediaType,
+                ["asset_id"] = asset.Id,
+                ["uri"] = asset.GetUrl ?? asset.Uri ?? "",
+                ["data"] = null
+            };
+        }
+
+        private static string GetContentType(string path, string mediaType)
+            => Path.GetExtension(path).ToLowerInvariant() switch
+            {
+                ".png" => "image/png",
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".webp" => "image/webp",
+                ".gif" => "image/gif",
+                ".wav" => "audio/wav",
+                ".mp3" => "audio/mpeg",
+                ".ogg" => "audio/ogg",
+                ".mp4" => "video/mp4",
+                ".webm" => "video/webm",
+                ".pdf" => "application/pdf",
+                _ => GetDefaultContentType(mediaType)
+            };
+
+        private static string GetDefaultContentType(string mediaType)
+            => mediaType switch
+            {
+                "image" => "image/png",
+                "audio" => "application/octet-stream",
+                "video" => "application/octet-stream",
+                "document" => "application/octet-stream",
+                _ => "application/octet-stream"
+            };
+
+        private static string GetDefaultExtension(string mediaType)
+            => mediaType == "image" ? ".png" : ".bin";
 
         private static bool IsImageSchema(WorkflowPropertyDefinition? prop, WorkflowSchemaDefinition? rootSchema)
         {
