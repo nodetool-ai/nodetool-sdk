@@ -182,6 +182,12 @@ public class WorkflowDetail
     [JsonIgnore]
     public WorkflowInterfaceResponse? Interface { get; set; }
 
+    [JsonIgnore]
+    public string WorkflowRevision { get; set; } = string.Empty;
+
+    [JsonIgnore]
+    public long? RegistryRevision { get; set; }
+
     /// <summary>
     /// Get input properties as TypeMetadata for VL pin creation
     /// </summary>

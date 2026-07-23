@@ -245,7 +245,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Keep the last successful factory contents when refresh fails.
 - [x] Do not permanently cache an empty factory after a transient startup failure.
 - [x] Add explicit `Refresh`, `Last Refresh`, `Server Version`, `Interface Source`, and `Last Error` diagnostics for vvvv.
-- [ ] Invalidate only changed workflow node descriptions.
+- [x] Reuse unchanged workflow node descriptions and replace only descriptions whose workflow revision, registry revision, interface etag, or generated name changed.
 - [ ] Debounce rapid server/workflow changes so vvvv is not repeatedly rebuilding the factory.
 - [ ] Ensure changing the Connect node endpoint/auth resets both discovery and execution state exactly once.
 

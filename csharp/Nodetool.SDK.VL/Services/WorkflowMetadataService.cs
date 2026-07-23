@@ -317,6 +317,8 @@ public class WorkflowMetadataService : IDisposable
             Description = summary.Description,
             UpdatedAt = updatedAt,
             Interface = workflowInterface,
+            WorkflowRevision = summary.Revision,
+            RegistryRevision = summary.RegistryRevision,
             InputSchema = CreateInterfaceSchema(workflowInterface.Inputs),
             OutputSchema = CreateInterfaceSchema(workflowInterface.Outputs)
         };

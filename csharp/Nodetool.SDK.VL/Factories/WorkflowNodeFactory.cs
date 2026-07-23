@@ -18,6 +18,12 @@ namespace Nodetool.SDK.VL.Factories
     /// </summary>
     internal static class WorkflowNodeFactory
     {
+        private sealed record CachedNodeDescription(
+            string RevisionKey,
+            string NodeName,
+            IVLNodeDescriptionFactory Factory,
+            WorkflowNodeDescription Description);
+
         private static NodeBuilding.FactoryImpl? _factoryImpl = null;
         private static bool _isInitialized = false;
         private static DateTimeOffset _retryAfter = DateTimeOffset.MinValue;
@@ -33,6 +39,7 @@ namespace Nodetool.SDK.VL.Factories
         private static string _serverVersion = "unknown";
         private static string _interfaceSource = "unknown";
         private static string _lastError = "";
+        private static readonly Dictionary<string, CachedNodeDescription> _descriptionCache = new(StringComparer.Ordinal);
 
         // Public getters for status/debugging
         public static string CurrentApiStatusMessage => _apiStatusMessage;
@@ -65,6 +72,7 @@ namespace Nodetool.SDK.VL.Factories
                 _serverVersion = "unknown";
                 _interfaceSource = "unknown";
                 _lastError = "";
+                _descriptionCache.Clear();
             }
         }
 
@@ -96,6 +104,7 @@ namespace Nodetool.SDK.VL.Factories
                     var nodeNames = BuildStableNodeNames(_fetchedWorkflows);
                     int successfullyProcessedCount = 0;
                     int failedToProcessCount = 0;
+                    int reusedDescriptionCount = 0;
 
                     // Process each workflow definition from the metadata
                     foreach (var workflow in _fetchedWorkflows)
@@ -116,11 +125,29 @@ namespace Nodetool.SDK.VL.Factories
                             {
                                 var category = "Nodetool Workflows";
                                 
-                                var workflowNodeDesc = new Nodes.WorkflowNodeDescription(
-                                    workflow, 
-                                    vlNodeName, 
-                                    category, 
-                                    vlSelfFactory);
+                                var revisionKey = CreateDescriptionRevisionKey(workflow);
+                                WorkflowNodeDescription workflowNodeDesc;
+                                if (_descriptionCache.TryGetValue(workflow.Id, out var cachedDescription) &&
+                                    ReferenceEquals(cachedDescription.Factory, vlSelfFactory) &&
+                                    string.Equals(cachedDescription.NodeName, vlNodeName, StringComparison.Ordinal) &&
+                                    string.Equals(cachedDescription.RevisionKey, revisionKey, StringComparison.Ordinal))
+                                {
+                                    workflowNodeDesc = cachedDescription.Description;
+                                    reusedDescriptionCount++;
+                                }
+                                else
+                                {
+                                    workflowNodeDesc = new Nodes.WorkflowNodeDescription(
+                                        workflow,
+                                        vlNodeName,
+                                        category,
+                                        vlSelfFactory);
+                                    _descriptionCache[workflow.Id] = new CachedNodeDescription(
+                                        revisionKey,
+                                        vlNodeName,
+                                        vlSelfFactory,
+                                        workflowNodeDesc);
+                                }
 
                                 allDescriptions.Add(workflowNodeDesc);
                                 successfullyProcessedCount++;
@@ -138,7 +165,18 @@ namespace Nodetool.SDK.VL.Factories
                         }
                     }
 
-                    _processingSummary = $"Processed {successfullyProcessedCount} workflows successfully (Failed: {failedToProcessCount}) from {_fetchedWorkflows.Count} total definitions.";
+                    _processingSummary = $"Processed {successfullyProcessedCount} workflows successfully "
+                        + $"(reused descriptions: {reusedDescriptionCount}, failed: {failedToProcessCount}) "
+                        + $"from {_fetchedWorkflows.Count} total definitions.";
+                    var activeWorkflowIds = _fetchedWorkflows
+                        .Select(workflow => workflow.Id)
+                        .ToHashSet(StringComparer.Ordinal);
+                    foreach (var removedId in _descriptionCache.Keys
+                        .Where(id => !activeWorkflowIds.Contains(id))
+                        .ToArray())
+                    {
+                        _descriptionCache.Remove(removedId);
+                    }
                     VlLog.Info(_processingSummary);
 
                     // Add diagnostic status node using lambda-based factory approach
@@ -441,6 +479,12 @@ namespace Nodetool.SDK.VL.Factories
 
             return result;
         }
+
+        private static string CreateDescriptionRevisionKey(WorkflowDetail workflow)
+            => string.Join("|",
+                workflow.WorkflowRevision,
+                workflow.RegistryRevision?.ToString() ?? "unknown",
+                workflow.Interface?.Etag ?? "no-etag");
 
         private static string GetBaseNodeName(WorkflowDetail workflow)
         {
