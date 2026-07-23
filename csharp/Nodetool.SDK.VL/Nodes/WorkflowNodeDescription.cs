@@ -187,7 +187,16 @@ namespace Nodetool.SDK.VL.Nodes
 
         // Observable for invalidation
         private readonly Subject<object> _invalidated = new Subject<object>();
+        private readonly object _invalidationLock = new();
         public IObservable<object> Invalidated => _invalidated;
+
+        internal void Invalidate()
+        {
+            // A workflow description can have multiple live instances. Serialize their
+            // asynchronous invalidations before notifying VL's shared observable.
+            lock (_invalidationLock)
+                _invalidated.OnNext(this);
+        }
 
         public IVLNode CreateInstance(NodeContext nodeContext)
         {

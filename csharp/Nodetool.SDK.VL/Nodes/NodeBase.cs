@@ -36,7 +36,7 @@ namespace Nodetool.SDK.VL.Nodes
         private const int DebugMaxLines = 30;
         
         // Execution state
-        private bool _isRunning = false;
+        private volatile bool _isRunning = false;
         private string _lastError = "";
         private readonly Dictionary<string, NodeToolValue> _lastOutputs = new(StringComparer.Ordinal);
         private bool _lastExecuteState = false;
@@ -52,12 +52,13 @@ namespace Nodetool.SDK.VL.Nodes
         private string _lastInputSignature = "";
         private bool _rerunRequested = false;
 
-        private bool _cancelRequestedByRestart = false;
+        private volatile bool _cancelRequestedByRestart = false;
+        private volatile bool _isDisposed = false;
         private IExecutionSession? _activeSession = null;
         private CancellationTokenSource? _manualCancelCts = null;
 
         // VL evaluation can be demand-driven; without invalidation pulses, async state changes might not propagate.
-        private long _lastInvalidateTicks = 0;
+        private int _invalidateScheduled;
 
         public NodeBase(NodeContext nodeContext, NodeMetadataResponse nodeMetadata)
         {
@@ -139,6 +140,9 @@ namespace Nodetool.SDK.VL.Nodes
         /// </summary>
         public void Update()
         {
+            if (_isDisposed)
+                return;
+
             try
             {
                 // "On Update" is a VL-style pulse that must be observable in the frame loop.
@@ -232,6 +236,19 @@ namespace Nodetool.SDK.VL.Nodes
 
                 // Update output pins with current state
                 UpdateOutputs();
+
+                bool shouldRerun;
+                lock (_lock)
+                {
+                    shouldRerun = _autoRunEnabled && _rerunRequested && !_isRunning;
+                    if (shouldRerun)
+                        _rerunRequested = false;
+                }
+                if (shouldRerun)
+                {
+                    AppendDebug("autorun: rerun requested");
+                    _ = ExecuteNodeAsync();
+                }
             }
             catch (Exception ex)
             {
@@ -245,6 +262,9 @@ namespace Nodetool.SDK.VL.Nodes
         /// </summary>
         private async Task ExecuteNodeAsync()
         {
+            if (_isDisposed)
+                return;
+
             lock (_lock)
             {
                 _isRunning = true;
@@ -260,9 +280,7 @@ namespace Nodetool.SDK.VL.Nodes
                 _manualCancelCts = new CancellationTokenSource();
             }
 
-            // Update pins immediately so IsRunning can't get stuck if VL skips subsequent Update() calls.
-            SetIsRunning(true);
-            SetError("");
+            // Ask VL for another evaluation; output pins are only written from Update().
             InvalidateOutputs();
 
             var timeoutSeconds = NodeToolClientProvider.ResolveExecutionTimeoutSeconds(
@@ -365,7 +383,6 @@ namespace Nodetool.SDK.VL.Nodes
                                 _lastError = update.error ?? "";
                             }
                             AppendDebug($"node_error: {update.error}");
-                            SetError(_lastError);
                             InvalidateOutputs();
                             nodeTerminalTcs.TrySetResult(false);
                         }
@@ -479,19 +496,9 @@ namespace Nodetool.SDK.VL.Nodes
                 {
                     _isRunning = false;
                 }
-                SetIsRunning(false);
-                SetError(_lastError);
                 FireOnUpdatePulse();
                 InvalidateOutputs();
                 AppendDebug("done");
-
-                // If inputs changed during execution and AutoRun is enabled, run once more.
-                if (_autoRunEnabled && _rerunRequested)
-                {
-                    _rerunRequested = false;
-                    AppendDebug("autorun: rerun requested");
-                    _ = ExecuteNodeAsync();
-                }
             }
         }
 
@@ -530,27 +537,21 @@ namespace Nodetool.SDK.VL.Nodes
             InvalidateOutputs();
         }
 
-        private void SetIsRunning(bool isRunning)
-        {
-            if (_outputPins.TryGetValue("IsRunning", out var pin))
-                pin.Value = isRunning;
-        }
-
-        private void SetError(string error)
-        {
-            if (_outputPins.TryGetValue("Error", out var pin))
-                pin.Value = error ?? "";
-        }
-
         private void InvalidateOutputs()
         {
-            // Throttle invalidation to avoid spamming for streaming outputs.
-            var now = DateTime.UtcNow.Ticks;
-            var last = Interlocked.Read(ref _lastInvalidateTicks);
-            if (now - last < TimeSpan.FromMilliseconds(30).Ticks)
+            // Coalesce a burst while retaining a trailing invalidation.
+            if (Interlocked.CompareExchange(ref _invalidateScheduled, 1, 0) != 0)
                 return;
 
-            Interlocked.Exchange(ref _lastInvalidateTicks, now);
+            _ = InvalidateOutputsAfterDelayAsync();
+        }
+
+        private async Task InvalidateOutputsAfterDelayAsync()
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(16));
+            Interlocked.Exchange(ref _invalidateScheduled, 0);
+            if (_isDisposed)
+                return;
             try
             {
                 // This is a best-effort hint to VL that outputs changed.
@@ -572,9 +573,7 @@ namespace Nodetool.SDK.VL.Nodes
                 _onUpdateHoldArmed = false;
             }
 
-            // Best-effort immediate set + invalidate so VL notices without waiting for the next frame.
-            if (_outputPins.TryGetValue("On Update", out var pin))
-                pin.Value = true;
+            // Invalidation schedules Update(), which performs the actual pin write on VL's thread.
             InvalidateOutputs();
         }
 
@@ -1059,7 +1058,8 @@ namespace Nodetool.SDK.VL.Nodes
         {
             // If VL recreates nodes during patch edits, clearing outputs here will look like a "reset"
             // even though the user didn't change inputs. Keep the instance state intact on dispose.
-            try { _manualCancelCts?.Cancel(); } catch { /* ignore */ }
+            _isDisposed = true;
+            _ = CancelActiveRunAsync();
         }
 
         /// <summary>

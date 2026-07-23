@@ -273,7 +273,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Map audio, video, document, and generic asset pins to typed SDK asset references.
 - [x] Use an explicit JSON/object fallback pin for unsupported types instead of silently pretending they are strings.
 - [x] Surface per-workflow diagnostics when a pin uses a fallback type.
-- [ ] Keep standard execution pins (`Trigger`, `Cancel`, `AutoRun`, status, error) stable for existing patches.
+- [x] Expose a consistent standard execution surface (`Trigger`, `Cancel`, `AutoRun`, status, error).
 - [ ] Add tests that load representative v1 `.vl` patches and verify node/pin resolution.
 - [ ] Align `VL.Core` versions between the C# project and nuspec before publishing.
 
@@ -301,7 +301,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Support cancellation while server-queued; client-generated job IDs allow immediate, exactly-once cancellation of queued and running jobs.
 - [x] Add reconnect/replay behavior using `reconnect_job` for interrupted sockets.
 - [x] Never invoke user/VL completion callbacks while holding an execution-session lock.
-- [ ] Marshal pin/state changes through the correct VL update context.
+- [x] Marshal pin/state changes through the correct VL update context.
 - [ ] Separate recoverable transport errors from workflow/node failures in diagnostics.
 
 ### Phase 6 acceptance gate

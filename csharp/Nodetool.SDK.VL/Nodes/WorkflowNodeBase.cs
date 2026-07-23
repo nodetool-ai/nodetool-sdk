@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Globalization;
 using System.Linq;
@@ -36,19 +37,21 @@ namespace Nodetool.SDK.VL.Nodes
         private bool _restartOnChangeEnabled = false;
         private string _lastInputSignature = "";
         private bool _rerunRequested = false;
-        private bool _cancelRequestedByRestart = false;
+        private volatile bool _cancelRequestedByRestart = false;
         private bool _hasInitialized = false;
         private bool _prevAutoRunEnabled = false;
 
-        private IExecutionSession? _activeSession = null;
-        private CancellationTokenSource? _manualCancelCts = null;
-        private bool _isDisposed = false;
-        private bool _isRunning = false;
+        private volatile IExecutionSession? _activeSession = null;
+        private volatile CancellationTokenSource? _manualCancelCts = null;
+        private volatile bool _isDisposed = false;
+        private volatile bool _isRunning = false;
         private Task _executionTask = Task.CompletedTask;
+        private readonly ConcurrentQueue<Action> _pendingStateUpdates = new();
         private readonly Dictionary<string, StringBuilder> _chunkBuffers = new(StringComparer.Ordinal);
         private readonly Dictionary<string, SKImage> _latestImages = new(StringComparer.Ordinal);
         private readonly Queue<string> _debugLines = new();
         private const int DebugMaxLines = 30;
+        private int _invalidateScheduled;
 
         public WorkflowNodeBase(NodeContext nodeContext, WorkflowNodeDescription description, WorkflowDetail workflow)
         {
@@ -140,6 +143,8 @@ namespace Nodetool.SDK.VL.Nodes
         {
             if (_isDisposed) return;
 
+            DrainStateUpdates();
+
             try
             {
                 // Check for trigger edge (false → true)
@@ -209,6 +214,13 @@ namespace Nodetool.SDK.VL.Nodes
                             StartExecution();
                         }
                     }
+                }
+
+                if (_autoRunEnabled && _rerunRequested && !_isRunning)
+                {
+                    _rerunRequested = false;
+                    AppendDebug("autorun: rerun requested");
+                    StartExecution();
                 }
             }
             catch (Exception ex)
@@ -317,54 +329,7 @@ namespace Nodetool.SDK.VL.Nodes
 
                 session.OutputReceived += update =>
                 {
-                    var pinName = ResolveOutputPinName(outputRoutes, update);
-                    var pin = pinName != null && _outputPins.TryGetValue(pinName, out var routedPin)
-                        ? routedPin
-                        : null;
-                    var hasPin = pin != null;
-                    Console.WriteLine(
-                        $"WorkflowNodeBase: output_update received: node_id='{update.NodeId}' output_name='{update.OutputName}' node_name='{update.NodeName}' output_type='{update.OutputType}' pin='{pinName ?? "<none>"}'");
-                    AppendDebug($"output_update: {update.OutputName} type={update.OutputType} pin={pinName ?? "<none>"}");
-
-                    if (hasPin && pin != null && pinName != null)
-                    {
-                        // IVLPin doesn't expose Type; our InternalPin does.
-                        var expectedType = (pin as InternalPin)?.Type ?? typeof(string);
-
-                        // Special handling for streamed "chunk" payloads: accumulate content so the pin shows useful text.
-                        if (TryAccumulateChunk(_chunkBuffers, pinName, update, out var chunkText))
-                        {
-                            // Keep accumulated content when done=true carries an empty final chunk.
-                            pin.Value = chunkText;
-                            return;
-                        }
-
-                        // Special handling for image outputs:
-                        // Avoid JSON and avoid writing temp files. Prefer returning the encoded image bytes.
-                        if (string.Equals(update.OutputType, "image", StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (TryExtractImageBytes(update.Value, out var bytes) && bytes.Length > 0)
-                            {
-                                // Decode to SKImage (no temp files, no JSON)
-                                var img = SKImage.FromEncodedData(bytes);
-                                if (img != null)
-                                {
-                                    if (_latestImages.TryGetValue(pinName, out var prev))
-                                    {
-                                        prev.Dispose();
-                                    }
-                                    _latestImages[pinName] = img;
-                                    pin.Value = img;
-                                    return;
-                                }
-
-                                SetError($"Failed to decode image bytes for output '{pinName}'.");
-                                return;
-                            }
-                        }
-
-                        pin.Value = ConvertNodeToolValueToExpectedType(update.Value, expectedType);
-                    }
+                    EnqueueStateUpdate(() => ApplyLiveOutputUpdate(outputRoutes, update));
                 };
 
                 // Live output updates are progressive only. A workflow is finished when the
@@ -411,15 +376,6 @@ namespace Nodetool.SDK.VL.Nodes
                 timeoutCts?.Dispose();
                 _activeSession = null;
                 _isRunning = false;
-                _executionTask = Task.CompletedTask;
-
-                // If inputs changed during execution and AutoRun is enabled, run once more.
-                if (_autoRunEnabled && _rerunRequested && !_isDisposed)
-                {
-                    _rerunRequested = false;
-                    AppendDebug("autorun: rerun requested");
-                    StartExecution();
-                }
             }
         }
 
@@ -482,6 +438,51 @@ namespace Nodetool.SDK.VL.Nodes
             return routes.TryGetValue($"name:{update.NodeName}", out var byName)
                 ? byName
                 : null;
+        }
+
+        private void ApplyLiveOutputUpdate(
+            IReadOnlyDictionary<string, string> outputRoutes,
+            ExecutionOutputUpdate update)
+        {
+            var pinName = ResolveOutputPinName(outputRoutes, update);
+            var pin = pinName != null && _outputPins.TryGetValue(pinName, out var routedPin)
+                ? routedPin
+                : null;
+            Console.WriteLine(
+                $"WorkflowNodeBase: output_update received: node_id='{update.NodeId}' output_name='{update.OutputName}' node_name='{update.NodeName}' output_type='{update.OutputType}' pin='{pinName ?? "<none>"}'");
+            AppendDebugCore($"{DateTime.Now:HH:mm:ss.fff} output_update: {update.OutputName} type={update.OutputType} pin={pinName ?? "<none>"}");
+
+            if (pin == null || pinName == null)
+                return;
+
+            // IVLPin doesn't expose Type; our InternalPin does.
+            var expectedType = (pin as InternalPin)?.Type ?? typeof(string);
+            if (TryAccumulateChunk(_chunkBuffers, pinName, update, out var chunkText))
+            {
+                // Keep accumulated content when done=true carries an empty final chunk.
+                pin.Value = chunkText;
+                return;
+            }
+
+            if (string.Equals(update.OutputType, "image", StringComparison.OrdinalIgnoreCase) &&
+                TryExtractImageBytes(update.Value, out var bytes) &&
+                bytes.Length > 0)
+            {
+                var image = SKImage.FromEncodedData(bytes);
+                if (image != null)
+                {
+                    if (_latestImages.TryGetValue(pinName, out var previous))
+                        previous.Dispose();
+                    _latestImages[pinName] = image;
+                    pin.Value = image;
+                    return;
+                }
+
+                SetErrorCore($"Failed to decode image bytes for output '{pinName}'.");
+                return;
+            }
+
+            pin.Value = ConvertNodeToolValueToExpectedType(update.Value, expectedType);
         }
 
         internal static bool TryAccumulateChunk(
@@ -583,14 +584,17 @@ namespace Nodetool.SDK.VL.Nodes
 
         private void AppendDebug(string line)
         {
+            var ts = DateTime.Now.ToString("HH:mm:ss.fff");
+            EnqueueStateUpdate(() => AppendDebugCore($"{ts} {line}"));
+        }
+
+        private void AppendDebugCore(string message)
+        {
             try
             {
-                var ts = DateTime.Now.ToString("HH:mm:ss.fff");
-                var msg = $"{ts} {line}";
-
                 while (_debugLines.Count >= DebugMaxLines)
                     _debugLines.Dequeue();
-                _debugLines.Enqueue(msg);
+                _debugLines.Enqueue(message);
 
                 if (_outputPins.TryGetValue("Debug", out var pin))
                 {
@@ -603,11 +607,65 @@ namespace Nodetool.SDK.VL.Nodes
             }
         }
 
+        private void EnqueueStateUpdate(Action update)
+        {
+            if (!_isDisposed)
+            {
+                _pendingStateUpdates.Enqueue(update);
+                RequestVlUpdate();
+            }
+        }
+
+        private void RequestVlUpdate()
+        {
+            if (Interlocked.CompareExchange(ref _invalidateScheduled, 1, 0) != 0)
+                return;
+
+            _ = InvalidateAfterDelayAsync();
+        }
+
+        private async Task InvalidateAfterDelayAsync()
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(16));
+            Interlocked.Exchange(ref _invalidateScheduled, 0);
+            if (_isDisposed)
+                return;
+            try { _description.Invalidate(); } catch { /* best-effort scheduling hint */ }
+        }
+
+        private void DrainStateUpdates()
+        {
+            // Drain a bounded snapshot so a busy stream cannot monopolize VL's frame.
+            var count = _pendingStateUpdates.Count;
+            for (var i = 0; i < count && _pendingStateUpdates.TryDequeue(out var update); i++)
+            {
+                try
+                {
+                    update();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"WorkflowNodeBase: Failed to apply queued state: {ex.Message}");
+                    SetErrorCore($"State update failed: {ex.Message}");
+                }
+            }
+
+            // Count is only a snapshot. Keep evaluating if producers added more work
+            // while this frame was draining the queue.
+            if (!_pendingStateUpdates.IsEmpty)
+                RequestVlUpdate();
+        }
+
         private void ApplyFinalOutputsFromSession(IExecutionSession session)
+        {
+            var outputs = session.GetLatestOutputs();
+            EnqueueStateUpdate(() => ApplyFinalOutputs(outputs));
+        }
+
+        private void ApplyFinalOutputs(IReadOnlyDictionary<string, NodeToolValue> outputs)
         {
             try
             {
-                var outputs = session.GetLatestOutputs();
                 foreach (var kvp in outputs)
                 {
                     var key = kvp.Key;
@@ -637,7 +695,7 @@ namespace Nodetool.SDK.VL.Nodes
                                     pin.Value = img;
                                     continue;
                                 }
-                                SetError($"Failed to decode image bytes for output '{outputName}'.");
+                                SetErrorCore($"Failed to decode image bytes for output '{outputName}'.");
                             }
 
                             // Keep existing pin.Value (likely set during output_update) if we can't decode a final image.
@@ -711,6 +769,11 @@ namespace Nodetool.SDK.VL.Nodes
 
         private void SetIsRunning(bool isRunning)
         {
+            EnqueueStateUpdate(() => SetIsRunningCore(isRunning));
+        }
+
+        private void SetIsRunningCore(bool isRunning)
+        {
             if (_outputPins.TryGetValue("IsRunning", out var pin))
             {
                 pin.Value = isRunning;
@@ -718,6 +781,11 @@ namespace Nodetool.SDK.VL.Nodes
         }
 
         private void SetError(string error)
+        {
+            EnqueueStateUpdate(() => SetErrorCore(error));
+        }
+
+        private void SetErrorCore(string error)
         {
             if (_outputPins.TryGetValue("Error", out var pin))
             {
@@ -1491,13 +1559,32 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 Console.WriteLine($"WorkflowNodeBase: Disposing workflow node '{_workflow.Name}'");
 
+                _isDisposed = true;
+                try { _manualCancelCts?.Cancel(); } catch { /* ignore */ }
+                if (_activeSession is { } session)
+                    _ = CancelSessionOnDisposeAsync(session);
+
+                while (_pendingStateUpdates.TryDequeue(out _))
+                {
+                }
+
                 foreach (var img in _latestImages.Values)
                 {
                     try { img.Dispose(); } catch { /* ignore */ }
                 }
                 _latestImages.Clear();
+            }
+        }
 
-                _isDisposed = true;
+        private static async Task CancelSessionOnDisposeAsync(IExecutionSession session)
+        {
+            try
+            {
+                await session.CancelAsync().ConfigureAwait(false);
+            }
+            catch
+            {
+                // Disposal is best effort and cannot report asynchronous failures to VL.
             }
         }
 
