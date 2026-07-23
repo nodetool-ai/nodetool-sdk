@@ -289,7 +289,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Surface per-workflow diagnostics when a pin uses a fallback type.
 - [x] Expose a consistent standard execution surface (`Trigger`, `Cancel`, `AutoRun`, status, error).
 - [ ] Add tests that load representative v1 `.vl` patches and verify node/pin resolution.
-- [ ] Align `VL.Core` versions between the C# project and nuspec before publishing.
+- [x] Align `VL.Core` versions between the C# project and nuspec before publishing.
 
 ### Phase 5 acceptance gate
 
@@ -331,7 +331,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 
 **Outcome:** The change is deployable incrementally and reversible without breaking other NodeTool clients.
 
-- [ ] Upgrade the SDK and generated-types projects from the vulnerable `MessagePack` 3.0.300 dependency to a patched release, guarded by binary protocol round-trip fixtures.
+- [x] Upgrade the SDK and generated-types projects from the vulnerable `MessagePack` 3.0.300 dependency to 3.1.8, align the VL nuspec dependency, and guard the change with standard-nil, binary-media, unknown-field, request-envelope, and typed-message protocol tests.
 
 - [x] Add a hermetic backend integration harness that constructs the production REST route plugin, tRPC router, and WebSocket runner with the feature flag both off and on.
 - [x] Test the required workflow-interface v1 contract over REST and correlated WebSocket RPC in CI.

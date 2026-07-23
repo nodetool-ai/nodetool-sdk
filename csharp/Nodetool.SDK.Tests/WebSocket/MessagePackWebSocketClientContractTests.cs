@@ -80,4 +80,58 @@ public class MessagePackWebSocketClientContractTests
         Assert.Equal("rpc_response", envelope["type"]);
         Assert.Equal("r1", envelope["request_id"]);
     }
+
+    [Fact]
+    public void BinaryImageData_RoundTripsWithoutExpandingIntoNumbers()
+    {
+        var options = MessagePackSerializerOptions.Standard.WithResolver(
+            CompositeResolver.Create(
+                ContractlessStandardResolver.Instance,
+                StandardResolver.Instance));
+        var imageBytes = new byte[] { 0, 1, 2, 127, 128, 254, 255 };
+        var payload = MessagePackSerializer.Serialize(
+            new Dictionary<string, object?>
+            {
+                ["type"] = "output_update",
+                ["value"] = new Dictionary<string, object?>
+                {
+                    ["type"] = "image",
+                    ["data"] = imageBytes,
+                },
+            },
+            options);
+
+        var envelope = MessagePackSerializer.Deserialize<Dictionary<string, object?>>(payload, options);
+        var value = Assert.IsType<Dictionary<object, object?>>(envelope["value"]);
+
+        Assert.Equal(imageBytes, Assert.IsType<byte[]>(value["data"]));
+    }
+
+    [Fact]
+    public void TypedMessage_IgnoresUnknownServerFields()
+    {
+        var options = MessagePackSerializerOptions.Standard.WithResolver(
+            CompositeResolver.Create(
+                ContractlessStandardResolver.Instance,
+                StandardResolver.Instance));
+        var payload = MessagePackSerializer.Serialize(
+            new Dictionary<string, object?>
+            {
+                ["type"] = "output_update",
+                ["job_id"] = "job-1",
+                ["node_id"] = "node-1",
+                ["node_name"] = "Output",
+                ["output_name"] = "value",
+                ["output_type"] = "string",
+                ["value"] = "hello",
+                ["future_server_field"] = new Dictionary<string, object?> { ["enabled"] = true },
+            },
+            options);
+
+        var update = MessagePackSerializer.Deserialize<OutputUpdate>(payload, options);
+
+        Assert.Equal("job-1", update.job_id);
+        Assert.Equal("node-1", update.node_id);
+        Assert.Equal("hello", update.value);
+    }
 }

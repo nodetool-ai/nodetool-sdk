@@ -15,7 +15,7 @@
 
   <ItemGroup>
     <Compile Remove="TestConsole\**\*.cs" />
-    <PackageReference Include="MessagePack" Version="3.0.300" />
+    <PackageReference Include="MessagePack" Version="3.1.8" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
     <PackageReference Include="System.Net.WebSockets.Client" Version="4.3.2" />
@@ -29,4 +29,4 @@
     <ProjectReference Include="../Nodetool.Types/Nodetool.Types.csproj" PrivateAssets="all" />
   </ItemGroup>
 
-</Project> 
+</Project>
