@@ -176,12 +176,12 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Identify the currently supported `nodetool.input.*` nodes by namespace.
 - [x] Resolve `name`, description/label, bounded default, min/max, required state, and input node ID from normalized properties.
 - [x] Resolve input types from node metadata rather than from a hardcoded node-name switch whenever metadata is available.
-- [ ] Support dynamic property metadata and dynamic input nodes.
+- [x] Support dynamic property metadata and dynamic input nodes.
 - [x] Fail with a diagnostic when required node metadata is unavailable; do not guess from an unsupported historical contract.
 
 ### Output derivation
 
-- [ ] Identify generic `nodetool.output.Output` and dedicated output nodes such as image, audio, and video outputs.
+- [x] Identify generic `nodetool.output.Output` and dedicated image, audio, and video output nodes.
 - [x] Resolve the public output name and output node ID from normalized properties.
 - [x] Follow incoming data edges to the source node and source handle.
 - [x] Resolve the source handle through static or dynamic node output metadata.
