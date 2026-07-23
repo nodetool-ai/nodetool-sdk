@@ -85,4 +85,39 @@ public class ExecutionSessionContractTests
         Assert.Equal("append", received.Disposition);
         Assert.False(received.Done);
     }
+
+    [Fact]
+    public void ExecutionUpdates_IgnoreForeignJobIds()
+    {
+        using var session = new ExecutionSession("job-1", "workflow-1");
+        var outputCount = 0;
+        var nodeCount = 0;
+        var progressCount = 0;
+        var previewCount = 0;
+        session.OutputReceived += _ => outputCount++;
+        session.NodeUpdated += _ => nodeCount++;
+        session.ProgressChanged += _ => progressCount++;
+        session.PreviewReceived += _ => previewCount++;
+
+        session.ProcessOutputUpdate(new OutputUpdate
+        {
+            job_id = "job-2",
+            node_id = "node",
+            output_name = "value"
+        });
+        session.ProcessNodeUpdate(new NodeUpdate { job_id = "job-2" });
+        session.ProcessNodeProgress(new NodeProgress
+        {
+            job_id = "job-2",
+            progress = 1,
+            total = 2
+        });
+        session.ProcessPreviewUpdate(new PreviewUpdate { job_id = "job-2" });
+
+        Assert.Equal(0, outputCount);
+        Assert.Equal(0, nodeCount);
+        Assert.Equal(0, progressCount);
+        Assert.Equal(0, previewCount);
+        Assert.Empty(session.GetLatestOutputs());
+    }
 }

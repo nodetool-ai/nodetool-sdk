@@ -201,6 +201,8 @@ public class ExecutionSession : IExecutionSession
     /// </summary>
     internal void ProcessNodeUpdate(NodeUpdate update)
     {
+        if (!MatchesJob(update.job_id))
+            return;
         NodeUpdated?.Invoke(update);
     }
 
@@ -209,6 +211,8 @@ public class ExecutionSession : IExecutionSession
     /// </summary>
     internal void ProcessNodeProgress(NodeProgress progress)
     {
+        if (!MatchesJob(progress.job_id))
+            return;
         if (progress.total > 0)
         {
             ProgressPercent = (float)progress.progress / progress.total;
@@ -233,6 +237,8 @@ public class ExecutionSession : IExecutionSession
     /// </summary>
     internal void ProcessOutputUpdate(OutputUpdate update)
     {
+        if (!MatchesJob(update.job_id))
+            return;
         var receivedAt = DateTimeOffset.UtcNow;
         var value = NodeToolValue.From(update.value);
         var metadata = (update.metadata ?? new Dictionary<string, object>())
@@ -264,12 +270,21 @@ public class ExecutionSession : IExecutionSession
 
     internal void ProcessPreviewUpdate(PreviewUpdate update)
     {
+        if (!MatchesJob(update.job_id))
+            return;
         var receivedAt = DateTimeOffset.UtcNow;
         var value = NodeToolValue.From(update.value);
         PreviewReceived?.Invoke(new ExecutionPreviewUpdate(update.node_id, value, receivedAt));
     }
 
     private static string OutputKey(string nodeId, string outputName) => $"{nodeId}:{outputName}";
+
+    private bool MatchesJob(string? jobId)
+    {
+        return string.IsNullOrWhiteSpace(jobId)
+            || string.IsNullOrWhiteSpace(_jobId)
+            || string.Equals(jobId, _jobId, StringComparison.Ordinal);
+    }
 
     /// <inheritdoc/>
     public void Dispose()

@@ -551,19 +551,18 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
                     }
                     else
                     {
-                        // Fallback: broadcast when the server doesn't include job_id.
-                        foreach (var session in _sessions.Values)
-                        {
-                            session.ProcessNodeUpdate(nodeUpdate);
-                        }
+                        GetOnlyBoundSession()?.ProcessNodeUpdate(nodeUpdate);
                     }
                     break;
 
                 case NodeProgress nodeProgress:
-                    foreach (var session in _sessions.Values)
+                    if (nodeProgress.job_id != null &&
+                        _sessions.TryGetValue(nodeProgress.job_id, out var progressSession))
                     {
-                        session.ProcessNodeProgress(nodeProgress);
+                        progressSession.ProcessNodeProgress(nodeProgress);
                     }
+                    else
+                        GetOnlyBoundSession()?.ProcessNodeProgress(nodeProgress);
                     break;
 
                 case ProgressUpdate progressUpdate:
@@ -580,11 +579,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
                     }
                     else
                     {
-                        // Fallback: route to all sessions (v0.1 safety)
-                        foreach (var session in _sessions.Values)
-                        {
-                            session.ProcessOutputUpdate(outputUpdate);
-                        }
+                        GetOnlyBoundSession()?.ProcessOutputUpdate(outputUpdate);
                     }
                     break;
 
@@ -595,10 +590,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
                     }
                     else
                     {
-                        foreach (var session in _sessions.Values)
-                        {
-                            session.ProcessPreviewUpdate(previewUpdate);
-                        }
+                        GetOnlyBoundSession()?.ProcessPreviewUpdate(previewUpdate);
                     }
                     break;
             }
@@ -607,6 +599,16 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         {
             _logger.LogError(ex, "Error processing WebSocket message");
         }
+    }
+
+    private ExecutionSession? GetOnlyBoundSession()
+    {
+        var sessions = _sessions.Values.Take(2).ToArray();
+        if (sessions.Length == 1)
+            return sessions[0];
+        if (sessions.Length > 1)
+            _logger.LogWarning("Dropped an unscoped execution update while multiple jobs were active");
+        return null;
     }
 
     private void OnConnectionStatusChanged(object? sender, ConnectionStatusEventArgs args)

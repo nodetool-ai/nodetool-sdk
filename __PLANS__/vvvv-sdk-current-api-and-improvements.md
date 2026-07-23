@@ -289,7 +289,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 
 - [ ] Create/bind the execution session and event buffer before sending `run_job` so fast events cannot be lost before subscribers attach.
 - [ ] Replace `async void` workflow execution with a tracked task and explicit exception propagation.
-- [ ] Route updates by server job ID; use workflow ID only during the pending binding window.
+- [x] Route bound execution updates by server job ID; accept unscoped updates only when exactly one bound session exists.
 - [ ] Maintain a per-run output routing table keyed by output node ID, public output name, `node_name`, and `output_name`.
 - [ ] Apply `output_update.disposition` (`append` versus `replace`) and `done` semantics.
 - [ ] Treat live output updates as progressive state and terminal `result.outputs` as authoritative reconciliation.
