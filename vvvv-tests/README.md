@@ -111,3 +111,16 @@ The older `.vl` files in this directory reference historical build outputs.
 They are useful as migration examples, but they are not the release acceptance
 patches. Clean smoke patches and headless checks should use the current Release
 assemblies or the locally packed `VL.Nodetool` package.
+
+The gamma 7.1 headless audit confirms that none of the seven historical files
+is a current smoke fixture:
+
+- `VL.Nodetool.vl`, `VL.NodetoolNodes.vl`, and
+  `VL.NodetoolWorkflows.vl` reference retired node-factory dependency names.
+- `Test_01.vl`, `Test_02.vl`, `NODETOOL_VL_TEST_01.vl`, and
+  `NODETOOL_VL_SPEED_TEST_01.vl` embed local workflow nodes and pin names from
+  obsolete contracts.
+
+Changing their DLL paths would not make them valid. Keep them as migration
+evidence and create the current smoke set from the named workflow fixtures
+above.

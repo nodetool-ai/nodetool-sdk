@@ -42,6 +42,7 @@ The preferred end state is:
 - The cross-transport flag-on/flag-off integration harness is complete. The highest-value remaining proof is the representative headless and interactive vvvv smoke suite.
 - The transport integration harness found and fixed an absent-field drift where MessagePack encoded an explicit JavaScript `undefined` as `nil` while REST omitted the field.
 - The C# VL project, package manifest, and main VL document now share the first release target, vvvv gamma 7.1 / `VL.Core 2025.7.1`; the complete supported version pair and manual test preparation are documented in `vvvv-tests/README.md`.
+- All seven historical `vvvv-tests/*.vl` files were audited under gamma 7.1. They depend on retired factory names or local workflow nodes and old pin contracts, so they remain migration evidence rather than release smoke tests.
 
 ## Current-client safety rules
 
