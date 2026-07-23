@@ -233,9 +233,9 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 
 - [x] Add typed C# REST DTOs and client methods for compact paginated workflow summaries and authoritative workflow-interface v1 responses.
 - [x] Convert missing, disabled, and unsupported workflow-interface REST responses into an explicit SDK compatibility exception.
-- [ ] Make HTTP discovery the default bootstrap transport; do not require an open execution socket to discover nodes and workflows.
+- [x] Make HTTP discovery the default bootstrap transport; do not require an open execution socket to discover nodes and workflows.
 - [ ] Request workflow-interface v1 in bounded batches for every discovered workflow page.
-- [ ] Never call the graph-bearing workflow list/detail routes during routine SDK discovery.
+- [x] Never call the graph-bearing workflow list/detail routes during routine SDK discovery.
 - [ ] Surface one clear incompatible-server/feature-disabled status on 404, unknown command, feature-disabled, or unsupported version; do not create partially inferred workflow nodes.
 - [ ] Follow workflow pagination until completion or a configured safety limit.
 - [ ] Remove the graph-bearing list-then-sequential-detail discovery path entirely; pagination alone is insufficient for image-heavy graphs.
@@ -264,7 +264,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 
 - [ ] Use workflow ID as the stable internal identity; treat workflow name as display metadata.
 - [ ] Define deterministic duplicate-name handling using a short workflow-ID suffix.
-- [ ] Generate input and output pins exclusively from the normalized workflow interface.
+- [x] Generate input and output pins exclusively from the normalized workflow interface.
 - [ ] Preserve defaults, min/max ranges, descriptions, required/optional state, enums, and list element types.
 - [ ] Map primitive NodeTool types to native VL types.
 - [ ] Map lists to appropriate spreads/arrays rather than always using `string[]`.

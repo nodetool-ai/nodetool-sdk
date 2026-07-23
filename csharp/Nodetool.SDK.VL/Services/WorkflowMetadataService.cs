@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 using Nodetool.SDK.Api;
 using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.VL.Models;
@@ -59,9 +60,8 @@ public class WorkflowMetadataService : IDisposable
 
         try
         {
-            // Fetch workflow list
-            var workflows = await _client.GetWorkflowsAsync();
-            _logger?.LogDebug("Retrieved {Count} workflows from API", workflows.Count);
+            var workflows = await _client.GetWorkflowSummariesAsync();
+            _logger?.LogDebug("Retrieved {Count} compact workflow summaries from API", workflows.Count);
 
             // Convert API responses to our detailed models
             var workflowDetails = new List<WorkflowDetail>();
@@ -70,25 +70,15 @@ public class WorkflowMetadataService : IDisposable
             {
                 try
                 {
-                    // Get detailed workflow information
-                    var detailedWorkflow = await _client.GetWorkflowAsync(workflow.Id);
-                    
-                    // Convert to our model
-                    var workflowDetail = new WorkflowDetail
-                    {
-                        Id = detailedWorkflow.Id,
-                        Name = detailedWorkflow.Name,
-                        Description = detailedWorkflow.Description,
-                        Tags = detailedWorkflow.Tags,
-                        CreatedAt = detailedWorkflow.CreatedAt,
-                        UpdatedAt = detailedWorkflow.UpdatedAt,
-                        InputSchema = ConvertToWorkflowSchema(detailedWorkflow.InputSchema),
-                        OutputSchema = ConvertToWorkflowSchema(detailedWorkflow.OutputSchema),
-                        Graph = detailedWorkflow.Graph
-                    };
+                    var workflowInterface = await _client.GetWorkflowInterfaceAsync(workflow.Id);
+                    var workflowDetail = CreateWorkflowDetail(workflow, workflowInterface);
 
                     workflowDetails.Add(workflowDetail);
                     _logger?.LogDebug("Processed workflow: {Name} ({Id})", workflowDetail.Name, workflowDetail.Id);
+                }
+                catch (WorkflowInterfaceUnavailableException)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -105,6 +95,10 @@ public class WorkflowMetadataService : IDisposable
             _logger?.LogInformation("Successfully fetched {Count} workflow definitions", workflowDetails.Count);
 
             return workflowDetails;
+        }
+        catch (WorkflowInterfaceUnavailableException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -133,24 +127,16 @@ public class WorkflowMetadataService : IDisposable
                 }
             }
 
-            // Fetch from API
-            _logger?.LogDebug("Fetching workflow {Id} from API", workflowId);
-            var workflow = await _client.GetWorkflowAsync(workflowId);
-
-            var workflowDetail = new WorkflowDetail
-            {
-                Id = workflow.Id,
-                Name = workflow.Name,
-                Description = workflow.Description,
-            Tags = workflow.Tags,
-                CreatedAt = workflow.CreatedAt,
-                UpdatedAt = workflow.UpdatedAt,
-                InputSchema = ConvertToWorkflowSchema(workflow.InputSchema),
-            OutputSchema = ConvertToWorkflowSchema(workflow.OutputSchema),
-            Graph = workflow.Graph,
-            };
-
-            return workflowDetail;
+            var summary = (await _client.GetWorkflowSummariesAsync())
+                .FirstOrDefault(workflow => workflow.Id == workflowId);
+            if (summary == null)
+                return null;
+            var workflowInterface = await _client.GetWorkflowInterfaceAsync(workflowId);
+            return CreateWorkflowDetail(summary, workflowInterface);
+        }
+        catch (WorkflowInterfaceUnavailableException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -186,6 +172,67 @@ public class WorkflowMetadataService : IDisposable
     {
         _cachedWorkflows = null;
         _lastFetch = DateTime.MinValue;
+    }
+
+    private static WorkflowDetail CreateWorkflowDetail(
+        WorkflowSummaryResponse summary,
+        WorkflowInterfaceResponse workflowInterface)
+    {
+        var updatedAt = DateTime.TryParse(summary.Revision, out var parsedRevision)
+            ? parsedRevision
+            : DateTime.MinValue;
+        return new WorkflowDetail
+        {
+            Id = summary.Id,
+            Name = summary.Name,
+            Description = summary.Description,
+            UpdatedAt = updatedAt,
+            Interface = workflowInterface,
+            InputSchema = CreateInterfaceSchema(workflowInterface.Inputs),
+            OutputSchema = CreateInterfaceSchema(workflowInterface.Outputs)
+        };
+    }
+
+    private static WorkflowSchemaDefinition CreateInterfaceSchema(
+        IEnumerable<WorkflowInterfacePin> pins)
+    {
+        var schema = new WorkflowSchemaDefinition();
+        foreach (var pin in pins)
+        {
+            schema.Properties[pin.Name] = ConvertInterfaceType(
+                pin.Type,
+                pin.Description,
+                pin is WorkflowInterfaceInput input &&
+                input.Default.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined)
+                    ? input.Default
+                    : null);
+            if (pin is WorkflowInterfaceInput { Required: true })
+                schema.Required.Add(pin.Name);
+        }
+        return schema;
+    }
+
+    private static WorkflowPropertyDefinition ConvertInterfaceType(
+        NodeTypeDefinition type,
+        string description,
+        object? defaultValue)
+    {
+        var property = new WorkflowPropertyDefinition
+        {
+            Type = type.Type,
+            Title = type.TypeName,
+            Description = description,
+            Default = defaultValue,
+            Enum = type.Values
+        };
+        if (string.Equals(type.Type, "list", StringComparison.OrdinalIgnoreCase))
+        {
+            property.Type = "array";
+            property.Items = type.TypeArgs?.Count > 0
+                ? ConvertInterfaceType(type.TypeArgs[0], "", null)
+                : new WorkflowPropertyDefinition { Type = "any" };
+        }
+        return property;
     }
 
     private WorkflowSchemaDefinition? ConvertToWorkflowSchema(Nodetool.SDK.Api.Models.SchemaDefinition? apiSchema)
@@ -270,4 +317,4 @@ public class WorkflowMetadataService : IDisposable
         _client?.Dispose();
         GC.SuppressFinalize(this);
     }
-} 
+}

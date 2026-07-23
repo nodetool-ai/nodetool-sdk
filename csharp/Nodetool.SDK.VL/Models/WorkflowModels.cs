@@ -183,51 +183,27 @@ public class WorkflowDetail
     [JsonPropertyName("thumbnail")]
     public string? Thumbnail { get; set; }
 
+    [JsonIgnore]
+    public WorkflowInterfaceResponse? Interface { get; set; }
+
     /// <summary>
     /// Get input properties as TypeMetadata for VL pin creation
     /// </summary>
     public IEnumerable<(string Name, TypeMetadata Type, string Description, object? DefaultValue)> GetInputProperties()
     {
-        // Preferred: schema-driven inputs
-        if (InputSchema?.Properties != null && InputSchema.Properties.Count > 0)
-        {
-            var required = InputSchema.Required ?? new List<string>();
-            foreach (var prop in InputSchema.Properties)
-            {
-                var metadata = prop.Value.ToTypeMetadata();
-                metadata.Optional = !required.Contains(prop.Key);
-
-                yield return (
-                    Name: prop.Key,
-                    Type: metadata,
-                    Description: prop.Value.Description ?? prop.Value.Title ?? "",
-                    DefaultValue: prop.Value.Default
-                );
-            }
-            yield break;
-        }
-
-        // Fallback: infer inputs from graph when schema is missing/empty (some workflows return root anyOf/$ref schemas)
-        if (Graph?.Nodes == null)
+        if (Interface == null)
             yield break;
 
-        foreach (var node in Graph.Nodes)
+        foreach (var input in Interface.Inputs)
         {
-            if (node == null)
-                continue;
-
-            if (!TryInferInputTypeFromGraphNode(node.Type, out var inferredType))
-                continue;
-
-            if (!TryGetNodeName(node.Data, out var name) || string.IsNullOrWhiteSpace(name))
-                continue;
-
-            var meta = new TypeMetadata { Type = inferredType, Optional = false };
-            string desc = "";
-            if (TryGetNodeDescription(node.Data, out var d) && !string.IsNullOrWhiteSpace(d))
-                desc = d!;
-
-            yield return (Name: name!, Type: meta, Description: desc, DefaultValue: null);
+            yield return (
+                Name: input.Name,
+                Type: ConvertType(input.Type),
+                Description: input.Description,
+                DefaultValue: input.Default.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
+                    ? null
+                    : input.Default
+            );
         }
     }
 
@@ -236,61 +212,29 @@ public class WorkflowDetail
     /// </summary>
     public IEnumerable<(string Name, TypeMetadata Type, string Description)> GetOutputProperties()
     {
-        // Preferred: schema-driven outputs
-        if (OutputSchema?.Properties != null && OutputSchema.Properties.Count > 0)
-        {
-            foreach (var prop in OutputSchema.Properties)
-            {
-                var metadata = prop.Value.ToTypeMetadata();
-
-                // Prefer output_schema for inference when possible (better than graph heuristics).
-                if (TryInferOutputTypeFromSchema(prop.Value, OutputSchema, out var schemaInferred))
-                {
-                    metadata.Type = schemaInferred;
-                }
-
-                // If output schema is too generic ("any"), try to infer type from workflow graph edges.
-                if (string.Equals(metadata.Type, "any", StringComparison.OrdinalIgnoreCase) &&
-                    TryInferOutputTypeFromGraph(prop.Key, out var inferred))
-                {
-                    metadata.Type = inferred;
-                }
-
-                // If it's still "any", default to string for VL ergonomics.
-                if (string.Equals(metadata.Type, "any", StringComparison.OrdinalIgnoreCase))
-                {
-                    metadata.Type = "string";
-                }
-
-                yield return (
-                    Name: prop.Key,
-                    Type: metadata,
-                    Description: prop.Value.Description ?? prop.Value.Title ?? ""
-                );
-            }
-            yield break;
-        }
-
-        // Fallback: infer outputs from graph when schema is missing/empty.
-        if (Graph?.Nodes == null)
+        if (Interface == null)
             yield break;
 
-        var outputNames = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var node in Graph.Nodes)
+        foreach (var output in Interface.Outputs)
         {
-            if (!string.Equals(node.Type, "nodetool.output.Output", StringComparison.Ordinal))
-                continue;
-            if (TryGetNodeName(node.Data, out var name) && !string.IsNullOrWhiteSpace(name))
-                outputNames.Add(name!);
+            yield return (
+                Name: output.Name,
+                Type: ConvertType(output.Type),
+                Description: output.Description
+            );
         }
+    }
 
-        foreach (var name in outputNames.OrderBy(n => n, StringComparer.Ordinal))
+    private static TypeMetadata ConvertType(NodeTypeDefinition type)
+    {
+        return new TypeMetadata
         {
-            var meta = new TypeMetadata { Type = "string", Optional = false };
-            if (TryInferOutputTypeFromGraph(name, out var inferred))
-                meta.Type = inferred;
-            yield return (Name: name, Type: meta, Description: "");
-        }
+            Type = type.Type,
+            Optional = type.Optional,
+            Values = type.Values,
+            TypeName = type.TypeName,
+            TypeArgs = type.TypeArgs?.Select(ConvertType).ToList() ?? new List<TypeMetadata>()
+        };
     }
 
     private static bool TryInferInputTypeFromGraphNode(string nodeType, out string inferredType)
@@ -577,4 +521,4 @@ public class WorkflowDetail
             .Replace(" ", "")
             .Trim();
     }
-} 
+}
