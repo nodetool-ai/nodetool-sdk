@@ -231,6 +231,8 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 
 **Outcome:** vvvv loads quickly, refreshes safely, and retains usable nodes through transient failures.
 
+- [x] Add typed C# REST DTOs and client methods for compact paginated workflow summaries and authoritative workflow-interface v1 responses.
+- [x] Convert missing, disabled, and unsupported workflow-interface REST responses into an explicit SDK compatibility exception.
 - [ ] Make HTTP discovery the default bootstrap transport; do not require an open execution socket to discover nodes and workflows.
 - [ ] Request workflow-interface v1 in bounded batches for every discovered workflow page.
 - [ ] Never call the graph-bearing workflow list/detail routes during routine SDK discovery.

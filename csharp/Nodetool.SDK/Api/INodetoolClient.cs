@@ -34,6 +34,19 @@ public interface INodetoolClient : IDisposable
     /// Get all workflows
     /// </summary>
     Task<List<WorkflowResponse>> GetWorkflowsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get compact workflow summaries without downloading workflow graphs.
+    /// </summary>
+    Task<List<WorkflowSummaryResponse>> GetWorkflowSummariesAsync(
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get the authoritative version 1 workflow pin contract.
+    /// </summary>
+    Task<WorkflowInterfaceResponse> GetWorkflowInterfaceAsync(
+        string workflowId,
+        CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Get a specific workflow by ID
@@ -118,4 +131,4 @@ public interface INodetoolClient : IDisposable
     void Configure(string baseUrl, string? apiKey = null);
     
     #endregion
-} 
+}

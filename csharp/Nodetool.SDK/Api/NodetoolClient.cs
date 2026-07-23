@@ -128,6 +128,88 @@ public class NodetoolClient : INodetoolClient
         return workflows;
     }
 
+    public async Task<List<WorkflowSummaryResponse>> GetWorkflowSummariesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        _logger?.LogDebug("Fetching compact workflow summaries");
+
+        const int pageSize = 50;
+        var workflows = new List<WorkflowSummaryResponse>();
+        var visitedCursors = new HashSet<string>(StringComparer.Ordinal);
+        string? cursor = null;
+
+        do
+        {
+            var endpoint = $"{NodetoolConstants.Endpoints.WorkflowSummariesV1}?limit={pageSize}";
+            if (cursor != null)
+                endpoint += $"&cursor={Uri.EscapeDataString(cursor)}";
+
+            var page = await GetSdkResponseAsync<WorkflowSummaryListResponse>(endpoint, cancellationToken);
+            workflows.AddRange(page.Workflows);
+
+            cursor = string.IsNullOrWhiteSpace(page.Next) ? null : page.Next;
+            if (cursor != null && !visitedCursors.Add(cursor))
+                throw new InvalidDataException(
+                    $"The workflow summary cursor repeated ({cursor}); pagination cannot advance.");
+        }
+        while (cursor != null);
+
+        _logger?.LogDebug("Retrieved {Count} compact workflow summaries", workflows.Count);
+        return workflows;
+    }
+
+    public async Task<WorkflowInterfaceResponse> GetWorkflowInterfaceAsync(
+        string workflowId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workflowId);
+        var endpoint = string.Format(
+            NodetoolConstants.Endpoints.WorkflowInterfaceV1,
+            Uri.EscapeDataString(workflowId));
+        var result = await GetSdkResponseAsync<WorkflowInterfaceResponse>(endpoint, cancellationToken);
+        if (result.Version != 1 || !string.Equals(result.Source, "server", StringComparison.Ordinal))
+            throw new InvalidDataException(
+                $"Workflow {workflowId} returned an unsupported workflow-interface contract.");
+        if (!string.Equals(result.WorkflowId, workflowId, StringComparison.Ordinal))
+            throw new InvalidDataException(
+                $"Workflow-interface response ID '{result.WorkflowId}' does not match '{workflowId}'.");
+        return result;
+    }
+
+    private async Task<T> GetSdkResponseAsync<T>(
+        string endpoint,
+        CancellationToken cancellationToken)
+    {
+        using var response = await _httpClient.GetAsync(endpoint, cancellationToken);
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            ApiErrorResponse? error = null;
+            try
+            {
+                error = JsonSerializer.Deserialize<ApiErrorResponse>(json, _jsonOptions);
+            }
+            catch (JsonException)
+            {
+                // Preserve the HTTP status when an older server returns a non-JSON error page.
+            }
+
+            if (response.StatusCode is System.Net.HttpStatusCode.BadRequest
+                or System.Net.HttpStatusCode.NotFound
+                or System.Net.HttpStatusCode.ServiceUnavailable)
+            {
+                throw new WorkflowInterfaceUnavailableException(
+                    response.StatusCode,
+                    error?.Code,
+                    error?.Detail ?? $"NodeTool does not provide the required workflow-interface v1 API ({response.StatusCode}).");
+            }
+            response.EnsureSuccessStatusCode();
+        }
+
+        return JsonSerializer.Deserialize<T>(json, _jsonOptions)
+            ?? throw new InvalidDataException($"The SDK response from '{endpoint}' was empty or malformed.");
+    }
+
     public async Task<WorkflowResponse> GetWorkflowAsync(string workflowId, CancellationToken cancellationToken = default)
     {
         _logger?.LogDebug("Fetching workflow: {WorkflowId}", workflowId);

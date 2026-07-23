@@ -18,6 +18,8 @@ public static class NodetoolConstants
         /// <summary>No trailing slash — avoids 404 on servers that distinguish exact paths.</summary>
         public const string Workflows = "/api/workflows";
         public const string WorkflowById = "/api/workflows/{0}";
+        public const string WorkflowSummariesV1 = "/api/sdk/v1/workflows";
+        public const string WorkflowInterfaceV1 = "/api/workflows/{0}/interface?version=1";
         public const string WorkflowRun = "/api/workflows/{0}/run";
         public const string WorkflowRunSyncPlus = "/api/workflows/{0}/run_sync_plus_fetch_outputs";
         
@@ -63,4 +65,4 @@ public static class NodetoolConstants
         public const string NumberType = "number";
         public const string BooleanType = "boolean";
     }
-} 
+}
