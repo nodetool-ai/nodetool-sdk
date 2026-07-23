@@ -35,7 +35,7 @@ The preferred end state is:
 
 ### Implementation audit — 2026-07-23
 
-- 132 of 181 checkable items are complete after reviewing the implementation, commits, and targeted test results in both repositories.
+- 133 of 181 checkable items are complete after reviewing the implementation, commits, and targeted test results in both repositories.
 - The focused C# suite passes 38 tests, and the gamma 7.1 headless VL suite compiles both shipped VL documents offline. The NodeTool workflow-interface, WebSocket/interface, and protocol suites pass their targeted tests.
 - Full NodeTool package verification remains blocked by pre-existing Sharp TypeScript import errors in the runtime and WebSocket packages. The unrelated package-manifest and lockfile changes in the working tree are not part of this plan.
 - The open Phase 1 graph-normalization items describe a legacy client-side inference path that authoritative workflow-interface v1 no longer uses. Before implementing them, decide whether to delete the remaining public legacy graph DTOs or retain them as a separate, non-workflow API.
@@ -46,6 +46,8 @@ The preferred end state is:
 - The live hybrid registry currently exposes 2,527 node definitions and 100 distinct recursive type tokens. It combines TypeScript registrations, Python package JSON metadata, and bridge-only Python metadata. The bridge merge is now centralized, preserves existing TypeScript/package metadata, maps current dynamic/streaming flags, and advances the shared registry revision when bridge-only nodes appear.
 - The current node metadata contract names structured types but does not provide a global structured-type schema catalog (`type_name` was absent from the live registry response). A future catalog can enumerate availability and recursive type usage, but generated CLR shapes still require an authoritative schema source rather than inference from names.
 - The current VL factory API supports an invalidation observable. Workflow discovery now publishes immutable snapshots asynchronously, marshals invalidation through the AppHost synchronization context, coalesces rapid refresh requests, retries startup discovery, and retains the last successful snapshot after later failures.
+- A flag-gated SDK node/type inventory now reports registry revision, Python-bridge readiness, TypeScript/Python metadata provenance, recursive pin-type usage, and unavailable packs. REST and correlated WebSocket pages are capped at 100 types, with bounded enum values and examples; this remains a usage catalog rather than an inferred structured-type schema catalog.
+- The node-sdk mutation command is currently blocked before mutation by eight pre-existing Windows-only dry-run failures in metadata caching and pack path assertions. Focused registry/inventory tests pass; this blocker is separate from the existing Sharp typecheck failure.
 
 ## Current-client safety rules
 
@@ -69,6 +71,8 @@ Add a new contract instead of changing existing workflow responses.
 - tRPC: `workflows.interface({ id, version: 1 })`
 - tRPC bulk: `workflows.interfaces({ ids, version: 1 })`
 - WebSocket RPC: `get_workflow_interface` with `data: { id, version: 1 }` and a top-level `request_id`
+- REST: `GET /api/sdk/v1/node-types?cursor=0&limit=100`
+- WebSocket RPC: `get_node_type_inventory` with bounded `cursor` and `limit`
 - WebSocket bulk RPC: `get_workflow_interfaces` with `data: { ids, version: 1 }` and a top-level `request_id`
 - WebSocket summaries RPC: `list_workflow_summaries` with `data: { limit, cursor }` and a top-level `request_id`
 - Server feature flag: `NODETOOL_ENABLE_SDK_WORKFLOW_INTERFACE_V1`
@@ -236,7 +240,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Add parity tests proving REST, tRPC, and WebSocket return equivalent v1 payloads.
 - [x] Add tests for TypeScript-native nodes, Python-bridge nodes, dynamic nodes, and unavailable node packs.
 - [x] Centralize the live Python-bridge metadata merge into the shared registry and normalize dynamic-input plus streaming-input/output flags without overwriting TypeScript/package metadata.
-- [ ] Add a flag-gated, bounded SDK node/type inventory that reports registry revision, readiness/provenance, recursive type usage, and unavailable-pack diagnostics without returning one unbounded multi-megabyte response.
+- [x] Add a flag-gated, bounded SDK node/type inventory that reports registry revision, readiness/provenance, recursive type usage, and unavailable-pack diagnostics without returning one unbounded multi-megabyte response.
 - [x] Bound bulk computation to 100 workflows and cache derived interfaces by workflow `etag` plus node-registry revision, with a 512-entry per-registry cap.
 
 ### Phase 3 acceptance gate

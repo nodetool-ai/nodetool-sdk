@@ -14,6 +14,7 @@ public static class NodetoolConstants
 
         // Node operations
         public const string NodesMetadata = "/api/nodes/metadata";
+        public const string NodeTypeInventoryV1 = "/api/sdk/v1/node-types";
         public const string NodeExecute = "/api/nodes/execute"; // NOT IMPLEMENTED
         
         // Workflow operations  

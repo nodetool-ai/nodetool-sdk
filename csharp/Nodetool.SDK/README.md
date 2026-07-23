@@ -118,6 +118,10 @@ client.Configure("http://localhost:7777");
 
 // Get available node types
 var nodeTypes = await client.GetNodeTypesAsync();
+
+// Compact recursive type usage across TypeScript and Python-backed nodes.
+// Page size is bounded to 100 entries.
+var typeInventory = await client.GetNodeTypeInventoryAsync(cursor: 0, limit: 100);
 Console.WriteLine($"Found {nodeTypes.Count} node types");
 
 // Execute a workflow (blocking)

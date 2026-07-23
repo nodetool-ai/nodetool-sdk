@@ -76,6 +76,27 @@ public class NodetoolClient : INodetoolClient
         return nodeTypes ?? new List<NodeMetadataResponse>();
     }
 
+    public async Task<NodeTypeInventoryResponse> GetNodeTypeInventoryAsync(
+        int cursor = 0,
+        int limit = 100,
+        CancellationToken cancellationToken = default)
+    {
+        if (cursor < 0)
+            throw new ArgumentOutOfRangeException(nameof(cursor));
+        if (limit is < 1 or > 100)
+            throw new ArgumentOutOfRangeException(nameof(limit));
+
+        var endpoint =
+            $"{NodetoolConstants.Endpoints.NodeTypeInventoryV1}?cursor={cursor}&limit={limit}";
+        var result = await GetSdkResponseAsync<NodeTypeInventoryResponse>(
+            endpoint,
+            cancellationToken);
+        if (result.Version != 1 || !result.RegistryReady)
+            throw new InvalidDataException(
+                "The server returned an unsupported or unready node type inventory.");
+        return result;
+    }
+
     public async Task<Dictionary<string, object>> ExecuteNodeAsync(
         string nodeType, 
         Dictionary<string, object> inputs, 

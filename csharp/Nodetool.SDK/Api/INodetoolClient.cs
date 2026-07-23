@@ -18,6 +18,14 @@ public interface INodetoolClient : IDisposable
     /// Get all available node types with their metadata
     /// </summary>
     Task<List<NodeMetadataResponse>> GetNodeTypesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get one bounded page of recursive node type usage and registry readiness.
+    /// </summary>
+    Task<NodeTypeInventoryResponse> GetNodeTypeInventoryAsync(
+        int cursor = 0,
+        int limit = 100,
+        CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Execute a single node

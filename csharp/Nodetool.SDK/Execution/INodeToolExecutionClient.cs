@@ -82,6 +82,14 @@ public interface INodeToolExecutionClient : IDisposable
     Task<List<NodeMetadataResponse>> GetNodeTypesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Fetch one bounded recursive node type inventory page.
+    /// </summary>
+    Task<NodeTypeInventoryResponse> GetNodeTypeInventoryAsync(
+        int cursor = 0,
+        int limit = 100,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Fetch a single node type by its type identifier (<c>get_node</c>).
     /// </summary>
     Task<NodeMetadataResponse?> GetNodeAsync(string nodeType, CancellationToken cancellationToken = default);

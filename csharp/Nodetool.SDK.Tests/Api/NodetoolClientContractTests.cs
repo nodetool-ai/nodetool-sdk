@@ -58,6 +58,67 @@ public class NodetoolClientContractTests
     }
 
     [Fact]
+    public async Task GetNodeTypeInventoryAsync_ReadsBoundedHybridTypeUsage()
+    {
+        Uri? requestedUri = null;
+        const string body = """
+            {
+              "version": 1,
+              "registry_revision": 12,
+              "registry_ready": true,
+              "python_bridge_ready": true,
+              "node_count": 2527,
+              "type_count": 100,
+              "provenance_counts": { "typescript": 2412, "python-bridge": 115 },
+              "cursor": 20,
+              "next_cursor": 21,
+              "types": [{
+                "signature": "list[image]",
+                "type": "list",
+                "type_name": null,
+                "optional": false,
+                "type_args": ["image"],
+                "values": [],
+                "values_truncated": false,
+                "input_uses": 10,
+                "output_uses": 2,
+                "node_count": 9,
+                "sources": { "typescript": 8, "python-bridge": 4 },
+                "examples": [{
+                  "node_type": "python.Images",
+                  "pin": "images",
+                  "direction": "input"
+                }]
+              }],
+              "unavailable_packs": [{
+                "id": "transformers-js",
+                "name": "Transformers.js",
+                "reason": "disabled by built-in pack configuration"
+              }]
+            }
+            """;
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(request =>
+        {
+            requestedUri = request.RequestUri;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(body)
+            };
+        }));
+        var client = new NodetoolClient(httpClient);
+
+        var inventory = await client.GetNodeTypeInventoryAsync(cursor: 20, limit: 1);
+
+        Assert.Equal("/api/sdk/v1/node-types?cursor=20&limit=1", requestedUri?.PathAndQuery);
+        Assert.Equal(12, inventory.RegistryRevision);
+        Assert.True(inventory.PythonBridgeReady);
+        Assert.Equal(115, inventory.ProvenanceCounts["python-bridge"]);
+        Assert.Equal("list[image]", Assert.Single(inventory.Types).Signature);
+        Assert.Equal("python.Images", Assert.Single(inventory.Types[0].Examples).NodeType);
+        Assert.Equal("transformers-js", Assert.Single(inventory.UnavailablePacks).Id);
+    }
+
+    [Fact]
     public async Task GetWorkflowsAsync_FollowsCursorUntilTheLastPage()
     {
         var requestedUris = new List<string>();

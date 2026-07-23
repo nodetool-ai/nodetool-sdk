@@ -479,6 +479,34 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     }
 
     /// <inheritdoc/>
+    public async Task<NodeTypeInventoryResponse> GetNodeTypeInventoryAsync(
+        int cursor = 0,
+        int limit = 100,
+        CancellationToken cancellationToken = default)
+    {
+        if (cursor < 0)
+            throw new ArgumentOutOfRangeException(nameof(cursor));
+        if (limit is < 1 or > 100)
+            throw new ArgumentOutOfRangeException(nameof(limit));
+
+        var raw = await _webSocketClient.SendRequestAsync(
+            "get_node_type_inventory",
+            new Dictionary<string, object?>
+            {
+                ["cursor"] = cursor,
+                ["limit"] = limit
+            },
+            cancellationToken);
+        var result = DeserializeRequiredResult<NodeTypeInventoryResponse>(
+            raw,
+            "get_node_type_inventory");
+        if (result.Version != 1 || !result.RegistryReady)
+            throw new InvalidDataException(
+                "The server returned an unsupported or unready node type inventory.");
+        return result;
+    }
+
+    /// <inheritdoc/>
     public async Task<NodeMetadataResponse?> GetNodeAsync(string nodeType, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Fetching node {NodeType} via WebSocket", nodeType);

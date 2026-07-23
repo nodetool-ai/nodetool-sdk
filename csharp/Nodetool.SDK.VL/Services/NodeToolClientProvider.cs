@@ -395,6 +395,12 @@ public static class NodeToolClientProvider
         public Task<List<NodeMetadataResponse>> GetNodeTypesAsync(CancellationToken cancellationToken = default)
             => Task.FromException<List<NodeMetadataResponse>>(new InvalidOperationException("Not connected."));
 
+        public Task<NodeTypeInventoryResponse> GetNodeTypeInventoryAsync(
+            int cursor = 0,
+            int limit = 100,
+            CancellationToken cancellationToken = default)
+            => Task.FromException<NodeTypeInventoryResponse>(new InvalidOperationException("Not connected."));
+
         public Task<NodeMetadataResponse?> GetNodeAsync(string nodeType, CancellationToken cancellationToken = default)
             => Task.FromException<NodeMetadataResponse?>(new InvalidOperationException("Not connected."));
 
