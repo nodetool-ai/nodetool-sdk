@@ -240,7 +240,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Follow workflow pagination until completion while rejecting repeated cursors.
 - [x] Remove the graph-bearing list-then-sequential-detail discovery path entirely; pagination alone is insufficient for image-heavy graphs.
 - [x] Use the single-workflow interface request only for diagnostics, targeted refresh, or a changed workflow.
-- [ ] Cache normalized metadata and workflow interfaces by ID and `etag`.
+- [x] Cache normalized metadata and workflow interfaces by workflow ID, workflow revision, node-registry revision, and authoritative interface `etag`.
 - [ ] Replace synchronous `Task.Run(...).Wait(...)` factory initialization with asynchronous stale-while-revalidate loading.
 - [ ] Keep the last successful factory contents when refresh fails.
 - [x] Do not permanently cache an empty factory after a transient startup failure.

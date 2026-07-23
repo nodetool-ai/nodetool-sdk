@@ -4,6 +4,9 @@ using Nodetool.SDK.Api;
 using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.VL.Models;
 using Nodetool.SDK.Configuration;
+using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Nodetool.SDK.VL.Services;
 
@@ -12,6 +15,14 @@ namespace Nodetool.SDK.VL.Services;
 /// </summary>
 public class WorkflowMetadataService : IDisposable
 {
+    private sealed record CacheKey(string Scope, string WorkflowId);
+    private sealed record CachedWorkflow(
+        string Revision,
+        long RegistryRevision,
+        string InterfaceEtag,
+        WorkflowDetail Detail);
+    private static readonly ConcurrentDictionary<CacheKey, CachedWorkflow> SharedWorkflowCache = new();
+
     private readonly INodetoolClient _client;
     private readonly ILogger<WorkflowMetadataService>? _logger;
     
@@ -19,6 +30,7 @@ public class WorkflowMetadataService : IDisposable
     private List<WorkflowDetail>? _cachedWorkflows;
     private DateTime _lastFetch = DateTime.MinValue;
     private readonly TimeSpan CacheValidTime = TimeSpan.FromMinutes(NodetoolConstants.Defaults.CacheValidTimeMinutes);
+    private string _cacheScope = NodetoolConstants.Defaults.BaseUrl;
     
     public string StatusMessage { get; private set; } = "Not initialized";
 
@@ -39,6 +51,7 @@ public class WorkflowMetadataService : IDisposable
     public void Configure(NodetoolOptions options)
     {
         _client.Configure(options.BaseUrl, options.ApiKey);
+        _cacheScope = CreateCacheScope(options.BaseUrl, options.ApiKey);
         _logger?.LogDebug("WorkflowMetadataService configured with: {BaseUrl}", options.BaseUrl);
     }
 
@@ -64,11 +77,31 @@ public class WorkflowMetadataService : IDisposable
             var workflows = await _client.GetWorkflowSummariesAsync(cancellationToken);
             _logger?.LogDebug("Retrieved {Count} compact workflow summaries from API", workflows.Count);
 
-            var workflowDetails = new List<WorkflowDetail>();
+            var workflowDetailsById = new Dictionary<string, WorkflowDetail>(StringComparer.Ordinal);
             var interfacesById = new Dictionary<string, WorkflowInterfaceResponse>(
                 StringComparer.Ordinal);
             var skippedInterfaceCount = 0;
-            foreach (var batch in workflows.Chunk(100))
+            var cacheHitCount = 0;
+            var workflowsToFetch = new List<WorkflowSummaryResponse>();
+            foreach (var workflow in workflows)
+            {
+                var cacheKey = GetCacheKey(workflow.Id);
+                if (!string.IsNullOrWhiteSpace(workflow.Revision) &&
+                    workflow.RegistryRevision.HasValue &&
+                    SharedWorkflowCache.TryGetValue(cacheKey, out var cached) &&
+                    string.Equals(cached.Revision, workflow.Revision, StringComparison.Ordinal) &&
+                    cached.RegistryRevision == workflow.RegistryRevision.Value)
+                {
+                    workflowDetailsById[workflow.Id] = cached.Detail;
+                    cacheHitCount++;
+                }
+                else
+                {
+                    workflowsToFetch.Add(workflow);
+                }
+            }
+
+            foreach (var batch in workflowsToFetch.Chunk(100))
             {
                 var result = await _client.GetWorkflowInterfacesAsync(
                     batch.Select(workflow => workflow.Id).ToArray(),
@@ -110,26 +143,47 @@ public class WorkflowMetadataService : IDisposable
 
             foreach (var workflow in workflows)
             {
+                if (workflowDetailsById.ContainsKey(workflow.Id))
+                    continue;
                 if (!interfacesById.TryGetValue(workflow.Id, out var workflowInterface))
                     continue;
                 var workflowDetail = CreateWorkflowDetail(workflow, workflowInterface);
-                workflowDetails.Add(workflowDetail);
+                workflowDetailsById[workflow.Id] = workflowDetail;
+                if (!string.IsNullOrWhiteSpace(workflow.Revision) &&
+                    workflow.RegistryRevision.HasValue &&
+                    !string.IsNullOrWhiteSpace(workflowInterface.Etag))
+                {
+                    SharedWorkflowCache[GetCacheKey(workflow.Id)] = new CachedWorkflow(
+                        workflow.Revision,
+                        workflow.RegistryRevision.Value,
+                        workflowInterface.Etag,
+                        workflowDetail);
+                }
                 _logger?.LogDebug(
                     "Processed workflow: {Name} ({Id})",
                     workflowDetail.Name,
                     workflowDetail.Id);
             }
 
+            var workflowDetails = workflows
+                .Where(workflow => workflowDetailsById.ContainsKey(workflow.Id))
+                .Select(workflow => workflowDetailsById[workflow.Id])
+                .ToList();
+
+            PruneSharedCache(workflows.Select(workflow => workflow.Id));
+
             // Update cache
             _cachedWorkflows = workflowDetails;
             _lastFetch = DateTime.Now;
             
+            var cacheSummary = cacheHitCount > 0 ? $"; reused {cacheHitCount} cached" : "";
             StatusMessage = skippedInterfaceCount == 0
-                ? $"Successfully fetched {workflowDetails.Count} workflow definitions"
-                : $"Fetched {workflowDetails.Count} workflow definitions; skipped {skippedInterfaceCount} invalid interfaces";
+                ? $"Successfully fetched {workflowDetails.Count} workflow definitions{cacheSummary}"
+                : $"Fetched {workflowDetails.Count} workflow definitions{cacheSummary}; skipped {skippedInterfaceCount} invalid interfaces";
             _logger?.LogInformation(
-                "Fetched {Count} workflow definitions; skipped {SkippedCount} invalid interfaces",
+                "Fetched {Count} workflow definitions ({CacheHits} cached); skipped {SkippedCount} invalid interfaces",
                 workflowDetails.Count,
+                cacheHitCount,
                 skippedInterfaceCount);
 
             return workflowDetails;
@@ -190,6 +244,29 @@ public class WorkflowMetadataService : IDisposable
     {
         _cachedWorkflows = null;
         _lastFetch = DateTime.MinValue;
+    }
+
+    private CacheKey GetCacheKey(string workflowId) => new(_cacheScope, workflowId);
+
+    private void PruneSharedCache(IEnumerable<string> activeWorkflowIds)
+    {
+        var activeIds = activeWorkflowIds.ToHashSet(StringComparer.Ordinal);
+        foreach (var entry in SharedWorkflowCache.Keys)
+        {
+            if (string.Equals(entry.Scope, _cacheScope, StringComparison.Ordinal) &&
+                !activeIds.Contains(entry.WorkflowId))
+            {
+                SharedWorkflowCache.TryRemove(entry, out _);
+            }
+        }
+    }
+
+    private static string CreateCacheScope(string baseUrl, string? apiKey)
+    {
+        var tokenHash = string.IsNullOrEmpty(apiKey)
+            ? "anonymous"
+            : Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(apiKey)));
+        return $"{baseUrl.TrimEnd('/')}|{tokenHash}";
     }
 
     private static WorkflowDetail CreateWorkflowDetail(

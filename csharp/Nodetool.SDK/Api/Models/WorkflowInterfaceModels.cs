@@ -17,6 +17,9 @@ public sealed class WorkflowSummaryResponse
     [JsonPropertyName("revision")]
     public string Revision { get; set; } = string.Empty;
 
+    [JsonPropertyName("registry_revision")]
+    public long? RegistryRevision { get; set; }
+
     [JsonPropertyName("run_mode")]
     public string? RunMode { get; set; }
 }

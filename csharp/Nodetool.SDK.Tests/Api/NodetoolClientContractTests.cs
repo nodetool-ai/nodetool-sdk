@@ -72,8 +72,8 @@ public class NodetoolClientContractTests
             var pathAndQuery = request.RequestUri!.PathAndQuery;
             requestedUris.Add(pathAndQuery);
             var body = pathAndQuery.Contains("cursor=wf-1", StringComparison.Ordinal)
-                ? """{"workflows":[{"id":"wf-2","name":"Second","description":"","revision":"r2","run_mode":"workflow"}],"next":null}"""
-                : """{"workflows":[{"id":"wf-1","name":"First","description":"","revision":"r1","run_mode":"workflow"}],"next":"wf-1"}""";
+                ? """{"workflows":[{"id":"wf-2","name":"Second","description":"","revision":"r2","registry_revision":8,"run_mode":"workflow"}],"next":null}"""
+                : """{"workflows":[{"id":"wf-1","name":"First","description":"","revision":"r1","registry_revision":7,"run_mode":"workflow"}],"next":"wf-1"}""";
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body) };
         }));
         var client = new NodetoolClient(httpClient);
@@ -81,6 +81,7 @@ public class NodetoolClientContractTests
         var workflows = await client.GetWorkflowSummariesAsync();
 
         Assert.Equal(new[] { "wf-1", "wf-2" }, workflows.Select(workflow => workflow.Id));
+        Assert.Equal(new long?[] { 7, 8 }, workflows.Select(workflow => workflow.RegistryRevision));
         Assert.Equal(
             new[] { "/api/sdk/v1/workflows?limit=50", "/api/sdk/v1/workflows?limit=50&cursor=wf-1" },
             requestedUris);
