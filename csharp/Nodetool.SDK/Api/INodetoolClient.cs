@@ -47,6 +47,13 @@ public interface INodetoolClient : IDisposable
     Task<WorkflowInterfaceResponse> GetWorkflowInterfaceAsync(
         string workflowId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get up to 100 authoritative workflow pin contracts in one request.
+    /// </summary>
+    Task<WorkflowInterfacesResponse> GetWorkflowInterfacesAsync(
+        IReadOnlyCollection<string> workflowIds,
+        CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Get a specific workflow by ID

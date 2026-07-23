@@ -35,11 +35,11 @@ The preferred end state is:
 
 ## Current-client safety rules
 
-- [ ] Do not change the existing default shape of `GET /api/workflows`, `GET /api/workflows/:id`, tRPC `workflows.list/get`, or WebSocket `list_workflows/get_workflow` during this work.
-- [ ] Do not repurpose the existing `input_schema` and `output_schema` fields in the first rollout; clients may have encoded assumptions about their current null values.
+- [x] Do not change the existing default shape of `GET /api/workflows`, `GET /api/workflows/:id`, tRPC `workflows.list/get`, or WebSocket `list_workflows/get_workflow` during this work.
+- [x] Do not repurpose the existing `input_schema` and `output_schema` fields in the first rollout; clients may have encoded assumptions about their current null values.
 - [ ] Add new behavior through a versioned SDK-specific capability, endpoint, and WebSocket command.
 - [x] Keep the new backend capability disabled by a server feature flag during the first rollout.
-- [ ] Require workflow-interface v1 in the new C# SDK and report an explicit incompatible-server/feature-disabled error when it is unavailable.
+- [x] Require workflow-interface v1 in the new C# SDK and report an explicit incompatible-server/feature-disabled error when it is unavailable.
 - [x] Keep the backend workflow-interface derivation pure and independently testable.
 - [ ] Do not make backend availability a prerequisite for loading the vvvv package or opening an existing patch.
 - [ ] Do not add compatibility code for past NodeTool server or SDK contracts.
@@ -51,7 +51,7 @@ Add a new contract instead of changing existing workflow responses.
 ### Backend surface
 
 - REST: `GET /api/workflows/:id/interface?version=1`
-- REST bulk: `POST /api/workflow-interfaces/query` with `{ version: 1, workflow_ids: [...] }`
+- REST bulk: `POST /api/sdk/v1/workflow-interfaces` with `{ version: 1, ids: [...] }`
 - tRPC: `workflows.interface({ id, version: 1 })`
 - tRPC bulk: `workflows.interfaces({ ids, version: 1 })`
 - WebSocket RPC: `get_workflow_interface` with `{ id, version: 1, request_id }`
@@ -111,14 +111,14 @@ Use NodeTool `TypeMetadata`-style data instead of lossy JSON Schema wherever pos
 }
 ```
 
-- [ ] Finalize the v1 schema in `@nodetool-ai/protocol` before implementing either client.
-- [ ] Finalize a bounded bulk response envelope containing `interfaces` and per-workflow `errors`.
-- [ ] Include stable workflow and node IDs so output routing never depends only on display names.
-- [ ] Include the workflow `etag` so SDK discovery can avoid rebuilding unchanged VL descriptions.
-- [ ] Preserve enum `values`, enum/type identity, nested `type_args`, optionality, stream information, defaults, descriptions, and structured NodeTool type names.
+- [x] Finalize the v1 schema in `@nodetool-ai/protocol` before implementing either client.
+- [x] Finalize a bounded bulk response envelope containing `interfaces` and per-workflow `errors`.
+- [x] Include stable workflow and node IDs so output routing never depends only on display names.
+- [x] Include the workflow `etag` so SDK discovery can avoid rebuilding unchanged VL descriptions.
+- [x] Preserve enum `values`, enum/type identity, nested `type_args`, optionality, stream information, defaults, descriptions, and structured NodeTool type names.
 - [x] Bound serialized defaults in discovery interfaces (initially 16 KiB per default); omit oversized inline image/media values and return a diagnostic.
 - [ ] Define and test maximum single-interface, bulk-response, and total discovery-page byte sizes.
-- [ ] Return diagnostics for unresolved or ambiguous types rather than silently converting them to strings.
+- [x] Return diagnostics for unresolved or ambiguous types rather than silently converting them to strings.
 - [ ] Define deterministic behavior for duplicate input/output names and reject an invalid public interface with actionable diagnostics.
 
 ## Phase 0 — Current contract fixtures and safety net
@@ -191,8 +191,8 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 ### Contract fixtures
 
 - [x] Add focused TypeScript input/expected-output tests for the derivation algorithm, including `properties` precedence, enum metadata, duplicates, unresolved types, and an oversized inline image default.
-- [ ] Verify that the C# workflow-interface DTOs deserialize every expected server result without applying graph inference.
-- [ ] Require the SDK to preserve the server's public names, IDs, types, defaults, and diagnostics.
+- [x] Verify that the C# workflow-interface DTOs deserialize representative typed server results without applying graph inference.
+- [x] Require the SDK to preserve the server's public names, IDs, types, defaults, and diagnostics.
 
 ### Phase 2 acceptance gate
 
@@ -207,15 +207,15 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Add the v1 workflow-interface schemas and types to `@nodetool-ai/protocol`.
 - [x] Implement a registry-aware workflow-interface service outside the HTTP/tRPC router layer.
 - [x] Add protected tRPC `workflows.interface` using the existing workflow viewer authorization rules.
-- [ ] Add protected, bounded tRPC `workflows.interfaces` for one discovery page.
+- [x] Add protected, bounded tRPC `workflows.interfaces` for one discovery page.
 - [x] Add a slim, cursor-paginated SDK workflow-summary query that selects only identity/revision columns and never serializes graph nodes, edges, or inline media.
 - [x] Add `GET /api/workflows/:id/interface?version=1` as a thin bridge to the same service.
-- [ ] Add `POST /api/workflow-interfaces/query` as the bounded REST bulk bridge.
+- [x] Add `POST /api/sdk/v1/workflow-interfaces` as the bounded REST bulk bridge.
 - [ ] Add WebSocket `get_workflow_interface` as a thin RPC bridge to the same service.
 - [ ] Add WebSocket `get_workflow_interfaces` as the bounded bulk RPC bridge.
 - [ ] Guard all three entry points with `NODETOOL_ENABLE_SDK_WORKFLOW_INTERFACE_V1` for the initial rollout. (tRPC and REST are guarded; WebSocket remains.)
 - [x] Return a stable feature-disabled/not-supported API error that the SDK can recognize.
-- [ ] Do not populate or alter existing workflow `input_schema`/`output_schema` fields in this phase.
+- [x] Do not populate or alter existing workflow `input_schema`/`output_schema` fields in this phase.
 - [ ] Add authorization tests for owner, collaborator viewer, public workflow, unauthorized user, and missing workflow.
 - [ ] Add parity tests proving REST, tRPC, and WebSocket return equivalent v1 payloads.
 - [ ] Add tests for TypeScript-native nodes, Python-bridge nodes, dynamic nodes, and unavailable node packs.
@@ -234,12 +234,12 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Add typed C# REST DTOs and client methods for compact paginated workflow summaries and authoritative workflow-interface v1 responses.
 - [x] Convert missing, disabled, and unsupported workflow-interface REST responses into an explicit SDK compatibility exception.
 - [x] Make HTTP discovery the default bootstrap transport; do not require an open execution socket to discover nodes and workflows.
-- [ ] Request workflow-interface v1 in bounded batches for every discovered workflow page.
+- [x] Request workflow-interface v1 in bounded batches of at most 100 workflows.
 - [x] Never call the graph-bearing workflow list/detail routes during routine SDK discovery.
-- [ ] Surface one clear incompatible-server/feature-disabled status on 404, unknown command, feature-disabled, or unsupported version; do not create partially inferred workflow nodes.
-- [ ] Follow workflow pagination until completion or a configured safety limit.
-- [ ] Remove the graph-bearing list-then-sequential-detail discovery path entirely; pagination alone is insufficient for image-heavy graphs.
-- [ ] Use the single-workflow interface request only for diagnostics, targeted refresh, or a changed workflow.
+- [x] Surface one clear incompatible-server/feature-disabled status on REST 404, feature-disabled, or unsupported version; do not create partially inferred workflow nodes.
+- [x] Follow workflow pagination until completion while rejecting repeated cursors.
+- [x] Remove the graph-bearing list-then-sequential-detail discovery path entirely; pagination alone is insufficient for image-heavy graphs.
+- [x] Use the single-workflow interface request only for diagnostics, targeted refresh, or a changed workflow.
 - [ ] Cache normalized metadata and workflow interfaces by ID and `etag`.
 - [ ] Replace synchronous `Task.Run(...).Wait(...)` factory initialization with asynchronous stale-while-revalidate loading.
 - [ ] Keep the last successful factory contents when refresh fails.

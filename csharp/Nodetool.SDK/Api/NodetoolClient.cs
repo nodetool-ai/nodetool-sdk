@@ -176,11 +176,61 @@ public class NodetoolClient : INodetoolClient
         return result;
     }
 
+    public async Task<WorkflowInterfacesResponse> GetWorkflowInterfacesAsync(
+        IReadOnlyCollection<string> workflowIds,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(workflowIds);
+        if (workflowIds.Count is < 1 or > 100)
+            throw new ArgumentOutOfRangeException(
+                nameof(workflowIds),
+                "Expected between 1 and 100 workflow IDs.");
+        if (workflowIds.Any(string.IsNullOrWhiteSpace))
+            throw new ArgumentException("Workflow IDs cannot be empty.", nameof(workflowIds));
+        if (workflowIds.Distinct(StringComparer.Ordinal).Count() != workflowIds.Count)
+            throw new ArgumentException("Workflow IDs must be unique.", nameof(workflowIds));
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            NodetoolConstants.Endpoints.WorkflowInterfacesV1)
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(
+                    new WorkflowInterfacesRequest { Ids = workflowIds },
+                    _jsonOptions),
+                Encoding.UTF8,
+                NodetoolConstants.ContentTypes.Json)
+        };
+        var result = await SendSdkResponseAsync<WorkflowInterfacesResponse>(
+            request,
+            cancellationToken);
+        var requestedIds = workflowIds.ToHashSet(StringComparer.Ordinal);
+        foreach (var workflowInterface in result.Interfaces)
+        {
+            if (workflowInterface.Version != 1
+                || !string.Equals(workflowInterface.Source, "server", StringComparison.Ordinal)
+                || !requestedIds.Contains(workflowInterface.WorkflowId))
+            {
+                throw new InvalidDataException(
+                    "The workflow-interface batch contained an unsupported or unrequested contract.");
+            }
+        }
+        return result;
+    }
+
     private async Task<T> GetSdkResponseAsync<T>(
         string endpoint,
         CancellationToken cancellationToken)
     {
-        using var response = await _httpClient.GetAsync(endpoint, cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
+        return await SendSdkResponseAsync<T>(request, cancellationToken);
+    }
+
+    private async Task<T> SendSdkResponseAsync<T>(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
@@ -207,7 +257,8 @@ public class NodetoolClient : INodetoolClient
         }
 
         return JsonSerializer.Deserialize<T>(json, _jsonOptions)
-            ?? throw new InvalidDataException($"The SDK response from '{endpoint}' was empty or malformed.");
+            ?? throw new InvalidDataException(
+                $"The SDK response from '{request.RequestUri}' was empty or malformed.");
     }
 
     public async Task<WorkflowResponse> GetWorkflowAsync(string workflowId, CancellationToken cancellationToken = default)

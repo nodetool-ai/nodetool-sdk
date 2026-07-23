@@ -63,28 +63,35 @@ public class WorkflowMetadataService : IDisposable
             var workflows = await _client.GetWorkflowSummariesAsync();
             _logger?.LogDebug("Retrieved {Count} compact workflow summaries from API", workflows.Count);
 
-            // Convert API responses to our detailed models
             var workflowDetails = new List<WorkflowDetail>();
-            
+            var interfacesById = new Dictionary<string, WorkflowInterfaceResponse>(
+                StringComparer.Ordinal);
+            foreach (var batch in workflows.Chunk(100))
+            {
+                var result = await _client.GetWorkflowInterfacesAsync(
+                    batch.Select(workflow => workflow.Id).ToArray());
+                foreach (var workflowInterface in result.Interfaces)
+                    interfacesById[workflowInterface.WorkflowId] = workflowInterface;
+                foreach (var error in result.Errors)
+                {
+                    _logger?.LogWarning(
+                        "Workflow interface {Id} was skipped ({Code}): {Message}",
+                        error.WorkflowId,
+                        error.Code,
+                        error.Message);
+                }
+            }
+
             foreach (var workflow in workflows)
             {
-                try
-                {
-                    var workflowInterface = await _client.GetWorkflowInterfaceAsync(workflow.Id);
-                    var workflowDetail = CreateWorkflowDetail(workflow, workflowInterface);
-
-                    workflowDetails.Add(workflowDetail);
-                    _logger?.LogDebug("Processed workflow: {Name} ({Id})", workflowDetail.Name, workflowDetail.Id);
-                }
-                catch (WorkflowInterfaceUnavailableException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "Failed to fetch details for workflow {Id}: {Name}", workflow.Id, workflow.Name);
-                    // Continue with other workflows
-                }
+                if (!interfacesById.TryGetValue(workflow.Id, out var workflowInterface))
+                    continue;
+                var workflowDetail = CreateWorkflowDetail(workflow, workflowInterface);
+                workflowDetails.Add(workflowDetail);
+                _logger?.LogDebug(
+                    "Processed workflow: {Name} ({Id})",
+                    workflowDetail.Name,
+                    workflowDetail.Id);
             }
 
             // Update cache

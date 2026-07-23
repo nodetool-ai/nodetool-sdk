@@ -131,6 +131,44 @@ public class NodetoolClientContractTests
     }
 
     [Fact]
+    public async Task GetWorkflowInterfacesAsync_PostsBoundedBatchAndReadsItemErrors()
+    {
+        HttpMethod? requestedMethod = null;
+        string? requestedBody = null;
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(request =>
+        {
+            requestedMethod = request.Method;
+            requestedBody = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    """{"interfaces":[{"version":1,"workflow_id":"wf-2","etag":null,"source":"server","inputs":[],"outputs":[],"diagnostics":[]}],"errors":[{"workflow_id":"wf-1","code":"invalid_graph","message":"Workflow graph is invalid"}]}""")
+            };
+        }));
+        var client = new NodetoolClient(httpClient);
+
+        var result = await client.GetWorkflowInterfacesAsync(new[] { "wf-2", "wf-1" });
+
+        Assert.Equal(HttpMethod.Post, requestedMethod);
+        Assert.Contains("\"ids\":[\"wf-2\",\"wf-1\"]", requestedBody);
+        Assert.Contains("\"version\":1", requestedBody);
+        Assert.Equal("wf-2", Assert.Single(result.Interfaces).WorkflowId);
+        Assert.Equal("invalid_graph", Assert.Single(result.Errors).Code);
+    }
+
+    [Fact]
+    public async Task GetWorkflowInterfacesAsync_RejectsMoreThanOneHundredIdsLocally()
+    {
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(_ =>
+            throw new InvalidOperationException("HTTP should not be called")));
+        var client = new NodetoolClient(httpClient);
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            client.GetWorkflowInterfacesAsync(
+                Enumerable.Range(0, 101).Select(index => $"wf-{index}").ToArray()));
+    }
+
+    [Fact]
     public async Task GetWorkflowSummariesAsync_ReportsDisabledBackendFeature()
     {
         using var httpClient = new HttpClient(new StubHttpMessageHandler(_ =>

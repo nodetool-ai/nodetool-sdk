@@ -108,6 +108,36 @@ public sealed class WorkflowInterfaceResponse
     public List<WorkflowInterfaceDiagnostic> Diagnostics { get; set; } = new();
 }
 
+public sealed class WorkflowInterfacesRequest
+{
+    [JsonPropertyName("ids")]
+    public IReadOnlyCollection<string> Ids { get; set; } = Array.Empty<string>();
+
+    [JsonPropertyName("version")]
+    public int Version { get; set; } = 1;
+}
+
+public sealed class WorkflowInterfaceItemError
+{
+    [JsonPropertyName("workflow_id")]
+    public string WorkflowId { get; set; } = string.Empty;
+
+    [JsonPropertyName("code")]
+    public string Code { get; set; } = string.Empty;
+
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = string.Empty;
+}
+
+public sealed class WorkflowInterfacesResponse
+{
+    [JsonPropertyName("interfaces")]
+    public List<WorkflowInterfaceResponse> Interfaces { get; set; } = new();
+
+    [JsonPropertyName("errors")]
+    public List<WorkflowInterfaceItemError> Errors { get; set; } = new();
+}
+
 internal sealed class ApiErrorResponse
 {
     [JsonPropertyName("code")]
