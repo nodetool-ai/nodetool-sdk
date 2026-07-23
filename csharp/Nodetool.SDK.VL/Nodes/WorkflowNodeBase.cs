@@ -44,6 +44,7 @@ namespace Nodetool.SDK.VL.Nodes
         private CancellationTokenSource? _manualCancelCts = null;
         private bool _isDisposed = false;
         private bool _isRunning = false;
+        private Task _executionTask = Task.CompletedTask;
         private readonly Dictionary<string, StringBuilder> _chunkBuffers = new(StringComparer.Ordinal);
         private readonly Dictionary<string, SKImage> _latestImages = new(StringComparer.Ordinal);
         private readonly Queue<string> _debugLines = new();
@@ -173,7 +174,7 @@ namespace Nodetool.SDK.VL.Nodes
                 {
                     // Rising edge detected - execute workflow
                     _lastInputSignature = ComputeInputSignature();
-                    ExecuteWorkflowAsync();
+                    StartExecution();
                 }
 
                 _lastTriggerState = currentTriggerState;
@@ -204,7 +205,7 @@ namespace Nodetool.SDK.VL.Nodes
                         }
                         else
                         {
-                            ExecuteWorkflowAsync();
+                            StartExecution();
                         }
                     }
                 }
@@ -216,7 +217,14 @@ namespace Nodetool.SDK.VL.Nodes
             }
         }
 
-        private async void ExecuteWorkflowAsync()
+        private void StartExecution()
+        {
+            if (_isRunning || !_executionTask.IsCompleted || _isDisposed)
+                return;
+            _executionTask = ExecuteWorkflowAsync();
+        }
+
+        private async Task ExecuteWorkflowAsync()
         {
             if (_isRunning) return;
             _isRunning = true;
@@ -422,13 +430,14 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 _activeSession = null;
                 _isRunning = false;
+                _executionTask = Task.CompletedTask;
 
                 // If inputs changed during execution and AutoRun is enabled, run once more.
                 if (_autoRunEnabled && _rerunRequested && !_isDisposed)
                 {
                     _rerunRequested = false;
                     AppendDebug("autorun: rerun requested");
-                    ExecuteWorkflowAsync();
+                    StartExecution();
                 }
             }
         }
