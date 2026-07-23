@@ -45,7 +45,8 @@ public class WorkflowMetadataService : IDisposable
     /// <summary>
     /// Fetch workflow metadata from the API with caching
     /// </summary>
-    public async Task<List<WorkflowDetail>> FetchWorkflowMetadataAsync()
+    public async Task<List<WorkflowDetail>> FetchWorkflowMetadataAsync(
+        CancellationToken cancellationToken = default)
     {
         // Check cache first
         if (_cachedWorkflows != null && DateTime.Now - _lastFetch < CacheValidTime)
@@ -60,7 +61,7 @@ public class WorkflowMetadataService : IDisposable
 
         try
         {
-            var workflows = await _client.GetWorkflowSummariesAsync();
+            var workflows = await _client.GetWorkflowSummariesAsync(cancellationToken);
             _logger?.LogDebug("Retrieved {Count} compact workflow summaries from API", workflows.Count);
 
             var workflowDetails = new List<WorkflowDetail>();
@@ -70,7 +71,8 @@ public class WorkflowMetadataService : IDisposable
             foreach (var batch in workflows.Chunk(100))
             {
                 var result = await _client.GetWorkflowInterfacesAsync(
-                    batch.Select(workflow => workflow.Id).ToArray());
+                    batch.Select(workflow => workflow.Id).ToArray(),
+                    cancellationToken);
                 foreach (var workflowInterface in result.Interfaces)
                 {
                     var errors = workflowInterface.Diagnostics

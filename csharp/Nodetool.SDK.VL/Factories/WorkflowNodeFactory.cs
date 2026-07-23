@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Threading.Tasks;
 using VL.Core;
 using VL.Core.CompilerServices;
 using Nodetool.SDK.VL.Models;
@@ -21,7 +20,10 @@ namespace Nodetool.SDK.VL.Factories
     {
         private static NodeBuilding.FactoryImpl? _factoryImpl = null;
         private static bool _isInitialized = false;
+        private static DateTimeOffset _retryAfter = DateTimeOffset.MinValue;
         private static readonly object _lock = new object();
+        private static readonly TimeSpan DiscoveryTimeout = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
 
         // Cached data from the Nodetool API
         private static ImmutableList<WorkflowDetail> _fetchedWorkflows = ImmutableList<WorkflowDetail>.Empty;
@@ -38,6 +40,7 @@ namespace Nodetool.SDK.VL.Factories
             {
                 _factoryImpl = null;
                 _isInitialized = false;
+                _retryAfter = DateTimeOffset.MinValue;
                 _fetchedWorkflows = ImmutableList<WorkflowDetail>.Empty;
                 _apiStatusMessage = "API data not fetched.";
                 _processingSummary = "Workflow processing summary not yet available.";
@@ -58,14 +61,15 @@ namespace Nodetool.SDK.VL.Factories
             
             lock (_lock)
             {
-                if (_isInitialized && _factoryImpl != null)
+                if (_factoryImpl != null &&
+                    (_isInitialized || DateTimeOffset.UtcNow < _retryAfter))
                 {
                     return _factoryImpl;
                 }
                 
                 try
                 {
-                    PerformGlobalDataFetchAndStore();
+                    var fetchSucceeded = PerformGlobalDataFetchAndStore();
 
                     var allDescriptions = new List<IVLNodeDescription>();
                     var nodeNames = BuildStableNodeNames(_fetchedWorkflows);
@@ -159,7 +163,10 @@ namespace Nodetool.SDK.VL.Factories
                     }
 
                     _factoryImpl = NodeBuilding.NewFactoryImpl(ImmutableArray.CreateRange(allDescriptions));
-                    _isInitialized = true;
+                    _isInitialized = fetchSucceeded;
+                    _retryAfter = fetchSucceeded
+                        ? DateTimeOffset.MinValue
+                        : DateTimeOffset.UtcNow.Add(RetryDelay);
                     return _factoryImpl;
                 }
                 catch (Exception ex)
@@ -168,7 +175,8 @@ namespace Nodetool.SDK.VL.Factories
                     
                     // Return empty factory to prevent VL from considering it "not found"
                     _factoryImpl = NodeBuilding.NewFactoryImpl(ImmutableArray<IVLNodeDescription>.Empty);
-                    _isInitialized = true;
+                    _isInitialized = false;
+                    _retryAfter = DateTimeOffset.UtcNow.Add(RetryDelay);
                     return _factoryImpl;
                 }
             }
@@ -177,7 +185,7 @@ namespace Nodetool.SDK.VL.Factories
         /// <summary>
         /// Fetches workflow metadata from the API and stores it
         /// </summary>
-        private static void PerformGlobalDataFetchAndStore()
+        private static bool PerformGlobalDataFetchAndStore()
         {
             var apiBase = NodeToolClientProvider.CurrentApiBaseUrl?.ToString().TrimEnd('/')
                           ?? NodetoolConstants.Defaults.BaseUrl;
@@ -185,7 +193,7 @@ namespace Nodetool.SDK.VL.Factories
             
             try
             {
-                var metadataService = new WorkflowMetadataService();
+                using var metadataService = new WorkflowMetadataService();
 
                 // Ensure the metadata service uses the same API base URL as the Connect node.
                 metadataService.Configure(new NodetoolOptions
@@ -194,33 +202,26 @@ namespace Nodetool.SDK.VL.Factories
                     ApiKey = NodeToolClientProvider.CurrentAuthToken
                 });
                 
-                // Since we can't use async in static constructor context, we need to handle this differently
-                // For now, we'll use Task.Run to block synchronously - this isn't ideal but works for initialization
-                var task = Task.Run(async () => await metadataService.FetchWorkflowMetadataAsync());
-                
-                bool completed = task.Wait(TimeSpan.FromSeconds(NodetoolConstants.Defaults.TimeoutSeconds)); // Use constant for timeout
-                
-                if (!completed)
-                {
-                    _apiStatusMessage = $"Timeout waiting for API response after {NodetoolConstants.Defaults.TimeoutSeconds} seconds";
-                    VlLog.Error($"WorkflowNodeFactory: {_apiStatusMessage}");
-                    _fetchedWorkflows = ImmutableList<WorkflowDetail>.Empty;
-                    return;
-                }
-                
-                var workflows = task.Result;
+                using var timeout = new CancellationTokenSource(DiscoveryTimeout);
+                var workflows = metadataService
+                    .FetchWorkflowMetadataAsync(timeout.Token)
+                    .GetAwaiter()
+                    .GetResult();
                 _fetchedWorkflows = workflows?.ToImmutableList() ?? ImmutableList<WorkflowDetail>.Empty;
                 _apiStatusMessage = metadataService.StatusMessage;
                 VlLog.Debug($"WorkflowNodeFactory: {_apiStatusMessage} ({_fetchedWorkflows.Count} workflows)");
+                return true;
             }
             catch (AggregateException aggEx)
             {
                 var innerEx = aggEx.InnerException ?? aggEx;
                 HandleWorkflowApiError(innerEx);
+                return false;
             }
             catch (Exception ex)
             {
                 HandleWorkflowApiError(ex);
+                return false;
             }
         }
 
@@ -241,7 +242,7 @@ namespace Nodetool.SDK.VL.Factories
                     userGuidance = GetWorkflowNetworkErrorGuidance();
                     break;
                     
-                case TaskCanceledException when ex.Message.Contains("timeout"):
+                case OperationCanceledException:
                     errorCategory = "Request Timeout";
                     _apiStatusMessage = $"⏱️ Workflow API Timeout: Nodetool API did not respond in time";
                     userGuidance = GetWorkflowTimeoutErrorGuidance();

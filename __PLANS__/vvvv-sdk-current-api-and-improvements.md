@@ -243,7 +243,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [ ] Cache normalized metadata and workflow interfaces by ID and `etag`.
 - [ ] Replace synchronous `Task.Run(...).Wait(...)` factory initialization with asynchronous stale-while-revalidate loading.
 - [ ] Keep the last successful factory contents when refresh fails.
-- [ ] Do not permanently cache an empty factory after a transient startup failure.
+- [x] Do not permanently cache an empty factory after a transient startup failure.
 - [ ] Add explicit `Refresh`, `Last Refresh`, `Server Version`, `Interface Source`, and `Last Error` diagnostics for vvvv.
 - [ ] Invalidate only changed workflow node descriptions.
 - [ ] Debounce rapid server/workflow changes so vvvv is not repeatedly rebuilding the factory.
@@ -251,7 +251,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 
 ### Phase 4 acceptance gate
 
-- [ ] Opening vvvv with NodeTool offline does not block for 30 seconds.
+- [x] Opening vvvv with NodeTool offline does not block for 30 seconds (discovery is cancelled after five seconds and retried later).
 - [ ] Starting NodeTool after vvvv makes workflows discoverable without restarting vvvv.
 - [ ] Stopping NodeTool leaves the last successful workflow nodes available with a stale/error indicator.
 - [ ] Renaming or editing one workflow refreshes only the affected description.
