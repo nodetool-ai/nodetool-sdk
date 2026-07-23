@@ -85,6 +85,8 @@ Media transport:
 - Set the limit to `0` to upload all binary media, or raise it up to 64 MiB when inline transport is preferable.
 - Workflow audio, video, document, and generic asset pins use the typed SDK asset-reference classes (`AudioRef`, `VideoRef`, `DocumentRef`, and `GenericAssetRef`).
 - Image pins use `SKImage`. A workflow node owns images it produces and disposes them when replaced or when the node is disposed; downstream patches should treat output images as borrowed and must not dispose them. Input images remain owned by the caller.
+- NodeTool list metadata maps to immutable VL-native `Spread<T>` pins. Spreads are converted to transport arrays only while preparing execution parameters.
+- Image outputs accept inline bytes, data URIs, HTTP/storage URLs, and current `asset://<stored-file>` references. ID-only asset references are materialized through the connected asset RPC.
 - Workflow outputs are latched and reapplied on each VL update so event-driven scalar and media results remain visible after the execution frame.
 - Structured workflow pins use generated `Nodetool.Types` DTOs when the interface discriminator or `type_name` resolves in the SDK registry. Unknown structures remain explicit `Object` fallback pins.
 

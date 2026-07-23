@@ -311,6 +311,8 @@ namespace Nodetool.SDK.VL.Nodes
             if (vlType == typeof(int)) return 0;
             if (vlType == typeof(float)) return 0.0f;
             if (vlType == typeof(bool)) return false;
+            if (VlValueConversion.IsSpreadType(vlType))
+                return VlValueConversion.CreateEmptySpread(vlType.GetGenericArguments()[0]);
             if (vlType.IsArray && vlType.GetElementType() is Type elementType)
                 return Array.CreateInstance(elementType, 0);
             if (vlType == typeof(SKImage)) return null!;

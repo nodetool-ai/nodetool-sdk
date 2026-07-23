@@ -1,5 +1,6 @@
 using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.VL.Utilities;
+using VL.Lib.Collections;
 
 namespace Nodetool.SDK.Tests.VL;
 
@@ -16,8 +17,8 @@ public class NodeVlTypeMappingTests
 
         var (type, defaultValue) = VlTypeMapping.MapNodeType(metadata);
 
-        Assert.Equal(typeof(int[]), type);
-        Assert.Empty(Assert.IsType<int[]>(defaultValue));
+        Assert.Equal(typeof(Spread<int>), type);
+        Assert.Empty(Assert.IsType<Spread<int>>(defaultValue));
     }
 
     [Fact]

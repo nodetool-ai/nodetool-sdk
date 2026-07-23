@@ -1,12 +1,75 @@
 using System;
 using System.Globalization;
 using System.Collections;
+using System.Reflection;
 using System.Text.Json;
+using VL.Lib.Collections;
 
 namespace Nodetool.SDK.VL.Utilities;
 
 internal static class VlValueConversion
 {
+    private static readonly MethodInfo CreateSpreadFromArrayMethod = typeof(Spread)
+        .GetMethods(BindingFlags.Public | BindingFlags.Static)
+        .Single(method =>
+            method.Name == nameof(Spread.Create) &&
+            method.IsGenericMethodDefinition &&
+            method.GetParameters() is [{ ParameterType.IsArray: true }]);
+
+    public static bool IsSpreadType(Type type)
+        => type.IsGenericType &&
+           type.GetGenericTypeDefinition() == typeof(Spread<>);
+
+    public static bool TryGetCollectionElementType(Type type, out Type elementType)
+    {
+        if (type.IsArray && type.GetElementType() is { } arrayElementType)
+        {
+            elementType = arrayElementType;
+            return true;
+        }
+
+        if (IsSpreadType(type))
+        {
+            elementType = type.GetGenericArguments()[0];
+            return true;
+        }
+
+        elementType = typeof(object);
+        return false;
+    }
+
+    public static object CreateEmptySpread(Type elementType)
+        => CreateSpread(elementType, Array.Empty<object?>());
+
+    public static object CreateCollection(
+        Type collectionType,
+        Type elementType,
+        IReadOnlyList<object?> items)
+    {
+        var array = Array.CreateInstance(elementType, items.Count);
+        for (var i = 0; i < items.Count; i++)
+            array.SetValue(items[i], i);
+
+        return collectionType.IsArray
+            ? array
+            : CreateSpreadFromArrayMethod.MakeGenericMethod(elementType)
+                .Invoke(null, [array])
+                ?? throw new InvalidOperationException($"Could not create {collectionType}.");
+    }
+
+    public static object NormalizeForTransport(object value)
+    {
+        if (!IsSpreadType(value.GetType()) || value is not IEnumerable enumerable)
+            return value;
+
+        var elementType = value.GetType().GetGenericArguments()[0];
+        var items = enumerable.Cast<object?>().ToArray();
+        return CreateCollection(elementType.MakeArrayType(), elementType, items);
+    }
+
+    private static object CreateSpread(Type elementType, IReadOnlyList<object?> items)
+        => CreateCollection(typeof(Spread<>).MakeGenericType(elementType), elementType, items);
+
     public static object? ConvertOrFallback(object? value, Type targetType, object? fallback)
     {
         if (value == null)
@@ -38,21 +101,22 @@ internal static class VlValueConversion
             if (targetType == typeof(bool))
                 return Convert.ToBoolean(value, CultureInfo.InvariantCulture);
 
-            if (targetType.IsArray && targetType.GetElementType() is Type elementType)
+            if (TryGetCollectionElementType(targetType, out var elementType))
             {
                 if (value is IEnumerable enumerable and not string)
                 {
                     var items = enumerable.Cast<object?>().ToArray();
-                    var convertedArray = Array.CreateInstance(elementType, items.Length);
                     var elementFallback = GetDefaultValue(elementType);
+                    var convertedItems = new object?[items.Length];
                     for (var i = 0; i < items.Length; i++)
-                        convertedArray.SetValue(ConvertOrFallback(items[i], elementType, elementFallback), i);
-                    return convertedArray;
+                        convertedItems[i] = ConvertOrFallback(items[i], elementType, elementFallback);
+                    return CreateCollection(targetType, elementType, convertedItems);
                 }
 
-                var single = Array.CreateInstance(elementType, 1);
-                single.SetValue(ConvertOrFallback(value, elementType, GetDefaultValue(elementType)), 0);
-                return single;
+                return CreateCollection(
+                    targetType,
+                    elementType,
+                    [ConvertOrFallback(value, elementType, GetDefaultValue(elementType))]);
             }
 
             if (targetType.IsClass && value is IDictionary or IEnumerable)
@@ -144,19 +208,19 @@ internal static class VlValueConversion
             return false;
         }
 
-        if (targetType.IsArray && targetType.GetElementType() is Type elementType)
+        if (TryGetCollectionElementType(targetType, out var elementType))
         {
             if (je.ValueKind == JsonValueKind.Array)
             {
-                var list = Array.CreateInstance(elementType, je.GetArrayLength());
+                var items = new object?[je.GetArrayLength()];
                 var idx = 0;
                 foreach (var item in je.EnumerateArray())
                 {
                     if (!TryConvertJsonElement(item, elementType, out var itemValue))
                         itemValue = GetDefaultValue(elementType);
-                    list.SetValue(itemValue, idx++);
+                    items[idx++] = itemValue;
                 }
-                converted = list;
+                converted = CreateCollection(targetType, elementType, items);
                 return true;
             }
             return false;

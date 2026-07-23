@@ -319,7 +319,8 @@ namespace Nodetool.SDK.VL.Nodes
                     {
                         if (_inputPins.TryGetValue(property.Name, out var inputPin))
                         {
-                            inputData[property.Name] = inputPin.Value ?? property.Default ?? "";
+                            var inputValue = inputPin.Value ?? property.Default ?? "";
+                            inputData[property.Name] = VlValueConversion.NormalizeForTransport(inputValue);
                         }
                         else
                         {
@@ -777,7 +778,10 @@ namespace Nodetool.SDK.VL.Nodes
             if (pinType == typeof(int)) return 0;
             if (pinType == typeof(float)) return 0.0f;
             if (pinType == typeof(bool)) return false;
-            if (pinType == typeof(string[])) return new string[0];
+            if (VlValueConversion.IsSpreadType(pinType))
+                return VlValueConversion.CreateEmptySpread(pinType.GetGenericArguments()[0]);
+            if (pinType.IsArray && pinType.GetElementType() is Type elementType)
+                return Array.CreateInstance(elementType, 0);
             if (pinType == typeof(object)) return null;
             
             // For other types, try to create an instance
@@ -936,20 +940,20 @@ namespace Nodetool.SDK.VL.Nodes
                     }
                     return Array.Empty<byte>();
                 }
-                else if (expectedType.IsArray &&
-                         expectedType.GetElementType() is Type elementType)
+                else if (VlValueConversion.TryGetCollectionElementType(
+                             expectedType,
+                             out var elementType))
                 {
                     IReadOnlyList<NodeToolValue> values = value.Kind == NodeToolValueKind.List
                         ? value.AsListOrEmpty()
-                        : new[] { value };
-                    var result = Array.CreateInstance(elementType, values.Count);
-                    for (var i = 0; i < values.Count; i++)
-                    {
-                        result.SetValue(
-                            ConvertNodeToolValueToExpectedType(values[i], elementType),
-                            i);
-                    }
-                    return result;
+                        : [value];
+                    var convertedItems = values
+                        .Select(item => ConvertNodeToolValueToExpectedType(item, elementType))
+                        .ToArray();
+                    return VlValueConversion.CreateCollection(
+                        expectedType,
+                        elementType,
+                        convertedItems);
                 }
                 else if (expectedType == typeof(object))
                 {
@@ -1212,7 +1216,10 @@ namespace Nodetool.SDK.VL.Nodes
                 if (type == typeof(int)) return 0;
                 if (type == typeof(float)) return 0.0f;
                 if (type == typeof(bool)) return false;
-                if (type == typeof(string[])) return new string[0];
+                if (VlValueConversion.IsSpreadType(type))
+                    return VlValueConversion.CreateEmptySpread(type.GetGenericArguments()[0]);
+                if (type.IsArray && type.GetElementType() is Type elementType)
+                    return Array.CreateInstance(elementType, 0);
                 if (type == typeof(object)) return null;
                 return Activator.CreateInstance(type);
             }

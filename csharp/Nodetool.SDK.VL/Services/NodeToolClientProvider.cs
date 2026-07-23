@@ -21,7 +21,7 @@ public static class NodeToolClientProvider
     private static readonly object _lock = new();
     private static string _currentUrl = "ws://localhost:7777";
     private static string? _currentApiKey;
-    private static Uri? _currentApiBaseUrl;
+    private static Uri? _currentApiBaseUrl = new(NodetoolConstants.Defaults.BaseUrl);
     private static readonly INodeToolExecutionClient _nullClient = new NullNodeToolExecutionClient();
     private static int _executionTimeoutSeconds = DefaultExecutionTimeoutSeconds;
     private static int _inlineMediaLimitBytes = DefaultInlineMediaLimitBytes;

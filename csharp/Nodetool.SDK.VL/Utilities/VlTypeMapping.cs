@@ -1,4 +1,5 @@
 using Nodetool.SDK.Api.Models;
+using VL.Lib.Collections;
 
 namespace Nodetool.SDK.VL.Utilities;
 
@@ -52,8 +53,8 @@ internal static class VlTypeMapping
         var elementType = elementDefinition == null
             ? typeof(object)
             : MapNodeType(elementDefinition).Item1 ?? typeof(object);
-        var arrayType = elementType.MakeArrayType();
-        return (arrayType, Array.CreateInstance(elementType, 0));
+        var spreadType = typeof(Spread<>).MakeGenericType(elementType);
+        return (spreadType, VlValueConversion.CreateEmptySpread(elementType));
     }
 
     private enum Kind

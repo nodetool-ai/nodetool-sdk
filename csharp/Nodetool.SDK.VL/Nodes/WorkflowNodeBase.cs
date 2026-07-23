@@ -783,11 +783,22 @@ namespace Nodetool.SDK.VL.Nodes
                 return false;
             }
 
-            if (!map.TryGetValue("uri", out var uriValue))
-                return false;
+            if (map.TryGetValue("uri", out var uriValue))
+            {
+                uri = uriValue.AsString() ?? "";
+                if (!string.IsNullOrWhiteSpace(uri))
+                    return true;
+            }
 
-            uri = uriValue.AsString() ?? "";
-            return !string.IsNullOrWhiteSpace(uri);
+            if (map.TryGetValue("asset_id", out var assetIdValue) &&
+                assetIdValue.AsString() is { } assetId &&
+                !string.IsNullOrWhiteSpace(assetId))
+            {
+                uri = $"asset:{Uri.EscapeDataString(assetId)}";
+                return true;
+            }
+
+            return false;
         }
 
         private static bool IsImageTypeDiscriminator(string type)
@@ -873,7 +884,7 @@ namespace Nodetool.SDK.VL.Nodes
         {
             try
             {
-                var uri = ResolveImageUri(uriText);
+                var uri = await ResolveImageUriAsync(uriText, cancellationToken).ConfigureAwait(false);
                 if (uri == null)
                     throw new InvalidOperationException($"Unsupported image URI '{uriText}'.");
 
@@ -942,8 +953,41 @@ namespace Nodetool.SDK.VL.Nodes
             }
         }
 
-        private static Uri? ResolveImageUri(string value)
+        private static async Task<Uri?> ResolveImageUriAsync(
+            string value,
+            CancellationToken cancellationToken)
         {
+            if (TryExtractAssetKey(value, out var assetKey) &&
+                string.IsNullOrEmpty(Path.GetExtension(assetKey)) &&
+                NodeToolClientProvider.IsConnected)
+            {
+                var asset = await NodeToolClientProvider
+                    .GetClient()
+                    .GetAssetAsync(assetKey, cancellationToken)
+                    .ConfigureAwait(false);
+                var materializedUri = asset?.GetUrl ?? asset?.Uri;
+                if (!string.IsNullOrWhiteSpace(materializedUri) &&
+                    !string.Equals(materializedUri, value, StringComparison.OrdinalIgnoreCase))
+                {
+                    return ResolveImageUri(materializedUri);
+                }
+            }
+
+            return ResolveImageUri(value);
+        }
+
+        internal static Uri? ResolveImageUri(string value)
+        {
+            if (TryExtractAssetKey(value, out var assetKey))
+            {
+                var assetApiBase = NodeToolClientProvider.CurrentApiBaseUrl;
+                return assetApiBase == null
+                    ? null
+                    : new Uri(
+                        assetApiBase,
+                        $"/api/storage/{Uri.EscapeDataString(assetKey)}");
+            }
+
             if (Uri.TryCreate(value, UriKind.Absolute, out var absolute))
                 return absolute;
 
@@ -951,6 +995,21 @@ namespace Nodetool.SDK.VL.Nodes
             return apiBase == null || !Uri.TryCreate(apiBase, value, out var relative)
                 ? null
                 : relative;
+        }
+
+        internal static bool TryExtractAssetKey(string value, out string assetKey)
+        {
+            assetKey = "";
+            var trimmed = value.Trim();
+            if (!trimmed.StartsWith("asset:", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            var encodedId = trimmed["asset:".Length..].TrimStart('/');
+            if (string.IsNullOrWhiteSpace(encodedId))
+                return false;
+
+            assetKey = Uri.UnescapeDataString(encodedId);
+            return !string.IsNullOrWhiteSpace(assetKey);
         }
 
         private static bool IsSameOrigin(Uri target, Uri? origin)
@@ -1011,6 +1070,8 @@ namespace Nodetool.SDK.VL.Nodes
             if (vlType == typeof(int)) return 0;
             if (vlType == typeof(float)) return 0.0f;
             if (vlType == typeof(bool)) return false;
+            if (VlValueConversion.IsSpreadType(vlType))
+                return VlValueConversion.CreateEmptySpread(vlType.GetGenericArguments()[0]);
             if (vlType.IsArray && vlType.GetElementType() is Type elementType)
                 return Array.CreateInstance(elementType, 0);
             if (vlType == typeof(SKImage)) return null!;
@@ -1039,7 +1100,7 @@ namespace Nodetool.SDK.VL.Nodes
             // Workflow runner terminal results are output-name -> value[] even for
             // scalar schema properties. Preserve arrays for spread pins, but unwrap
             // a singleton container before scalar conversion.
-            if (!expectedType.IsArray &&
+            if (!VlValueConversion.TryGetCollectionElementType(expectedType, out _) &&
                 value.Kind == NodeToolValueKind.List &&
                 value.AsListOrEmpty() is { Count: 1 } singleton)
             {
@@ -1190,21 +1251,20 @@ namespace Nodetool.SDK.VL.Nodes
                 return b;
             }
 
-            // Array outputs: render as JSON string array when possible.
-            if (expectedType.IsArray && expectedType.GetElementType() is Type elementType)
+            // Collection outputs use VL-native Spread<T> for list metadata.
+            if (VlValueConversion.TryGetCollectionElementType(expectedType, out var elementType))
             {
-                if (value.Kind == NodeToolValueKind.List)
-                {
-                    var items = value.AsListOrEmpty();
-                    var array = Array.CreateInstance(elementType, items.Count);
-                    for (var i = 0; i < items.Count; i++)
-                        array.SetValue(ConvertNodeToolValueToExpectedType(items[i], elementType), i);
-                    return array;
-                }
-
-                var single = Array.CreateInstance(elementType, 1);
-                single.SetValue(ConvertNodeToolValueToExpectedType(value, elementType), 0);
-                return single;
+                IReadOnlyList<NodeToolValue> values = value.Kind == NodeToolValueKind.List
+                    ? value.AsListOrEmpty()
+                    : [value];
+                var convertedItems = values
+                    .Select(item => ConvertNodeToolValueToExpectedType(item, elementType))
+                    .Cast<object?>()
+                    .ToArray();
+                return VlValueConversion.CreateCollection(
+                    expectedType,
+                    elementType,
+                    convertedItems);
             }
 
             return ConvertToExpectedType(value.Raw ?? value.AsString() ?? value.ToJsonString(), expectedType);
@@ -1475,7 +1535,9 @@ namespace Nodetool.SDK.VL.Nodes
                 }
             }
 
-            return rawValue ?? "";
+            return rawValue == null
+                ? ""
+                : VlValueConversion.NormalizeForTransport(rawValue);
         }
 
         private static async Task<object> ConvertMediaInputAsync(

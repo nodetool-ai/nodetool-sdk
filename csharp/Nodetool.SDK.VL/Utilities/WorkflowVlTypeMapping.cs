@@ -2,6 +2,7 @@ using Nodetool.SDK.Types;
 using Nodetool.SDK.Types.Assets;
 using SkiaSharp;
 using System.Reflection;
+using VL.Lib.Collections;
 
 namespace Nodetool.SDK.VL.Utilities;
 
@@ -18,7 +19,7 @@ internal static class WorkflowVlTypeMapping
             "int" or "integer" => (typeof(int), 0),
             "float" or "number" => (typeof(float), 0.0f),
             "bool" or "boolean" => (typeof(bool), false),
-            "list" or "array" => GetArrayTypeAndDefault(metadata),
+            "list" or "array" => GetSpreadTypeAndDefault(metadata),
             "image" => (typeof(SKImage), null),
             "audio" => (typeof(AudioRef), new AudioRef()),
             "video" => (typeof(VideoRef), new VideoRef()),
@@ -35,12 +36,12 @@ internal static class WorkflowVlTypeMapping
                GetTypeAndDefault(metadata).Type == typeof(object);
     }
 
-    private static (Type Type, object DefaultValue) GetArrayTypeAndDefault(TypeMetadata metadata)
+    private static (Type Type, object DefaultValue) GetSpreadTypeAndDefault(TypeMetadata metadata)
     {
         var elementMetadata = metadata.TypeArgs.FirstOrDefault() ?? new TypeMetadata { Type = "any" };
         var elementType = GetTypeAndDefault(elementMetadata).Type;
-        var arrayType = elementType.MakeArrayType();
-        return (arrayType, Array.CreateInstance(elementType, 0));
+        var spreadType = typeof(Spread<>).MakeGenericType(elementType);
+        return (spreadType, VlValueConversion.CreateEmptySpread(elementType));
     }
 
     private static (Type Type, object? DefaultValue) GetStructuredTypeAndDefault(TypeMetadata metadata)

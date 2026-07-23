@@ -7,6 +7,7 @@ using Nodetool.SDK.VL.Utilities;
 using Nodetool.Types.Core;
 using System.Text;
 using VL.Core;
+using VL.Lib.Collections;
 
 namespace Nodetool.SDK.Tests.VL;
 
@@ -95,13 +96,31 @@ public class WorkflowVlTypeMappingTests
     }
 
     [Fact]
-    public void TerminalList_RemainsAnArrayForSpreadPins()
+    public void TerminalList_BecomesAVlSpread()
     {
         var value = NodeToolValue.From(new object[] { "alpha", "beta" });
+        var spreadType = typeof(Spread<string>);
 
-        var converted = WorkflowNodeBase.ConvertNodeToolValueToExpectedType(value, typeof(string[]));
+        var converted = WorkflowNodeBase.ConvertNodeToolValueToExpectedType(value, spreadType);
 
-        Assert.Equal(new[] { "alpha", "beta" }, Assert.IsType<string[]>(converted));
+        Assert.Equal(
+            new[] { "alpha", "beta" },
+            Assert.IsType<Spread<string>>(converted).ToArray());
+    }
+
+    [Fact]
+    public void WorkflowListType_UsesVlSpread()
+    {
+        var metadata = new TypeMetadata
+        {
+            Type = "list",
+            TypeArgs = [new TypeMetadata { Type = "int" }]
+        };
+
+        var (type, defaultValue) = WorkflowVlTypeMapping.GetTypeAndDefault(metadata);
+
+        Assert.Equal(typeof(Spread<int>), type);
+        Assert.Empty(Assert.IsType<Spread<int>>(defaultValue));
     }
 
     [Fact]
@@ -150,6 +169,40 @@ public class WorkflowVlTypeMappingTests
 
         Assert.True(WorkflowNodeBase.TryExtractImageUri(value, out var uri));
         Assert.Equal("/api/storage/roundtrip.png", uri);
+    }
+
+    [Fact]
+    public void ImagePayload_UsesAssetIdWhenUriIsEmpty()
+    {
+        var value = NodeToolValue.From(new Dictionary<string, object?>
+        {
+            ["type"] = "image",
+            ["uri"] = "",
+            ["asset_id"] = "asset-123"
+        });
+
+        Assert.True(WorkflowNodeBase.TryExtractImageUri(value, out var uri));
+        Assert.Equal("asset:asset-123", uri);
+    }
+
+    [Theory]
+    [InlineData("asset:asset-123", "asset-123")]
+    [InlineData("asset://asset-123", "asset-123")]
+    [InlineData("asset:///asset-123", "asset-123")]
+    [InlineData("asset://asset-123.png", "asset-123.png")]
+    public void AssetImageUri_ExposesStorageKey(string uri, string expectedId)
+    {
+        Assert.True(WorkflowNodeBase.TryExtractAssetKey(uri, out var assetKey));
+        Assert.Equal(expectedId, assetKey);
+    }
+
+    [Fact]
+    public void AssetImageUri_MapsToCurrentStorageEndpoint()
+    {
+        var uri = WorkflowNodeBase.ResolveImageUri("asset://asset-123.png");
+
+        Assert.NotNull(uri);
+        Assert.Equal("/api/storage/asset-123.png", uri.AbsolutePath);
     }
 
     [Fact]

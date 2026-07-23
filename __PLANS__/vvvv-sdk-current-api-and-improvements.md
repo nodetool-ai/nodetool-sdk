@@ -297,7 +297,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Generate input and output pins exclusively from the normalized workflow interface.
 - [x] Preserve defaults, min/max ranges, descriptions, required/optional state, enum values, and list element types in normalized metadata and VL pin diagnostics.
 - [x] Map primitive NodeTool types to native VL types.
-- [x] Map lists to appropriate spreads/arrays rather than always using `string[]`.
+- [x] Map list pins to immutable VL-native `Spread<T>` values for both workflow and individual-node factories, normalizing spreads to arrays only at the MessagePack transport boundary.
 - [x] Bind structured NodeTool types through the C# type registry where a generated type exists.
 - [x] Map image inputs/outputs to `SKImage` and document ownership/disposal rules.
 - [x] Map audio, video, document, and generic asset pins to typed SDK asset references.
@@ -328,6 +328,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Unwrap singleton terminal value arrays for scalar integer, float, boolean, enum, and string pins without flattening spread outputs.
 - [x] Preserve the latest valid media value if a terminal result contains only a URI/reference and no inline bytes.
 - [x] Resolve image outputs by the derived pin type even when generic output nodes report `output_type: any`; decode inline/base64/data-URI values and fetch materialized storage URLs asynchronously.
+- [x] Resolve current `asset://<stored-file>` image outputs through `/api/storage`; resolve ID-only asset references through the connected asset RPC before downloading.
 - [x] Latch workflow outputs and reapply them on every VL update so scalar value-type outputs do not reset one frame after an execution event.
 - [x] Use the workflow interface type when encoding every input, including graph-derived image/audio/video/document inputs.
 - [x] Prefer asset/reference transport for large media; set and test explicit inline payload limits.
