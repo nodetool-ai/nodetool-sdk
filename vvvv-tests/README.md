@@ -80,6 +80,20 @@ should exercise that behavior.
 - `SDK Test - Rename Refresh`: safe to rename and edit while vvvv remains open.
 - `SDK Test - Large Graph`: a large graph with representative inline image data.
 
+Created in the local development database on 2026-07-23:
+
+- `SDK Test - Primitives` (`3be02581903641aab774eef40ac164b0`): string,
+  integer, float, boolean, select/enum, and string-list roundtrips.
+- `SDK Test - Image Roundtrip` (`67ec9fedc4a84d639c42d72cc2a36500`):
+  image input directly connected to a generic workflow output.
+- `SDK Test - Cancellation` (`5997d9c52e1f48818b20507d34908d32`):
+  string input through a 30-second `Wait`, then to an output.
+
+Their authoritative v1 interfaces return the expected public pins with zero
+diagnostics. A superseded two-pin primitive draft
+(`dbeab8bbc7a84b569b5b94a4f9342fbd`) can be deleted after restarting the
+backend with workflow PUT/DELETE route registration commit `323812eb0`.
+
 Record the workflow IDs after creation. Stable IDs let a rename test distinguish
 identity changes from display-name changes.
 
