@@ -243,25 +243,6 @@
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
           </Pad>
-          <Node Bounds="1395,157,85,19" Id="JilpPTRt3owNyYLihRqYiU">
-            <p:NodeReference LastCategoryFullName="Nodetool Workflows" LastDependency="VL.Nodetool.vl">
-              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-              <CategoryReference Kind="Category" Name="Nodetool Workflows" />
-              <Choice Kind="ProcessNode" Name="TEST_VVVV_02" />
-            </p:NodeReference>
-            <Pin Id="NvytOUoJJ7aNUePoojM1Ny" Name="Trigger" Kind="InputPin" />
-            <Pin Id="Ui5nHmbF67IP3q02GK9aWu" Name="Cancel" Kind="InputPin" />
-            <Pin Id="K09jybdbiEoOm0FjVBFiNn" Name="AutoRun" Kind="InputPin" />
-            <Pin Id="KY9CRuGSzuPMsstzE2hAkd" Name="RestartOnChange" Kind="InputPin" />
-            <Pin Id="JGrVOpRCfMHLDyWQU9jcAN" Name="Prompt" Kind="InputPin" />
-            <Pin Id="Lo1d9TfszjZPcJ7pMBdPVb" Name="IsRunning" Kind="OutputPin" />
-            <Pin Id="Sr5JnYJ0RgRPuLk18SUz29" Name="Error" Kind="OutputPin" />
-            <Pin Id="SgOUNOcsRyHPPBipEd0M0i" Name="Debug" Kind="OutputPin" IsHidden="true" />
-            <Pin Id="MoY8rzFUVs9NNS3IzAOr5C" Name="InputSchemaJson" Kind="OutputPin" IsHidden="true" />
-            <Pin Id="KZDF6MtfP8pQK1kcS4lcK3" Name="OutputSchemaJson" Kind="OutputPin" IsHidden="true" />
-            <Pin Id="EGQGayU6h6NQNI4f3jW2V4" Name="Output" Kind="OutputPin" />
-            <Pin Id="MefAUM9hbCQNOWxevEX5Te" Name="Thinking" Kind="OutputPin" />
-          </Node>
           <Pad Id="NERpiyiygGCQJBWKdwbvwF" Comment="Prompt" Bounds="1477,120,108,15" ShowValueBox="true" isIOBox="true" Value="asdf">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
@@ -481,11 +462,6 @@
         <Link Id="I4KFkltudXDMNgU9wfVysS" Ids="C7wC3mXftt7ORdl6yK15v8,CSbkMtMl4zaOa4EvJnwQdV" />
         <Link Id="BESH5mvdr8JNrWCA2DLZIk" Ids="SpSpIpGtVXFNAsBOF9O59a,BSEfPaDJhYKOnaPNB2keVZ" />
         <Link Id="Pf8VDOUzirxQVHPhI9TqWM" Ids="PR2rTXQi5x8QBXVUyH5IS9,GUqFL8fBo5rMKJvqwTiQhs" />
-        <Link Id="PNwiaPyBi6CN5Jn1DkL060" Ids="NERpiyiygGCQJBWKdwbvwF,JGrVOpRCfMHLDyWQU9jcAN" />
-        <Link Id="V04Tc0fUH5UOdFlWprk0hM" Ids="VjDOVjp6tlALcP0WvDe2LG,NvytOUoJJ7aNUePoojM1Ny" />
-        <Link Id="GCP5TV9pGlVPN2us70sgKj" Ids="Lo1d9TfszjZPcJ7pMBdPVb,U8t4nClbd5QN0SXCODsCmd" />
-        <Link Id="RgIDA8NKtpfMLnIQXeeESP" Ids="EGQGayU6h6NQNI4f3jW2V4,FCuL6tKLQWQOnRzCLnGF6i" />
-        <Link Id="JdSAU3lONZMQDMGUQrvvrf" Ids="MefAUM9hbCQNOWxevEX5Te,PQ4uni6YWneQKJitbqjnvi" />
         <Link Id="A7biULL73tKPTEqMI30dn4" Ids="B7ibnX1FIGrO2kcTLT53qm,Gp016yG5UfaLQuutfaeRUe" />
         <Link Id="ORcJIIBzHNHLiAbbeATDf0" Ids="UlbWpVP6wTmOFXyeXArLe5,Rn0WMFl6EWFPnznlPySict" />
         <Link Id="QkFEvK2srZKQdzN3HYXd5r" Ids="SuyzHTRwaesQCdWGZItC34,PjyAPbdVtpiPZehhVEUJKc" />

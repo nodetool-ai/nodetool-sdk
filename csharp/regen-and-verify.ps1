@@ -2,6 +2,8 @@ param(
     [switch]$SkipGitDiff,
     [switch]$SkipGeneration,
     [switch]$IncludeVL,
+    [switch]$IncludeVLTests,
+    [switch]$VerifyVLPackage,
     [string]$OutputDir
 )
 
@@ -13,6 +15,11 @@ $csharpDir = $PSScriptRoot
 $typesDir = Join-Path $csharpDir "Nodetool.Types"
 $sdkDir = Join-Path $csharpDir "Nodetool.SDK"
 $testsDir = Join-Path $csharpDir "Nodetool.SDK.Tests"
+$vlTestsDir = Join-Path $csharpDir "Nodetool.SDK.VL.Tests"
+
+if ($IncludeVLTests -and -not $IncludeVL) {
+    throw "-IncludeVLTests requires -IncludeVL so the current VL assemblies are built first."
+}
 
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
     $OutputDir = Join-Path $csharpDir "_vvvv_builds\Release\net8.0"
@@ -92,6 +99,18 @@ if ($IncludeVL) {
     dotnet build (Join-Path $vlDir "Nodetool.SDK.VL.csproj") -c Release -o $resolvedOutputDir
 }
 
+if ($IncludeVLTests) {
+    Write-Host ""
+    Write-Host ">>> Running headless VL document tests..." -ForegroundColor Cyan
+    dotnet test (Join-Path $vlTestsDir "Nodetool.SDK.VL.Tests.csproj") -c Release
+}
+
+if ($VerifyVLPackage) {
+    Write-Host ""
+    Write-Host ">>> Creating and verifying VL.Nodetool package..." -ForegroundColor Cyan
+    $packageScript = Join-Path $root "vvvv\deployment\pack-and-verify.ps1"
+    & $packageScript
+}
+
 Write-Host ""
 Write-Host "Done" -ForegroundColor Green
-

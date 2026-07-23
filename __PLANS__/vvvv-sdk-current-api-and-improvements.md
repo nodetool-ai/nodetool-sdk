@@ -35,13 +35,13 @@ The preferred end state is:
 
 ### Implementation audit — 2026-07-23
 
-- 123 of 178 checkable items are complete after reviewing the implementation, commits, and targeted test results in both repositories.
-- The focused C#/VL suite passes 33 tests. The NodeTool workflow-interface, WebSocket/interface, and protocol suites pass 7, 135, and 32 tests respectively.
+- 125 of 178 checkable items are complete after reviewing the implementation, commits, and targeted test results in both repositories.
+- The focused C# suite passes 33 tests, and the gamma 7.1 headless VL suite compiles both shipped VL documents offline. The NodeTool workflow-interface, WebSocket/interface, and protocol suites pass 7, 135, and 32 tests respectively.
 - Full NodeTool package verification remains blocked by pre-existing Sharp TypeScript import errors in the runtime and WebSocket packages. The unrelated package-manifest and lockfile changes in the working tree are not part of this plan.
 - The open Phase 1 graph-normalization items describe a legacy client-side inference path that authoritative workflow-interface v1 no longer uses. Before implementing them, decide whether to delete the remaining public legacy graph DTOs or retain them as a separate, non-workflow API.
 - The cross-transport flag-on/flag-off integration harness is complete. The highest-value remaining proof is the representative headless and interactive vvvv smoke suite.
 - The transport integration harness found and fixed an absent-field drift where MessagePack encoded an explicit JavaScript `undefined` as `nil` while REST omitted the field.
-- The C# VL project and package manifest now share the first release target, `VL.Core 2025.7.0`; the complete supported version pair and manual test preparation are documented in `vvvv-tests/README.md`.
+- The C# VL project, package manifest, and main VL document now share the first release target, vvvv gamma 7.1 / `VL.Core 2025.7.1`; the complete supported version pair and manual test preparation are documented in `vvvv-tests/README.md`.
 
 ## Current-client safety rules
 
@@ -51,7 +51,7 @@ The preferred end state is:
 - [x] Keep the new backend capability disabled by a server feature flag during the first rollout.
 - [x] Require workflow-interface v1 in the new C# SDK and report an explicit incompatible-server/feature-disabled error when it is unavailable.
 - [x] Keep the backend workflow-interface derivation pure and independently testable.
-- [ ] Do not make backend availability a prerequisite for loading the vvvv package or opening an existing patch.
+- [x] Do not make backend availability a prerequisite for loading the vvvv package or opening an existing patch.
 - [x] Do not add compatibility code for past NodeTool server or SDK contracts.
 
 ## Proposed versioned workflow-interface contract
@@ -336,7 +336,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Test the required workflow-interface v1 contract over REST and correlated WebSocket RPC in CI.
 - [ ] Add vvvv smoke patches for discovery, primitive workflow execution, streaming text, image input/output, cancellation, and refresh.
 - [ ] Run NodeTool protocol, websocket, workflow, web, and Electron test suites affected by the additive backend route/command.
-- [ ] Run SDK unit tests, C# builds, VL builds, package creation, and package-content verification.
+- [x] Run SDK unit tests, C# builds, VL builds, package creation, and package-content verification.
 - [ ] Verify existing `.vl` test patches against the newly built DLLs/NuGet package.
 - [ ] Publish an internal prerelease with the server feature flag disabled by default.
 - [ ] Enable the backend flag in development/nightly builds and collect interface diagnostics.

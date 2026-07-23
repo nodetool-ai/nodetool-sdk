@@ -11,13 +11,13 @@ The first release target is intentionally narrow:
 - NodeTool SDK workflow contract: `workflow-interface` version `1`
 - C# SDK assemblies: `0.1.1`
 - VL package: `VL.Nodetool` `0.1.5`
-- vvvv gamma: `7.0`
-- `VL.Core`: `2025.7.0`
+- vvvv gamma: `7.1`
+- `VL.Core`: `2025.7.1`
 - .NET: `8.0`
 
-The C# project and the VL NuGet package specification both reference
-`VL.Core 2025.7.0`. vvvv gamma 7.1 / `VL.Core 2025.7.1` is a secondary
-compatibility target, not part of the first acceptance gate.
+The C# project, the VL NuGet package specification, and the main VL document
+all target the 2025.7.1 toolchain. vvvv gamma 7.0 is not part of the first
+acceptance gate.
 
 Past NodeTool server or SDK contracts are not supported by this test target.
 
@@ -48,12 +48,23 @@ From Git Bash:
 cd /m/P/NODETOOL/____REPOS____/nodetool-sdk/csharp
 dotnet build Nodetool.SDK.VL/Nodetool.SDK.VL.csproj -c Release
 dotnet test Nodetool.SDK.Tests/Nodetool.SDK.Tests.csproj -c Release
+dotnet test Nodetool.SDK.VL.Tests/Nodetool.SDK.VL.Tests.csproj -c Release
+```
+
+The headless VL tests use `VVVV_EXE` or `VVVV_HOME` when set, then look for an
+installed `vvvv_gamma_7.1-*` under `C:\Program Files\vvvv`. The same checks can
+be run through:
+
+```bash
+powershell.exe -NoProfile -ExecutionPolicy Bypass \
+  -File ./regen-and-verify.ps1 \
+  -SkipGeneration -SkipGitDiff -IncludeVL -IncludeVLTests -VerifyVLPackage
 ```
 
 The primary vvvv executable used for the release check is:
 
 ```text
-C:\Program Files\vvvv\vvvv_gamma_7.0-0436-g633541ba2a-win-x64\vvvv.exe
+C:\Program Files\vvvv\vvvv_gamma_7.1-0070-g54e23a3bf8-win-x64\vvvv.exe
 ```
 
 ## Workflow fixture set
