@@ -154,4 +154,23 @@ public class ExecutionSessionContractTests
     {
         Assert.Throws<ArgumentException>(() => new ExecutionSession("", "workflow-1"));
     }
+
+    [Fact]
+    public async Task Cancellation_IsSentExactlyOnceWithPreboundJobId()
+    {
+        using var session = new ExecutionSession("job-1", "workflow-1");
+        var cancellations = new List<(string JobId, string? WorkflowId)>();
+        session.CancelAction = (jobId, workflowId, _) =>
+        {
+            cancellations.Add((jobId, workflowId));
+            return Task.CompletedTask;
+        };
+
+        await session.CancelAsync();
+        await session.CancelAsync();
+
+        var cancellation = Assert.Single(cancellations);
+        Assert.Equal("job-1", cancellation.JobId);
+        Assert.Equal("workflow-1", cancellation.WorkflowId);
+    }
 }
