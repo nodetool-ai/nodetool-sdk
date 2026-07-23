@@ -428,6 +428,11 @@ namespace Nodetool.SDK.VL.Nodes
                             AppendDebug("completed: ok");
                         }
                     }
+
+                    // Subscribers are attached immediately after ExecuteNodeAsync returns, but a
+                    // very fast run can still publish before that point. Reconcile from the
+                    // session's buffered snapshot so those values are never lost.
+                    ApplyBufferedOutputs(session);
                 }
                 finally
                 {
@@ -497,6 +502,32 @@ namespace Nodetool.SDK.VL.Nodes
 
             var s = status.Trim().ToLowerInvariant();
             return s is "completed" or "failed" or "cancelled" or "canceled" or "error";
+        }
+
+        private void ApplyBufferedOutputs(IExecutionSession session)
+        {
+            var buffered = session.GetLatestOutputs();
+            if (_nodeMetadata.Outputs == null || buffered.Count == 0)
+                return;
+
+            lock (_lock)
+            {
+                foreach (var output in _nodeMetadata.Outputs)
+                {
+                    if (buffered.TryGetValue($"job_result:{output.Name}", out var terminalValue))
+                    {
+                        _lastOutputs[output.Name] = terminalValue;
+                        continue;
+                    }
+
+                    var suffix = $":{output.Name}";
+                    var streamedValue = buffered.FirstOrDefault(kvp =>
+                        kvp.Key.EndsWith(suffix, StringComparison.Ordinal));
+                    if (!string.IsNullOrEmpty(streamedValue.Key))
+                        _lastOutputs[output.Name] = streamedValue.Value;
+                }
+            }
+            InvalidateOutputs();
         }
 
         private void SetIsRunning(bool isRunning)

@@ -150,24 +150,8 @@ public class ExecutionSessionContractTests
     }
 
     [Fact]
-    public async Task CancellationBeforeJobAssignment_IsSentExactlyOnceAfterBinding()
+    public void EmptyJobId_IsRejected()
     {
-        using var session = new ExecutionSession("", "workflow-1");
-        var cancellations = new List<(string JobId, string? WorkflowId)>();
-        session.CancelAction = (jobId, workflowId, _) =>
-        {
-            cancellations.Add((jobId, workflowId));
-            return Task.CompletedTask;
-        };
-
-        await session.CancelAsync();
-        Assert.Empty(cancellations);
-
-        session.SetJobId("job-1");
-        await session.CancelAsync();
-
-        var cancellation = Assert.Single(cancellations);
-        Assert.Equal("job-1", cancellation.JobId);
-        Assert.Equal("workflow-1", cancellation.WorkflowId);
+        Assert.Throws<ArgumentException>(() => new ExecutionSession("", "workflow-1"));
     }
 }

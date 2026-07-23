@@ -287,7 +287,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 
 **Outcome:** Fast, streamed, media-heavy, cancelled, and reconnecting workflows complete predictably.
 
-- [ ] Create/bind the execution session and event buffer before sending `run_job` so fast events cannot be lost before subscribers attach.
+- [x] Create/bind the execution session and event buffer before sending `run_job` so fast events cannot be lost before subscribers attach.
 - [x] Replace `async void` workflow execution with a tracked task and explicit exception propagation.
 - [x] Route bound execution updates by server job ID; accept unscoped updates only when exactly one bound session exists.
 - [x] Maintain a per-run output routing table keyed by output node ID, public output name, `node_name`, and `output_name`.

@@ -8,12 +8,11 @@ namespace Nodetool.SDK.Execution;
 /// </summary>
 public class ExecutionSession : IExecutionSession
 {
-    private string _jobId;
+    private readonly string _jobId;
     private readonly string? _workflowId;
     private readonly TaskCompletionSource<bool> _completionSource;
     private readonly Dictionary<string, NodeToolValue> _latestOutputs;
     private readonly object _lock = new();
-    private bool _cancelRequested;
     private bool _cancellationSent;
     private bool _disposed;
 
@@ -23,7 +22,9 @@ public class ExecutionSession : IExecutionSession
     /// <param name="jobId">The job identifier for this session.</param>
     public ExecutionSession(string jobId, string? workflowId = null)
     {
-        _jobId = jobId;
+        _jobId = !string.IsNullOrWhiteSpace(jobId)
+            ? jobId
+            : throw new ArgumentException("Job ID must not be empty.", nameof(jobId));
         _workflowId = workflowId;
         _completionSource = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         _latestOutputs = new Dictionary<string, NodeToolValue>(StringComparer.Ordinal);
@@ -37,24 +38,6 @@ public class ExecutionSession : IExecutionSession
     /// Workflow id this session was started for (used before server assigns job_id).
     /// </summary>
     public string? WorkflowId => _workflowId;
-
-    internal void SetJobId(string jobId)
-    {
-        if (string.IsNullOrWhiteSpace(jobId))
-            return;
-        Func<string, string?, CancellationToken, Task>? cancelAction = null;
-        lock (_lock)
-        {
-            _jobId = jobId;
-            if (_cancelRequested && !_cancellationSent && CancelAction != null)
-            {
-                _cancellationSent = true;
-                cancelAction = CancelAction;
-            }
-        }
-        if (cancelAction != null)
-            _ = SendDeferredCancellationAsync(cancelAction, jobId);
-    }
 
     /// <inheritdoc/>
     public bool IsRunning { get; private set; }
@@ -116,9 +99,7 @@ public class ExecutionSession : IExecutionSession
         string? jobId = null;
         lock (_lock)
         {
-            _cancelRequested = true;
             if (!_cancellationSent &&
-                !string.IsNullOrWhiteSpace(_jobId) &&
                 CancelAction != null)
             {
                 _cancellationSent = true;
@@ -128,24 +109,6 @@ public class ExecutionSession : IExecutionSession
         }
         if (cancelAction != null && jobId != null)
             await cancelAction(jobId, _workflowId, CancellationToken.None);
-    }
-
-    private async Task SendDeferredCancellationAsync(
-        Func<string, string?, CancellationToken, Task> cancelAction,
-        string jobId)
-    {
-        try
-        {
-            await cancelAction(jobId, _workflowId, CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            lock (_lock)
-            {
-                if (!IsCompleted)
-                    ErrorMessage = $"Failed to cancel job: {ex.Message}";
-            }
-        }
     }
 
     /// <inheritdoc/>
@@ -169,13 +132,7 @@ public class ExecutionSession : IExecutionSession
     /// </summary>
     internal void ProcessJobUpdate(JobUpdate update)
     {
-        // If server assigned job_id after we started, accept the first matching update and lock onto it.
-        if (update.job_id != null && string.IsNullOrWhiteSpace(_jobId))
-        {
-            _jobId = update.job_id;
-        }
-
-        if (update.job_id != null && !string.IsNullOrWhiteSpace(_jobId) && update.job_id != _jobId)
+        if (update.job_id != null && update.job_id != _jobId)
             return;
 
         bool? completionSucceeded = null;
@@ -332,7 +289,6 @@ public class ExecutionSession : IExecutionSession
     private bool MatchesJob(string? jobId)
     {
         return string.IsNullOrWhiteSpace(jobId)
-            || string.IsNullOrWhiteSpace(_jobId)
             || string.Equals(jobId, _jobId, StringComparison.Ordinal);
     }
 

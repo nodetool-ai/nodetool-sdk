@@ -312,6 +312,12 @@ public class RunJobRequest
     [Key("job_type")]
     public string JobType { get; set; } = "workflow";
 
+    /// <summary>
+    /// Client-generated identifier used to bind the execution session before the request is sent.
+    /// </summary>
+    [Key("job_id")]
+    public string JobId { get; set; } = "";
+
     [Key("execution_strategy")]
     public string ExecutionStrategy { get; set; } = "threaded";
 

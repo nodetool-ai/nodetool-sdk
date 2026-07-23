@@ -21,6 +21,21 @@ public class MessagePackWebSocketClientContractTests
     }
 
     [Fact]
+    public void RunJobRequest_SerializesClientGeneratedJobId()
+    {
+        var options = MessagePackSerializerOptions.Standard.WithResolver(
+            CompositeResolver.Create(
+                ContractlessStandardResolver.Instance,
+                StandardResolver.Instance));
+        var payload = MessagePackSerializer.Serialize(
+            new RunJobRequest { JobId = "client-job-1" },
+            options);
+        var map = MessagePackSerializer.Deserialize<Dictionary<string, object?>>(payload, options);
+
+        Assert.Equal("client-job-1", map["job_id"]);
+    }
+
+    [Fact]
     public void RequestEnvelope_PutsCorrelationIdAtTheTopLevel()
     {
         var data = new Dictionary<string, object?> { ["limit"] = 25 };

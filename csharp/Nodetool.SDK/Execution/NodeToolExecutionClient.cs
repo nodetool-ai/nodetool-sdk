@@ -20,7 +20,6 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     private readonly ILogger<NodeToolExecutionClient> _logger;
     private readonly NodeToolClientOptions _options;
     private readonly ConcurrentDictionary<string, ExecutionSession> _sessions;
-    private readonly PendingExecutionSessions _pendingSessions;
     private readonly ConcurrentDictionary<string, string> _workflowIdsByName;
     private readonly Uri _serverUri;
     private readonly string? _apiKey;
@@ -73,7 +72,6 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         _apiKey = apiKey;
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<NodeToolExecutionClient>.Instance;
         _sessions = new ConcurrentDictionary<string, ExecutionSession>();
-        _pendingSessions = new PendingExecutionSessions();
         _workflowIdsByName = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         // Create WebSocket client
@@ -147,8 +145,10 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         Dictionary<string, object>? inputs = null,
         CancellationToken cancellationToken = default)
     {
-        // Server assigns job_id; we start a pending session keyed by workflow_id.
-        var session = CreatePendingSession(workflowId);
+        // Pre-bind the client-generated job ID before sending. The current worker protocol
+        // preserves this ID, so even very fast updates can be routed without a pending-session race.
+        var jobId = Guid.NewGuid().ToString();
+        var session = CreateSession(jobId, workflowId);
 
         var command = new WebSocketCommand
         {
@@ -156,6 +156,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             type = "run_job",
             data = new RunJobRequest
             {
+                JobId = jobId,
                 WorkflowId = workflowId,
                 Params = inputs,
                 JobType = "workflow",
@@ -167,16 +168,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             }
         };
 
-        var success = await _webSocketClient.SendMessageAsync(command, cancellationToken);
-        if (!success)
-        {
-            _pendingSessions.Remove(workflowId, session);
-            session.ProcessJobUpdate(new JobUpdate
-            {
-                status = "failed",
-                error = "Failed to send execution request"
-            });
-        }
+        await SendExecutionRequestAsync(command, jobId, session, cancellationToken);
 
         return session;
     }
@@ -234,9 +226,8 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         Dictionary<string, object>? inputs = null,
         CancellationToken cancellationToken = default)
     {
-        // Use a non-empty pending key so we can bind the first job_update even if the server doesn't echo workflow_id.
-        var pendingKey = Guid.NewGuid().ToString();
-        var session = CreatePendingSession(workflowId: pendingKey);
+        var jobId = Guid.NewGuid().ToString();
+        var session = CreateSession(jobId, jobId);
 
         var command = new WebSocketCommand
         {
@@ -244,7 +235,8 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             type = "run_job",
             data = new RunJobRequest
             {
-                WorkflowId = pendingKey,
+                JobId = jobId,
+                WorkflowId = jobId,
                 Graph = graph,
                 Params = inputs,
                 JobType = "workflow",
@@ -256,16 +248,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             }
         };
 
-        var success = await _webSocketClient.SendMessageAsync(command, cancellationToken);
-        if (!success)
-        {
-            _pendingSessions.Remove(pendingKey, session);
-            session.ProcessJobUpdate(new JobUpdate
-            {
-                status = "failed",
-                error = "Failed to send execution request"
-            });
-        }
+        await SendExecutionRequestAsync(command, jobId, session, cancellationToken);
 
         return session;
     }
@@ -278,8 +261,8 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     {
         // Create a simple graph with just this node
         var nodeId = Guid.NewGuid().ToString();
-        // Use nodeId as the pending key for binding job updates.
-        var session = CreatePendingSession(workflowId: nodeId);
+        var jobId = Guid.NewGuid().ToString();
+        var session = CreateSession(jobId, nodeId);
         var graph = new Graph
         {
             nodes = new List<GraphNode>
@@ -300,6 +283,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             type = "run_job",
             data = new RunJobRequest
             {
+                JobId = jobId,
                 WorkflowId = nodeId,
                 Graph = graph,
                 JobType = "workflow",
@@ -311,16 +295,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             }
         };
 
-        var success = await _webSocketClient.SendMessageAsync(command, cancellationToken);
-        if (!success)
-        {
-            _pendingSessions.Remove(nodeId, session);
-            session.ProcessJobUpdate(new JobUpdate
-            {
-                status = "failed",
-                error = "Failed to send execution request"
-            });
-        }
+        await SendExecutionRequestAsync(command, jobId, session, cancellationToken);
 
         return session;
     }
@@ -340,9 +315,9 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         await _webSocketClient.SendMessageAsync(command, cancellationToken);
     }
 
-    private ExecutionSession CreateSession(string jobId)
+    private ExecutionSession CreateSession(string jobId, string? workflowId = null)
     {
-        var session = new ExecutionSession(jobId)
+        var session = new ExecutionSession(jobId, workflowId)
         {
             CancelAction = CancelJobAsync
         };
@@ -350,14 +325,31 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         return session;
     }
 
-    private ExecutionSession CreatePendingSession(string workflowId)
+    private async Task SendExecutionRequestAsync(
+        WebSocketCommand command,
+        string jobId,
+        ExecutionSession session,
+        CancellationToken cancellationToken)
     {
-        var session = new ExecutionSession(jobId: "", workflowId: workflowId)
+        try
         {
-            CancelAction = CancelJobAsync
-        };
-        _pendingSessions.Add(workflowId, session);
-        return session;
+            if (await _webSocketClient.SendMessageAsync(command, cancellationToken))
+                return;
+
+            _sessions.TryRemove(jobId, out _);
+            session.ProcessJobUpdate(new JobUpdate
+            {
+                job_id = jobId,
+                status = "failed",
+                error = "Failed to send execution request"
+            });
+        }
+        catch
+        {
+            _sessions.TryRemove(jobId, out _);
+            session.Dispose();
+            throw;
+        }
     }
 
     private async Task<string> ResolveWorkflowIdByNameAsync(string workflowName, CancellationToken cancellationToken)
@@ -503,27 +495,6 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             switch (args.Message)
             {
                 case JobUpdate jobUpdate:
-                    // Bind pending session (workflow_id -> job_id) on first update
-                    if (jobUpdate.job_id != null)
-                    {
-                        if (_pendingSessions.TryTake(
-                            jobUpdate.workflow_id,
-                            out var pending,
-                            out var matchedWorkflowId) &&
-                            pending != null)
-                        {
-                            if (jobUpdate.workflow_id == null)
-                            {
-                                _logger.LogDebug(
-                                    "Binding job_id {JobId} to the only pending session (workflow_id={WorkflowId})",
-                                    jobUpdate.job_id,
-                                    matchedWorkflowId);
-                            }
-                            pending.SetJobId(jobUpdate.job_id);
-                            _sessions[jobUpdate.job_id] = pending;
-                        }
-                    }
-
                     if (jobUpdate.job_id != null && _sessions.TryGetValue(jobUpdate.job_id, out var session1))
                     {
                         session1.ProcessJobUpdate(jobUpdate);
@@ -633,8 +604,6 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
                 session.Dispose();
             }
             _sessions.Clear();
-            foreach (var pending in _pendingSessions.Drain())
-                pending.Dispose();
             _workflowIdsByName.Clear();
         }
     }
