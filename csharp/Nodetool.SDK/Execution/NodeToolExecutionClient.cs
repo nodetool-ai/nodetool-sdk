@@ -21,9 +21,16 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     private readonly NodeToolClientOptions _options;
     private readonly ConcurrentDictionary<string, ExecutionSession> _sessions;
     private readonly ConcurrentDictionary<string, string> _workflowIdsByName;
+    private readonly ConcurrentDictionary<string, byte> _recoveryMonitors = new();
+    private readonly SemaphoreSlim _connectionSemaphore = new(1, 1);
     private readonly Uri _serverUri;
     private readonly string? _apiKey;
-    private bool _disposed;
+    private readonly CancellationTokenSource _lifetimeCts = new();
+    private int _reconnectLoopActive;
+    private volatile bool _disconnectRequested;
+    private volatile bool _hasConnectedBefore;
+    private volatile bool _autoReconnectEnabled;
+    private volatile bool _disposed;
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -38,6 +45,12 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
 
     /// <inheritdoc/>
     public string? LastError { get; private set; }
+
+    public bool AutoReconnectEnabled
+    {
+        get => _autoReconnectEnabled;
+        set => _autoReconnectEnabled = value;
+    }
 
     /// <inheritdoc/>
     public event Action<string>? ConnectionStatusChanged;
@@ -70,6 +83,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
 
         _serverUri = wsUri;
         _apiKey = apiKey;
+        AutoReconnectEnabled = _options.AutoReconnect;
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<NodeToolExecutionClient>.Instance;
         _sessions = new ConcurrentDictionary<string, ExecutionSession>();
         _workflowIdsByName = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -100,8 +114,10 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     /// <inheritdoc/>
     public async Task<bool> ConnectAsync(CancellationToken cancellationToken = default)
     {
+        await _connectionSemaphore.WaitAsync(cancellationToken);
         try
         {
+            _disconnectRequested = false;
             ConnectionStatus = "connecting";
             ConnectionStatusChanged?.Invoke(ConnectionStatus);
 
@@ -111,6 +127,10 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             {
                 ConnectionStatus = "connected";
                 LastError = null;
+                var shouldReconnectJobs = _hasConnectedBefore;
+                _hasConnectedBefore = true;
+                if (shouldReconnectJobs)
+                    await ReconnectActiveJobsAsync(cancellationToken);
             }
             else
             {
@@ -129,14 +149,27 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             ConnectionStatusChanged?.Invoke(ConnectionStatus);
             return false;
         }
+        finally
+        {
+            _connectionSemaphore.Release();
+        }
     }
 
     /// <inheritdoc/>
     public async Task DisconnectAsync()
     {
-        await _webSocketClient.DisconnectAsync();
-        ConnectionStatus = "disconnected";
-        ConnectionStatusChanged?.Invoke(ConnectionStatus);
+        _disconnectRequested = true;
+        await _connectionSemaphore.WaitAsync();
+        try
+        {
+            await _webSocketClient.DisconnectAsync();
+            ConnectionStatus = "disconnected";
+            ConnectionStatusChanged?.Invoke(ConnectionStatus);
+        }
+        finally
+        {
+            _connectionSemaphore.Release();
+        }
     }
 
     /// <inheritdoc/>
@@ -313,6 +346,56 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         };
 
         await _webSocketClient.SendMessageAsync(command, cancellationToken);
+    }
+
+    internal static WebSocketCommand CreateReconnectCommand(string jobId, string? workflowId)
+        => new()
+        {
+            command = "reconnect_job",
+            type = "reconnect_job",
+            data = new ReconnectJobData { job_id = jobId, workflow_id = workflowId }
+        };
+
+    private async Task ReconnectActiveJobsAsync(CancellationToken cancellationToken)
+    {
+        foreach (var session in _sessions.Values.Where(session => !session.IsCompleted))
+        {
+            if (!await _webSocketClient.SendMessageAsync(
+                    CreateReconnectCommand(session.JobId, session.WorkflowId),
+                    cancellationToken))
+            {
+                _logger.LogWarning("Failed to reconnect active job {JobId}", session.JobId);
+                continue;
+            }
+            if (_recoveryMonitors.TryAdd(session.JobId, 0))
+                _ = MonitorReconnectedJobAsync(session, _lifetimeCts.Token);
+        }
+    }
+
+    private async Task MonitorReconnectedJobAsync(
+        ExecutionSession session,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!session.IsCompleted && IsConnected && !cancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+                if (session.IsCompleted || !IsConnected)
+                    return;
+                await _webSocketClient.SendMessageAsync(
+                    CreateReconnectCommand(session.JobId, session.WorkflowId),
+                    cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Client disposal or another disconnect ends recovery polling.
+        }
+        finally
+        {
+            _recoveryMonitors.TryRemove(session.JobId, out _);
+        }
     }
 
     private ExecutionSession CreateSession(string jobId, string? workflowId = null)
@@ -587,6 +670,46 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             LastError = args.Message;
         }
         ConnectionStatusChanged?.Invoke(args.Status);
+        if (args.Status == "disconnected" &&
+            AutoReconnectEnabled &&
+            !_disconnectRequested &&
+            !_disposed &&
+            Interlocked.CompareExchange(ref _reconnectLoopActive, 1, 0) == 0)
+        {
+            _ = RunReconnectLoopAsync();
+        }
+    }
+
+    private async Task RunReconnectLoopAsync()
+    {
+        try
+        {
+            var delay = TimeSpan.FromMilliseconds(500);
+            for (var attempt = 1; attempt <= 5 && !_disposed && !_disconnectRequested; attempt++)
+            {
+                try
+                {
+                    await Task.Delay(delay, _lifetimeCts.Token);
+                    if (_disposed || _disconnectRequested || !AutoReconnectEnabled)
+                        return;
+                    if (await ConnectAsync(_lifetimeCts.Token))
+                        return;
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Reconnect attempt {Attempt} failed", attempt);
+                }
+                delay = TimeSpan.FromMilliseconds(Math.Min(delay.TotalMilliseconds * 2, 8000));
+            }
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _reconnectLoopActive, 0);
+        }
     }
 
     /// <inheritdoc/>
@@ -595,6 +718,8 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         if (!_disposed)
         {
             _disposed = true;
+            _disconnectRequested = true;
+            _lifetimeCts.Cancel();
             _webSocketClient.MessageReceived -= OnMessageReceived;
             _webSocketClient.ConnectionStatusChanged -= OnConnectionStatusChanged;
             _webSocketClient.Dispose();
@@ -605,6 +730,8 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             }
             _sessions.Clear();
             _workflowIdsByName.Clear();
+            _recoveryMonitors.Clear();
+            _lifetimeCts.Dispose();
         }
     }
 }

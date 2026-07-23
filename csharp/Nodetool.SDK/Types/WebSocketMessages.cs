@@ -378,3 +378,14 @@ public class WebSocketCommand
 
     public object data { get; set; } = new Dictionary<string, object>();
 }
+
+/// <summary>
+/// Canonical reconnect_job payload for replaying the current state of an existing job.
+/// </summary>
+[MessagePackObject(true)]
+public class ReconnectJobData
+{
+    public string job_id { get; set; } = "";
+
+    public string? workflow_id { get; set; }
+}

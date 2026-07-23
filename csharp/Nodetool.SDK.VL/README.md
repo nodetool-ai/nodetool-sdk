@@ -65,6 +65,13 @@ Execution timeout:
 - Each generated execution node has its own `ExecutionTimeoutSeconds` input. Leave it at `0` to inherit the Connect-node default, or set a positive value for that node.
 - Values are capped at 86400 seconds (24 hours).
 
+Connection recovery:
+
+- `AutoReconnect` is enabled by default. After an unexpected socket disconnect, the SDK retries the connection with bounded exponential backoff.
+- Active workflow sessions send `reconnect_job` after the socket returns and poll the server's persisted job state until a terminal update arrives.
+- Turning `AutoReconnect` off only disables automatic retries; the Connect node's `Reconnect` pulse remains available.
+- An intentional Disconnect does not trigger automatic reconnection.
+
 Media transport:
 
 - `InlineMediaLimitBytes` defaults to 4 MiB. Larger local media is uploaded through the asset API and represented by `asset_id` during execution.

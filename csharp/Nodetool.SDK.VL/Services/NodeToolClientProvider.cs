@@ -25,6 +25,7 @@ public static class NodeToolClientProvider
     private static readonly INodeToolExecutionClient _nullClient = new NullNodeToolExecutionClient();
     private static int _executionTimeoutSeconds = DefaultExecutionTimeoutSeconds;
     private static int _inlineMediaLimitBytes = DefaultInlineMediaLimitBytes;
+    private static bool _autoReconnect = true;
 
     /// <summary>
     /// Current connection status.
@@ -67,6 +68,13 @@ public static class NodeToolClientProvider
     /// Maximum media payload embedded in a run_job frame. Larger values are uploaded first.
     /// </summary>
     public static int InlineMediaLimitBytes => _inlineMediaLimitBytes;
+
+    public static void SetAutoReconnect(bool enabled)
+    {
+        _autoReconnect = enabled;
+        if (_client != null)
+            _client.AutoReconnectEnabled = enabled;
+    }
 
     /// <summary>
     /// Updates the shared execution timeout without resetting discovery or the connection.
@@ -188,6 +196,7 @@ public static class NodeToolClientProvider
                     WorkerWebSocketUrl = workerUri,
                     ApiBaseUrl = apiBaseUrl,
                     AuthToken = _currentApiKey,
+                    AutoReconnect = _autoReconnect,
                 };
 
                 // Pass apiKey separately too (some deployments expect Bearer on HTTP; WS payload uses AuthToken).

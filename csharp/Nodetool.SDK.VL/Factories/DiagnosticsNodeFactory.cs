@@ -106,8 +106,7 @@ internal static class DiagnosticsNodeFactory
                                 }),
                                 ibc.Input<bool>(val =>
                                 {
-                                    // Auto reconnect is handled by the client itself
-                                    // This pin is for future implementation
+                                    NodeToolClientProvider.SetAutoReconnect(val);
                                 }),
                                 ibc.Input<bool>(val =>
                                 {

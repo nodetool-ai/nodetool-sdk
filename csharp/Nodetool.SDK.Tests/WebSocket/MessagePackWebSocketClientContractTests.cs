@@ -2,6 +2,7 @@ using MessagePack;
 using MessagePack.Resolvers;
 using Nodetool.SDK.WebSocket;
 using Nodetool.SDK.Types;
+using Nodetool.SDK.Execution;
 
 namespace Nodetool.SDK.Tests.WebSocket;
 
@@ -49,6 +50,18 @@ public class MessagePackWebSocketClientContractTests
         Assert.Equal("request-1", envelope["request_id"]);
         Assert.Same(data, envelope["data"]);
         Assert.DoesNotContain("request_id", data.Keys);
+    }
+
+    [Fact]
+    public void ReconnectCommand_PreservesJobAndWorkflowIdentity()
+    {
+        var command = NodeToolExecutionClient.CreateReconnectCommand("job-1", "workflow-1");
+        var data = Assert.IsType<ReconnectJobData>(command.data);
+
+        Assert.Equal("reconnect_job", command.command);
+        Assert.Equal("reconnect_job", command.type);
+        Assert.Equal("job-1", data.job_id);
+        Assert.Equal("workflow-1", data.workflow_id);
     }
 
     [Fact]

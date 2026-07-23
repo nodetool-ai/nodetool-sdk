@@ -40,6 +40,11 @@ public sealed class NodeToolClientOptions
     /// </summary>
     public bool ExplicitTypes { get; init; } = true;
 
+    /// <summary>
+    /// Reconnect the socket after an unexpected disconnect and reattach active jobs.
+    /// </summary>
+    public bool AutoReconnect { get; init; } = true;
+
     public Uri GetNormalizedWorkerWebSocketUrl()
     {
         // Accept http/https inputs as a convenience, but keep caller in control of host/port/path.

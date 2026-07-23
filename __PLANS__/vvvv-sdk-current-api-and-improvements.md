@@ -299,7 +299,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Prefer asset/reference transport for large media; set and test explicit inline payload limits.
 - [x] Make execution timeout configurable globally and per node.
 - [x] Support cancellation while server-queued; client-generated job IDs allow immediate, exactly-once cancellation of queued and running jobs.
-- [ ] Add reconnect/replay behavior using `reconnect_job` for interrupted sockets.
+- [x] Add reconnect/replay behavior using `reconnect_job` for interrupted sockets.
 - [x] Never invoke user/VL completion callbacks while holding an execution-session lock.
 - [ ] Marshal pin/state changes through the correct VL update context.
 - [ ] Separate recoverable transport errors from workflow/node failures in diagnostics.
