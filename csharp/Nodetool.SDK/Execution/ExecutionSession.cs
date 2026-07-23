@@ -195,9 +195,18 @@ public class ExecutionSession : IExecutionSession
                     break;
 
                 case "completed":
+                    // The SDK opts into an authoritative terminal snapshot. The
+                    // runtime may internally produce an earlier completed event;
+                    // do not finish the public session until result.outputs arrives.
+                    if (update.result?.ContainsKey("outputs") != true)
+                    {
+                        IsRunning = true;
+                        CurrentStatus = "finalizing";
+                        break;
+                    }
                     IsRunning = false;
                     IsCompleted = true;
-                    if (update.result?.TryGetValue("outputs", out var outputs) == true)
+                    if (update.result.TryGetValue("outputs", out var outputs))
                     {
                         foreach (var kvp in NodeToolValue.From(outputs).AsMapOrEmpty())
                         {

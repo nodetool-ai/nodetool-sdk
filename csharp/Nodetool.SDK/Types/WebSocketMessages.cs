@@ -339,6 +339,12 @@ public class RunJobRequest
     [Key("explicit_types")]
     public bool? ExplicitTypes { get; set; } = false;
 
+    /// <summary>
+    /// Requests one authoritative completed event containing result.outputs.
+    /// </summary>
+    [Key("require_terminal_result")]
+    public bool RequireTerminalResult { get; set; } = true;
+
     [Key("resource_limits")]
     public Dictionary<string, object>? ResourceLimits { get; set; } = null;
 }

@@ -31,6 +31,34 @@ public class ExecutionSessionContractTests
     }
 
     [Fact]
+    public async Task ProvisionalCompletion_WaitsForAuthoritativeResult()
+    {
+        using var session = new ExecutionSession("job-1", "workflow-1");
+        session.ProcessJobUpdate(new JobUpdate
+        {
+            status = "completed",
+            job_id = "job-1"
+        });
+
+        Assert.False(session.IsCompleted);
+        Assert.True(session.IsRunning);
+        Assert.Equal("finalizing", session.CurrentStatus);
+
+        session.ProcessJobUpdate(new JobUpdate
+        {
+            status = "completed",
+            job_id = "job-1",
+            result = new Dictionary<string, object>
+            {
+                ["outputs"] = new Dictionary<string, object>()
+            }
+        });
+
+        Assert.True(await session.WaitForCompletionAsync());
+        Assert.True(session.IsCompleted);
+    }
+
+    [Fact]
     public void OutputUpdate_ModelsCurrentStreamingFields()
     {
         var update = new OutputUpdate { disposition = "replace", done = true };

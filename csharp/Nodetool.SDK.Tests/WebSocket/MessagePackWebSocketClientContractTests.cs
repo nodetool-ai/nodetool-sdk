@@ -1,11 +1,25 @@
 using MessagePack;
 using MessagePack.Resolvers;
 using Nodetool.SDK.WebSocket;
+using Nodetool.SDK.Types;
 
 namespace Nodetool.SDK.Tests.WebSocket;
 
 public class MessagePackWebSocketClientContractTests
 {
+    [Fact]
+    public void RunJobRequest_OptsIntoAuthoritativeTerminalResult()
+    {
+        var options = MessagePackSerializerOptions.Standard.WithResolver(
+            CompositeResolver.Create(
+                ContractlessStandardResolver.Instance,
+                StandardResolver.Instance));
+        var payload = MessagePackSerializer.Serialize(new RunJobRequest(), options);
+        var map = MessagePackSerializer.Deserialize<Dictionary<string, object?>>(payload, options);
+
+        Assert.Equal(true, map["require_terminal_result"]);
+    }
+
     [Fact]
     public void RequestEnvelope_PutsCorrelationIdAtTheTopLevel()
     {
