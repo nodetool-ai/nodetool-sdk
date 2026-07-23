@@ -90,9 +90,9 @@ Created in the local development database on 2026-07-23:
   string input through a 30-second `Wait`, then to an output.
 
 Their authoritative v1 interfaces return the expected public pins with zero
-diagnostics. A superseded two-pin primitive draft
-(`dbeab8bbc7a84b569b5b94a4f9342fbd`) can be deleted after restarting the
-backend with workflow PUT/DELETE route registration commit `323812eb0`.
+diagnostics. The superseded two-pin primitive draft
+(`dbeab8bbc7a84b569b5b94a4f9342fbd`) was deleted after the backend restarted
+with workflow PUT/DELETE route registration commit `323812eb0`.
 
 Record the workflow IDs after creation. Stable IDs let a rename test distinguish
 identity changes from display-name changes.

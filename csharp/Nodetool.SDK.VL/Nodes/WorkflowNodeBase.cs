@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Reflection;
+using System.Net.Http.Headers;
 using SkiaSharp;
 using Nodetool.SDK.Api;
 using VL.Core;
@@ -49,9 +50,12 @@ namespace Nodetool.SDK.VL.Nodes
         private readonly ConcurrentQueue<Action> _pendingStateUpdates = new();
         private readonly Dictionary<string, StringBuilder> _chunkBuffers = new(StringComparer.Ordinal);
         private readonly Dictionary<string, SKImage> _latestImages = new(StringComparer.Ordinal);
+        private readonly ConcurrentDictionary<string, long> _imageLoadVersions = new(StringComparer.Ordinal);
+        private readonly CancellationTokenSource _disposeCts = new();
         private readonly Queue<string> _debugLines = new();
         private const int DebugMaxLines = 30;
         private int _invalidateScheduled;
+        private static readonly HttpClient ImageHttpClient = new();
 
         public WorkflowNodeBase(NodeContext nodeContext, WorkflowNodeDescription description, WorkflowDetail workflow)
         {
@@ -464,21 +468,11 @@ namespace Nodetool.SDK.VL.Nodes
                 return;
             }
 
-            if (string.Equals(update.OutputType, "image", StringComparison.OrdinalIgnoreCase) &&
-                TryExtractImageBytes(update.Value, out var bytes) &&
-                bytes.Length > 0)
+            // Generic Output nodes currently advertise output_type="any". The
+            // discovered workflow interface is authoritative for the VL pin type.
+            if (expectedType == typeof(SKImage))
             {
-                var image = SKImage.FromEncodedData(bytes);
-                if (image != null)
-                {
-                    if (_latestImages.TryGetValue(pinName, out var previous))
-                        previous.Dispose();
-                    _latestImages[pinName] = image;
-                    pin.Value = image;
-                    return;
-                }
-
-                SetErrorCore($"Failed to decode image bytes for output '{pinName}'.");
+                ApplyOrScheduleImageOutput(pinName, pin, update.Value);
                 return;
             }
 
@@ -679,26 +673,10 @@ namespace Nodetool.SDK.VL.Nodes
 
                         // Final outputs: for images, prefer returning a decoded SKImage.
                         // IMPORTANT: do not overwrite an already-received SKImage with null/default if the final
-                        // job_update.result omits inline bytes (this happens in some server modes).
+                        // job_update.result omits a usable byte payload or URI.
                         if (expectedType == typeof(SKImage))
                         {
-                            if (TryExtractImageBytes(kvp.Value, out var bytes) && bytes.Length > 0)
-                            {
-                                var img = SKImage.FromEncodedData(bytes);
-                                if (img != null)
-                                {
-                                    if (_latestImages.TryGetValue(outputName, out var prev))
-                                    {
-                                        prev.Dispose();
-                                    }
-                                    _latestImages[outputName] = img;
-                                    pin.Value = img;
-                                    continue;
-                                }
-                                SetErrorCore($"Failed to decode image bytes for output '{outputName}'.");
-                            }
-
-                            // Keep existing pin.Value (likely set during output_update) if we can't decode a final image.
+                            ApplyOrScheduleImageOutput(outputName, pin, kvp.Value);
                             continue;
                         }
 
@@ -727,45 +705,248 @@ namespace Nodetool.SDK.VL.Nodes
             return null;
         }
 
-        private static bool TryExtractImageBytes(NodeToolValue value, out byte[] bytes)
+        internal static bool TryExtractImageBytes(NodeToolValue value, out byte[] bytes)
         {
             bytes = Array.Empty<byte>();
+
+            if (value.TryGetBytes(out var directValue))
+            {
+                bytes = directValue;
+                return bytes.Length > 0;
+            }
 
             var map = ExtractFirstMap(value);
             if (map == null)
                 return false;
 
             if (map.TryGetValue("type", out var typeVal) && typeVal.AsString() is string typeStr &&
-                !string.Equals(typeStr, "image", StringComparison.OrdinalIgnoreCase))
+                !IsImageTypeDiscriminator(typeStr))
                 return false;
 
-            if (!map.TryGetValue("data", out var dataVal))
-                return false;
-
-            if (dataVal.TryGetBytes(out var direct))
+            if (map.TryGetValue("data", out var dataVal))
             {
-                bytes = direct;
-                return true;
-            }
-
-            if (dataVal.Kind == NodeToolValueKind.List)
-            {
-                // data may come through as [137,80,78,71,...]
-                var list = dataVal.AsListOrEmpty();
-                var tmp = new byte[list.Count];
-                for (var i = 0; i < list.Count; i++)
+                if (dataVal.TryGetBytes(out var direct))
                 {
-                    if (!list[i].TryGetLong(out var l))
-                        return false;
-                    tmp[i] = (byte)l;
+                    bytes = direct;
+                    return bytes.Length > 0;
                 }
 
-                bytes = tmp;
-                return true;
+                if (dataVal.Kind == NodeToolValueKind.List)
+                {
+                    // data may come through as [137,80,78,71,...]
+                    var list = dataVal.AsListOrEmpty();
+                    var tmp = new byte[list.Count];
+                    for (var i = 0; i < list.Count; i++)
+                    {
+                        if (!list[i].TryGetLong(out var l) || l is < byte.MinValue or > byte.MaxValue)
+                            return false;
+                        tmp[i] = (byte)l;
+                    }
+
+                    bytes = tmp;
+                    return bytes.Length > 0;
+                }
+
+                if (dataVal.AsString() is string encoded &&
+                    TryDecodeBase64OrDataUri(encoded, out bytes))
+                {
+                    return bytes.Length > 0;
+                }
             }
 
-            return false;
+            return TryExtractImageUri(value, out var uri) &&
+                   TryDecodeBase64OrDataUri(uri, out bytes) &&
+                   bytes.Length > 0;
         }
+
+        internal static bool TryExtractImageUri(NodeToolValue value, out string uri)
+        {
+            uri = "";
+            var map = ExtractFirstMap(value);
+            if (map == null)
+                return false;
+
+            if (map.TryGetValue("type", out var typeVal) && typeVal.AsString() is string typeStr &&
+                !IsImageTypeDiscriminator(typeStr))
+            {
+                return false;
+            }
+
+            if (!map.TryGetValue("uri", out var uriValue))
+                return false;
+
+            uri = uriValue.AsString() ?? "";
+            return !string.IsNullOrWhiteSpace(uri);
+        }
+
+        private static bool IsImageTypeDiscriminator(string type)
+            => string.Equals(type, "image", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(type, "ImageRef", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(type, "image_ref", StringComparison.OrdinalIgnoreCase);
+
+        private static bool TryDecodeBase64OrDataUri(string value, out byte[] bytes)
+        {
+            bytes = Array.Empty<byte>();
+            var encoded = value.Trim();
+            if (encoded.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                var comma = encoded.IndexOf(',');
+                if (comma < 0 ||
+                    encoded.AsSpan(0, comma).IndexOf(";base64", StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    return false;
+                }
+                encoded = encoded[(comma + 1)..];
+            }
+
+            try
+            {
+                bytes = Convert.FromBase64String(encoded);
+                return bytes.Length > 0;
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+        }
+
+        private void ApplyOrScheduleImageOutput(string pinName, IVLPin pin, NodeToolValue value)
+        {
+            if (TryExtractImageBytes(value, out var bytes) && bytes.Length > 0)
+            {
+                _imageLoadVersions.AddOrUpdate(pinName, 1, static (_, current) => current + 1);
+                ApplyDecodedImage(pinName, pin, bytes);
+                return;
+            }
+
+            if (!TryExtractImageUri(value, out var uri))
+            {
+                // Keep a valid progressive value if the terminal snapshot contains
+                // only an incomplete reference.
+                return;
+            }
+
+            var version = _imageLoadVersions.AddOrUpdate(pinName, 1, static (_, current) => current + 1);
+            _ = LoadImageOutputAsync(pinName, pin, uri, version, _disposeCts.Token);
+        }
+
+        private void ApplyDecodedImage(string pinName, IVLPin pin, byte[] bytes)
+        {
+            var image = SKImage.FromEncodedData(bytes);
+            if (image == null)
+            {
+                SetErrorCore($"Failed to decode image bytes for output '{pinName}'.");
+                return;
+            }
+
+            ApplyImageOutput(pinName, pin, image);
+        }
+
+        private void ApplyImageOutput(string pinName, IVLPin pin, SKImage image)
+        {
+            if (_latestImages.TryGetValue(pinName, out var previous))
+                previous.Dispose();
+            _latestImages[pinName] = image;
+            pin.Value = image;
+            AppendDebugCore($"{DateTime.Now:HH:mm:ss.fff} image ready: {pinName} {image.Width}x{image.Height}");
+            Console.WriteLine(
+                $"WorkflowNodeBase: image output ready: pin='{pinName}' size={image.Width}x{image.Height}");
+        }
+
+        private async Task LoadImageOutputAsync(
+            string pinName,
+            IVLPin pin,
+            string uriText,
+            long version,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var uri = ResolveImageUri(uriText);
+                if (uri == null)
+                    throw new InvalidOperationException($"Unsupported image URI '{uriText}'.");
+
+                SKImage? image;
+                if (uri.IsFile)
+                {
+                    await using var stream = new FileStream(
+                        uri.LocalPath,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.Read,
+                        bufferSize: 81920,
+                        useAsync: true);
+                    image = SKImage.FromEncodedData(stream);
+                }
+                else if (uri.Scheme is "http" or "https")
+                {
+                    using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+                    var token = NodeToolClientProvider.CurrentAuthToken;
+                    if (!string.IsNullOrWhiteSpace(token) && IsSameOrigin(uri, NodeToolClientProvider.CurrentApiBaseUrl))
+                        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+                    using var response = await ImageHttpClient.SendAsync(
+                        request,
+                        HttpCompletionOption.ResponseHeadersRead,
+                        cancellationToken).ConfigureAwait(false);
+                    response.EnsureSuccessStatusCode();
+                    await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+                    image = SKImage.FromEncodedData(stream);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Unsupported image URI scheme '{uri.Scheme}'.");
+                }
+
+                if (image == null)
+                    throw new InvalidOperationException("Downloaded bytes are not a supported image.");
+
+                EnqueueStateUpdate(() =>
+                {
+                    if (_isDisposed ||
+                        !_imageLoadVersions.TryGetValue(pinName, out var currentVersion) ||
+                        currentVersion != version)
+                    {
+                        image.Dispose();
+                        return;
+                    }
+
+                    ApplyImageOutput(pinName, pin, image);
+                });
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Node disposal cancels outstanding media downloads.
+            }
+            catch (Exception ex)
+            {
+                EnqueueStateUpdate(() =>
+                {
+                    if (_imageLoadVersions.TryGetValue(pinName, out var currentVersion) &&
+                        currentVersion == version)
+                    {
+                        SetErrorCore($"Failed to load image output '{pinName}': {ex.Message}");
+                    }
+                });
+            }
+        }
+
+        private static Uri? ResolveImageUri(string value)
+        {
+            if (Uri.TryCreate(value, UriKind.Absolute, out var absolute))
+                return absolute;
+
+            var apiBase = NodeToolClientProvider.CurrentApiBaseUrl;
+            return apiBase == null || !Uri.TryCreate(apiBase, value, out var relative)
+                ? null
+                : relative;
+        }
+
+        private static bool IsSameOrigin(Uri target, Uri? origin)
+            => origin != null &&
+               string.Equals(target.Scheme, origin.Scheme, StringComparison.OrdinalIgnoreCase) &&
+               string.Equals(target.Host, origin.Host, StringComparison.OrdinalIgnoreCase) &&
+               target.Port == origin.Port;
 
         private void SetIsRunning(bool isRunning)
         {
@@ -825,8 +1006,18 @@ namespace Nodetool.SDK.VL.Nodes
                    ?? GetDefaultValueForVLType(expectedType);
         }
 
-        private static object ConvertNodeToolValueToExpectedType(NodeToolValue value, Type expectedType)
+        internal static object ConvertNodeToolValueToExpectedType(NodeToolValue value, Type expectedType)
         {
+            // Workflow runner terminal results are output-name -> value[] even for
+            // scalar schema properties. Preserve arrays for spread pins, but unwrap
+            // a singleton container before scalar conversion.
+            if (!expectedType.IsArray &&
+                value.Kind == NodeToolValueKind.List &&
+                value.AsListOrEmpty() is { Count: 1 } singleton)
+            {
+                return ConvertNodeToolValueToExpectedType(singleton[0], expectedType);
+            }
+
             // Prefer primitives when possible; fall back to JSON string for complex values.
             if (expectedType == typeof(string))
             {
@@ -1560,6 +1751,7 @@ namespace Nodetool.SDK.VL.Nodes
                 Console.WriteLine($"WorkflowNodeBase: Disposing workflow node '{_workflow.Name}'");
 
                 _isDisposed = true;
+                try { _disposeCts.Cancel(); } catch { /* ignore */ }
                 try { _manualCancelCts?.Cancel(); } catch { /* ignore */ }
                 if (_activeSession is { } session)
                     _ = CancelSessionOnDisposeAsync(session);
@@ -1573,6 +1765,7 @@ namespace Nodetool.SDK.VL.Nodes
                     try { img.Dispose(); } catch { /* ignore */ }
                 }
                 _latestImages.Clear();
+                _disposeCts.Dispose();
             }
         }
 

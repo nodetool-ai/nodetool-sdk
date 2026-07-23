@@ -76,6 +76,80 @@ public class WorkflowVlTypeMappingTests
         Assert.Equal("world", completed);
     }
 
+    [Theory]
+    [InlineData(3, typeof(int), 3)]
+    [InlineData(0.5, typeof(float), 0.5f)]
+    [InlineData(true, typeof(bool), true)]
+    public void TerminalSingletonList_UnwrapsForScalarPins(
+        object terminalValue,
+        Type expectedType,
+        object expected)
+    {
+        var value = NodeToolValue.From(new[] { terminalValue });
+
+        var converted = WorkflowNodeBase.ConvertNodeToolValueToExpectedType(value, expectedType);
+
+        Assert.Equal(expected, converted);
+    }
+
+    [Fact]
+    public void TerminalList_RemainsAnArrayForSpreadPins()
+    {
+        var value = NodeToolValue.From(new object[] { "alpha", "beta" });
+
+        var converted = WorkflowNodeBase.ConvertNodeToolValueToExpectedType(value, typeof(string[]));
+
+        Assert.Equal(new[] { "alpha", "beta" }, Assert.IsType<string[]>(converted));
+    }
+
+    [Fact]
+    public void ImagePayload_AcceptsImageRefBase64Data()
+    {
+        var value = NodeToolValue.From(new Dictionary<string, object?>
+        {
+            ["type"] = "ImageRef",
+            ["uri"] = "",
+            ["data"] = Convert.ToBase64String(new byte[] { 1, 2, 3, 4 })
+        });
+
+        Assert.True(WorkflowNodeBase.TryExtractImageBytes(value, out var bytes));
+        Assert.Equal(new byte[] { 1, 2, 3, 4 }, bytes);
+    }
+
+    [Fact]
+    public void ImagePayload_AcceptsDataUriInSingletonTerminalList()
+    {
+        var value = NodeToolValue.From(new object[]
+        {
+            new Dictionary<string, object?>
+            {
+                ["type"] = "image",
+                ["uri"] = "data:image/png;base64,iVBORw0KGgo=",
+                ["data"] = null
+            }
+        });
+
+        Assert.True(WorkflowNodeBase.TryExtractImageBytes(value, out var bytes));
+        Assert.Equal(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }, bytes);
+    }
+
+    [Fact]
+    public void ImagePayload_ExposesRelativeStorageUri()
+    {
+        var value = NodeToolValue.From(new object[]
+        {
+            new Dictionary<string, object?>
+            {
+                ["type"] = "ImageRef",
+                ["uri"] = "/api/storage/roundtrip.png",
+                ["data"] = null
+            }
+        });
+
+        Assert.True(WorkflowNodeBase.TryExtractImageUri(value, out var uri));
+        Assert.Equal("/api/storage/roundtrip.png", uri);
+    }
+
     private static ExecutionOutputUpdate Chunk(string content, string disposition, bool done = false)
         => new(
             NodeId: "output-node",
