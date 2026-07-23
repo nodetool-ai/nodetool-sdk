@@ -386,6 +386,15 @@ public static class NodeToolClientProvider
         public Task<WorkflowResponse?> GetWorkflowAsync(string workflowId, CancellationToken cancellationToken = default)
             => Task.FromException<WorkflowResponse?>(new InvalidOperationException("Not connected."));
 
+        public Task<List<WorkflowSummaryResponse>> GetWorkflowSummariesAsync(CancellationToken cancellationToken = default)
+            => Task.FromException<List<WorkflowSummaryResponse>>(new InvalidOperationException("Not connected."));
+
+        public Task<WorkflowInterfaceResponse> GetWorkflowInterfaceAsync(string workflowId, CancellationToken cancellationToken = default)
+            => Task.FromException<WorkflowInterfaceResponse>(new InvalidOperationException("Not connected."));
+
+        public Task<WorkflowInterfacesResponse> GetWorkflowInterfacesAsync(IReadOnlyCollection<string> workflowIds, CancellationToken cancellationToken = default)
+            => Task.FromException<WorkflowInterfacesResponse>(new InvalidOperationException("Not connected."));
+
         public Task<List<AssetResponse>> GetAssetsAsync(
             string? contentType = null,
             string? parentId = null,

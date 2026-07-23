@@ -97,6 +97,26 @@ public interface INodeToolExecutionClient : IDisposable
     Task<WorkflowResponse?> GetWorkflowAsync(string workflowId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Fetch compact workflow summaries without graph payloads.
+    /// </summary>
+    Task<List<WorkflowSummaryResponse>> GetWorkflowSummariesAsync(
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Fetch the authoritative graph-derived interface for one workflow.
+    /// </summary>
+    Task<WorkflowInterfaceResponse> GetWorkflowInterfaceAsync(
+        string workflowId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Fetch authoritative graph-derived interfaces for up to 100 workflows.
+    /// </summary>
+    Task<WorkflowInterfacesResponse> GetWorkflowInterfacesAsync(
+        IReadOnlyCollection<string> workflowIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Fetch assets from the server via WebSocket (<c>list_assets</c>).
     /// </summary>
     Task<List<AssetResponse>> GetAssetsAsync(

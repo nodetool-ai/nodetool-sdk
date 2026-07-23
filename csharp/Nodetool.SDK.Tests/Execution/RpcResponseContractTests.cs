@@ -1,4 +1,5 @@
 using Nodetool.SDK.Api.Models;
+using Nodetool.SDK.Api;
 using Nodetool.SDK.Configuration;
 using Nodetool.SDK.Execution;
 
@@ -37,4 +38,61 @@ public class RpcResponseContractTests
         Assert.Equal("test.Node", node.NodeType);
         Assert.Equal("Test Node", node.Title);
     }
+
+    [Fact]
+    public void RequiredResult_DeserializesWorkflowInterfaceEnvelope()
+    {
+        using var client = CreateClient();
+        var raw = new Dictionary<string, object?>
+        {
+            ["type"] = "rpc_response",
+            ["result"] = new Dictionary<object, object?>
+            {
+                ["version"] = 1L,
+                ["workflow_id"] = "wf-1",
+                ["etag"] = "etag-1",
+                ["source"] = "server",
+                ["inputs"] = Array.Empty<object>(),
+                ["outputs"] = Array.Empty<object>(),
+                ["diagnostics"] = Array.Empty<object>()
+            }
+        };
+
+        var result = client.DeserializeRequiredResult<WorkflowInterfaceResponse>(
+            raw,
+            "get_workflow_interface");
+
+        Assert.Equal(1, result.Version);
+        Assert.Equal("wf-1", result.WorkflowId);
+        Assert.Equal("server", result.Source);
+    }
+
+    [Fact]
+    public void RequiredResult_ClassifiesDisabledWorkflowInterfaceFeature()
+    {
+        using var client = CreateClient();
+        var raw = new Dictionary<string, object?>
+        {
+            ["type"] = "rpc_response",
+            ["error"] = new Dictionary<object, object?>
+            {
+                ["code"] = "INTERNAL_SERVER_ERROR",
+                ["apiCode"] = "SERVICE_UNAVAILABLE",
+                ["message"] = "SDK workflow interface v1 is disabled"
+            }
+        };
+
+        var error = Assert.Throws<WorkflowInterfaceUnavailableException>(() =>
+            client.DeserializeRequiredResult<WorkflowInterfaceResponse>(
+                raw,
+                "get_workflow_interface"));
+
+        Assert.Equal("SERVICE_UNAVAILABLE", error.ApiCode);
+    }
+
+    private static NodeToolExecutionClient CreateClient()
+        => new(new NodeToolClientOptions
+        {
+            WorkerWebSocketUrl = new Uri("ws://127.0.0.1:7777/ws")
+        });
 }

@@ -162,6 +162,11 @@ assetManager.ClearCache();
 - **`IExecutionSession`**: Track job progress and results
 - **`ExecutionSession`**: Session implementation with events
 
+The execution client also exposes correlated MessagePack discovery calls:
+`GetWorkflowSummariesAsync`, `GetWorkflowInterfaceAsync`, and
+`GetWorkflowInterfacesAsync`. These return compact, graph-derived workflow
+contracts without downloading workflow graphs or inline media.
+
 #### Asset System
 
 - **`IAssetManager`**: Asset download/upload with caching

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Nodetool.SDK.Api;
@@ -511,6 +512,88 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     }
 
     /// <inheritdoc/>
+    public async Task<List<WorkflowSummaryResponse>> GetWorkflowSummariesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const int pageSize = 50;
+        var workflows = new List<WorkflowSummaryResponse>();
+        var visitedCursors = new HashSet<string>(StringComparer.Ordinal);
+        string? cursor = null;
+
+        do
+        {
+            var data = new Dictionary<string, object?> { ["limit"] = pageSize };
+            if (cursor != null)
+                data["cursor"] = cursor;
+            var raw = await _webSocketClient.SendRequestAsync(
+                "list_workflow_summaries",
+                data,
+                cancellationToken);
+            var page = DeserializeRequiredResult<WorkflowSummaryListResponse>(
+                raw,
+                "list_workflow_summaries");
+            workflows.AddRange(page.Workflows);
+            cursor = string.IsNullOrWhiteSpace(page.Next) ? null : page.Next;
+            if (cursor != null && !visitedCursors.Add(cursor))
+                throw new InvalidDataException(
+                    $"The workflow summary cursor repeated ({cursor}); pagination cannot advance.");
+        }
+        while (cursor != null);
+
+        return workflows;
+    }
+
+    /// <inheritdoc/>
+    public async Task<WorkflowInterfaceResponse> GetWorkflowInterfaceAsync(
+        string workflowId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workflowId);
+        var raw = await _webSocketClient.SendRequestAsync(
+            "get_workflow_interface",
+            new Dictionary<string, object?>
+            {
+                ["id"] = workflowId,
+                ["version"] = 1
+            },
+            cancellationToken);
+        var result = DeserializeRequiredResult<WorkflowInterfaceResponse>(
+            raw,
+            "get_workflow_interface");
+        ValidateWorkflowInterface(result, workflowId);
+        return result;
+    }
+
+    /// <inheritdoc/>
+    public async Task<WorkflowInterfacesResponse> GetWorkflowInterfacesAsync(
+        IReadOnlyCollection<string> workflowIds,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateWorkflowIds(workflowIds);
+        var ids = workflowIds.ToArray();
+        var raw = await _webSocketClient.SendRequestAsync(
+            "get_workflow_interfaces",
+            new Dictionary<string, object?>
+            {
+                ["ids"] = ids,
+                ["version"] = 1
+            },
+            cancellationToken);
+        var result = DeserializeRequiredResult<WorkflowInterfacesResponse>(
+            raw,
+            "get_workflow_interfaces");
+        var requestedIds = ids.ToHashSet(StringComparer.Ordinal);
+        foreach (var workflowInterface in result.Interfaces)
+        {
+            ValidateWorkflowInterface(workflowInterface, workflowInterface.WorkflowId);
+            if (!requestedIds.Contains(workflowInterface.WorkflowId))
+                throw new InvalidDataException(
+                    "The workflow-interface batch contained an unrequested contract.");
+        }
+        return result;
+    }
+
+    /// <inheritdoc/>
     public async Task<List<AssetResponse>> GetAssetsAsync(
         string? contentType = null,
         string? parentId = null,
@@ -545,8 +628,57 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             var errorMap = NodeToolValue.From(err).AsMapOrEmpty();
             var code = errorMap.GetValueOrDefault("code")?.AsString() ?? "UNKNOWN";
             var msg = errorMap.GetValueOrDefault("message")?.AsString() ?? err.ToString()!;
+            var apiCode = errorMap.GetValueOrDefault("apiCode")?.AsString();
+            if (string.Equals(apiCode, "SERVICE_UNAVAILABLE", StringComparison.Ordinal))
+            {
+                throw new WorkflowInterfaceUnavailableException(
+                    HttpStatusCode.ServiceUnavailable,
+                    apiCode,
+                    msg);
+            }
             throw new InvalidOperationException($"[{code}] {msg}");
         }
+    }
+
+    internal T DeserializeRequiredResult<T>(
+        Dictionary<string, object?>? raw,
+        string command)
+    {
+        ThrowIfRpcError(raw, command);
+        if (raw is null || !raw.TryGetValue("result", out var resultObj) || resultObj is null)
+            throw new InvalidDataException($"The '{command}' response did not contain a result.");
+        return JsonSerializer.Deserialize<T>(
+            NodeToolValue.From(resultObj).ToJsonString(),
+            _jsonOptions) ?? throw new InvalidDataException(
+                $"The '{command}' response result could not be deserialized.");
+    }
+
+    private static void ValidateWorkflowIds(IReadOnlyCollection<string> workflowIds)
+    {
+        ArgumentNullException.ThrowIfNull(workflowIds);
+        if (workflowIds.Count is < 1 or > 100)
+            throw new ArgumentOutOfRangeException(
+                nameof(workflowIds),
+                "Expected between 1 and 100 workflow IDs.");
+        if (workflowIds.Any(string.IsNullOrWhiteSpace))
+            throw new ArgumentException("Workflow IDs cannot be empty.", nameof(workflowIds));
+        if (workflowIds.Distinct(StringComparer.Ordinal).Count() != workflowIds.Count)
+            throw new ArgumentException("Workflow IDs must be unique.", nameof(workflowIds));
+    }
+
+    private static void ValidateWorkflowInterface(
+        WorkflowInterfaceResponse workflowInterface,
+        string expectedWorkflowId)
+    {
+        if (workflowInterface.Version != 1 ||
+            !string.Equals(workflowInterface.Source, "server", StringComparison.Ordinal))
+        {
+            throw new InvalidDataException(
+                $"Workflow {expectedWorkflowId} returned an unsupported workflow-interface contract.");
+        }
+        if (!string.Equals(workflowInterface.WorkflowId, expectedWorkflowId, StringComparison.Ordinal))
+            throw new InvalidDataException(
+                $"Workflow-interface response ID '{workflowInterface.WorkflowId}' does not match '{expectedWorkflowId}'.");
     }
 
     internal List<T> DeserializeListResult<T>(Dictionary<string, object?>? raw, string command, string key)

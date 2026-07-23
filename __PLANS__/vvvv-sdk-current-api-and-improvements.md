@@ -37,12 +37,12 @@ The preferred end state is:
 
 - [x] Do not change the existing default shape of `GET /api/workflows`, `GET /api/workflows/:id`, tRPC `workflows.list/get`, or WebSocket `list_workflows/get_workflow` during this work.
 - [x] Do not repurpose the existing `input_schema` and `output_schema` fields in the first rollout; clients may have encoded assumptions about their current null values.
-- [ ] Add new behavior through a versioned SDK-specific capability, endpoint, and WebSocket command.
+- [x] Add new behavior through a versioned SDK-specific capability, endpoint, and WebSocket command.
 - [x] Keep the new backend capability disabled by a server feature flag during the first rollout.
 - [x] Require workflow-interface v1 in the new C# SDK and report an explicit incompatible-server/feature-disabled error when it is unavailable.
 - [x] Keep the backend workflow-interface derivation pure and independently testable.
 - [ ] Do not make backend availability a prerequisite for loading the vvvv package or opening an existing patch.
-- [ ] Do not add compatibility code for past NodeTool server or SDK contracts.
+- [x] Do not add compatibility code for past NodeTool server or SDK contracts.
 
 ## Proposed versioned workflow-interface contract
 
@@ -54,8 +54,9 @@ Add a new contract instead of changing existing workflow responses.
 - REST bulk: `POST /api/sdk/v1/workflow-interfaces` with `{ version: 1, ids: [...] }`
 - tRPC: `workflows.interface({ id, version: 1 })`
 - tRPC bulk: `workflows.interfaces({ ids, version: 1 })`
-- WebSocket RPC: `get_workflow_interface` with `{ id, version: 1, request_id }`
-- WebSocket bulk RPC: `get_workflow_interfaces` with `{ ids, version: 1, request_id }`
+- WebSocket RPC: `get_workflow_interface` with `data: { id, version: 1 }` and a top-level `request_id`
+- WebSocket bulk RPC: `get_workflow_interfaces` with `data: { ids, version: 1 }` and a top-level `request_id`
+- WebSocket summaries RPC: `list_workflow_summaries` with `data: { limit, cursor }` and a top-level `request_id`
 - Server feature flag: `NODETOOL_ENABLE_SDK_WORKFLOW_INTERFACE_V1`
 
 The REST and WebSocket variants must call the same service function and return the same logical payload. Bulk requests are bounded to a documented maximum (initially 100 workflow IDs) and return per-workflow results/diagnostics so one invalid workflow does not discard the full page.
@@ -211,9 +212,10 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Add a slim, cursor-paginated SDK workflow-summary query that selects only identity/revision columns and never serializes graph nodes, edges, or inline media.
 - [x] Add `GET /api/workflows/:id/interface?version=1` as a thin bridge to the same service.
 - [x] Add `POST /api/sdk/v1/workflow-interfaces` as the bounded REST bulk bridge.
-- [ ] Add WebSocket `get_workflow_interface` as a thin RPC bridge to the same service.
-- [ ] Add WebSocket `get_workflow_interfaces` as the bounded bulk RPC bridge.
-- [ ] Guard all three entry points with `NODETOOL_ENABLE_SDK_WORKFLOW_INTERFACE_V1` for the initial rollout. (tRPC and REST are guarded; WebSocket remains.)
+- [x] Add WebSocket `get_workflow_interface` as a thin RPC bridge to the same service.
+- [x] Add WebSocket `get_workflow_interfaces` as the bounded bulk RPC bridge.
+- [x] Add WebSocket `list_workflow_summaries` without graph or inline-media payloads.
+- [x] Guard every SDK workflow-interface entry point with `NODETOOL_ENABLE_SDK_WORKFLOW_INTERFACE_V1` for the initial rollout.
 - [x] Return a stable feature-disabled/not-supported API error that the SDK can recognize.
 - [x] Do not populate or alter existing workflow `input_schema`/`output_schema` fields in this phase.
 - [ ] Add authorization tests for owner, collaborator viewer, public workflow, unauthorized user, and missing workflow.
