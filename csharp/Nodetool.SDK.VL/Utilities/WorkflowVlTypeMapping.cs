@@ -1,11 +1,14 @@
 using Nodetool.SDK.Types;
 using Nodetool.SDK.Types.Assets;
 using SkiaSharp;
+using System.Reflection;
 
 namespace Nodetool.SDK.VL.Utilities;
 
 internal static class WorkflowVlTypeMapping
 {
+    private static readonly Lazy<NodeToolTypeRegistry> TypeRegistry = new(CreateTypeRegistry);
+
     public static (Type Type, object? DefaultValue) GetTypeAndDefault(TypeMetadata metadata)
     {
         var type = metadata.Type?.Trim().ToLowerInvariant();
@@ -21,7 +24,7 @@ internal static class WorkflowVlTypeMapping
             "video" => (typeof(VideoRef), new VideoRef()),
             "document" => (typeof(DocumentRef), new DocumentRef()),
             "asset" or "asset_ref" => (typeof(GenericAssetRef), new GenericAssetRef()),
-            _ => (typeof(object), null)
+            _ => GetStructuredTypeAndDefault(metadata)
         };
     }
 
@@ -38,5 +41,39 @@ internal static class WorkflowVlTypeMapping
         var elementType = GetTypeAndDefault(elementMetadata).Type;
         var arrayType = elementType.MakeArrayType();
         return (arrayType, Array.CreateInstance(elementType, 0));
+    }
+
+    private static (Type Type, object? DefaultValue) GetStructuredTypeAndDefault(TypeMetadata metadata)
+    {
+        var candidates = new[] { metadata.TypeName, metadata.Type }
+            .Where(candidate => !string.IsNullOrWhiteSpace(candidate))
+            .Select(candidate => candidate!)
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var candidate in candidates)
+        {
+            if (TypeRegistry.Value.GetType(candidate) is { } resolvedType)
+                return (resolvedType, null);
+        }
+
+        return (typeof(object), null);
+    }
+
+    private static NodeToolTypeRegistry CreateTypeRegistry()
+    {
+        // The project reference can remain unloaded until a CLR type is used. Load it
+        // explicitly before registry discovery so workflow pins see generated DTOs.
+        try
+        {
+            Assembly.Load("Nodetool.Types");
+        }
+        catch
+        {
+            // The object fallback remains available when generated types are not packaged.
+        }
+
+        var registry = new NodeToolTypeRegistry();
+        registry.RegisterAllTypes();
+        return registry;
     }
 }

@@ -55,6 +55,15 @@ internal static class VlValueConversion
                 return single;
             }
 
+            if (targetType.IsClass && value is IDictionary or IEnumerable)
+            {
+                var json = JsonSerializer.Serialize(value);
+                return JsonSerializer.Deserialize(json, targetType, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                }) ?? fallback;
+            }
+
             return Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
         }
         catch

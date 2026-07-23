@@ -12,6 +12,7 @@ public class NodeToolTypeRegistry
 {
     private readonly ILogger<NodeToolTypeRegistry> _logger;
     private readonly Dictionary<string, Type> _typesByName = new();
+    private readonly Dictionary<string, Type> _typesByAlias = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<Type, string> _namesByType = new();
     private readonly Dictionary<Type, PropertyInfo?> _typePropertyCache = new();
     private bool _isInitialized = false;
@@ -89,6 +90,9 @@ public class NodeToolTypeRegistry
 
         _typesByName[typeName] = type;
         _namesByType[type] = typeName;
+        _typesByAlias.TryAdd(type.Name, type);
+        if (type.FullName is { Length: > 0 } fullName)
+            _typesByAlias.TryAdd(fullName, type);
 
         _logger.LogDebug("Registered type: {TypeName} -> {Type}", typeName, type.Name);
     }
@@ -101,7 +105,10 @@ public class NodeToolTypeRegistry
     public Type? GetType(string typeName)
     {
         EnsureInitialized();
-        return _typesByName.TryGetValue(typeName, out var type) ? type : null;
+        if (_typesByName.TryGetValue(typeName, out var type))
+            return type;
+
+        return _typesByAlias.TryGetValue(typeName, out type) ? type : null;
     }
 
     /// <summary>
@@ -211,4 +218,4 @@ public class NodeToolTypeRegistry
             RegisterAllTypes();
         }
     }
-} 
+}
