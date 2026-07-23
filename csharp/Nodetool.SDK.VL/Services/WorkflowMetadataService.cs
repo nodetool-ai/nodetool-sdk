@@ -66,14 +66,38 @@ public class WorkflowMetadataService : IDisposable
             var workflowDetails = new List<WorkflowDetail>();
             var interfacesById = new Dictionary<string, WorkflowInterfaceResponse>(
                 StringComparer.Ordinal);
+            var skippedInterfaceCount = 0;
             foreach (var batch in workflows.Chunk(100))
             {
                 var result = await _client.GetWorkflowInterfacesAsync(
                     batch.Select(workflow => workflow.Id).ToArray());
                 foreach (var workflowInterface in result.Interfaces)
+                {
+                    var errors = workflowInterface.Diagnostics
+                        .Where(diagnostic => string.Equals(
+                            diagnostic.Severity,
+                            "error",
+                            StringComparison.OrdinalIgnoreCase))
+                        .ToArray();
+                    if (errors.Length > 0)
+                    {
+                        skippedInterfaceCount++;
+                        foreach (var error in errors)
+                        {
+                            _logger?.LogWarning(
+                                "Workflow interface {Id} was skipped ({Code}, pin {Pin}): {Message}",
+                                workflowInterface.WorkflowId,
+                                error.Code,
+                                error.PinName ?? "n/a",
+                                error.Message);
+                        }
+                        continue;
+                    }
                     interfacesById[workflowInterface.WorkflowId] = workflowInterface;
+                }
                 foreach (var error in result.Errors)
                 {
+                    skippedInterfaceCount++;
                     _logger?.LogWarning(
                         "Workflow interface {Id} was skipped ({Code}): {Message}",
                         error.WorkflowId,
@@ -98,8 +122,13 @@ public class WorkflowMetadataService : IDisposable
             _cachedWorkflows = workflowDetails;
             _lastFetch = DateTime.Now;
             
-            StatusMessage = $"Successfully fetched {workflowDetails.Count} workflow definitions";
-            _logger?.LogInformation("Successfully fetched {Count} workflow definitions", workflowDetails.Count);
+            StatusMessage = skippedInterfaceCount == 0
+                ? $"Successfully fetched {workflowDetails.Count} workflow definitions"
+                : $"Fetched {workflowDetails.Count} workflow definitions; skipped {skippedInterfaceCount} invalid interfaces";
+            _logger?.LogInformation(
+                "Fetched {Count} workflow definitions; skipped {SkippedCount} invalid interfaces",
+                workflowDetails.Count,
+                skippedInterfaceCount);
 
             return workflowDetails;
         }

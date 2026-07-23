@@ -119,7 +119,7 @@ Use NodeTool `TypeMetadata`-style data instead of lossy JSON Schema wherever pos
 - [x] Bound serialized defaults in discovery interfaces (initially 16 KiB per default); omit oversized inline image/media values and return a diagnostic.
 - [ ] Define and test maximum single-interface, bulk-response, and total discovery-page byte sizes.
 - [x] Return diagnostics for unresolved or ambiguous types rather than silently converting them to strings.
-- [ ] Define deterministic behavior for duplicate input/output names and reject an invalid public interface with actionable diagnostics.
+- [x] Define deterministic behavior for duplicate input/output names and reject invalid interfaces from VL node creation with actionable diagnostics.
 
 ## Phase 0 — Current contract fixtures and safety net
 
