@@ -13,6 +13,8 @@ public class ExecutionSession : IExecutionSession
     private readonly TaskCompletionSource<bool> _completionSource;
     private readonly Dictionary<string, NodeToolValue> _latestOutputs;
     private readonly object _lock = new();
+    private bool _cancelRequested;
+    private bool _cancellationSent;
     private bool _disposed;
 
     /// <summary>
@@ -40,7 +42,18 @@ public class ExecutionSession : IExecutionSession
     {
         if (string.IsNullOrWhiteSpace(jobId))
             return;
-        _jobId = jobId;
+        Func<string, string?, CancellationToken, Task>? cancelAction = null;
+        lock (_lock)
+        {
+            _jobId = jobId;
+            if (_cancelRequested && !_cancellationSent && CancelAction != null)
+            {
+                _cancellationSent = true;
+                cancelAction = CancelAction;
+            }
+        }
+        if (cancelAction != null)
+            _ = SendDeferredCancellationAsync(cancelAction, jobId);
     }
 
     /// <inheritdoc/>
@@ -99,11 +112,39 @@ public class ExecutionSession : IExecutionSession
     /// <inheritdoc/>
     public async Task CancelAsync()
     {
-        if (CancelAction != null)
+        Func<string, string?, CancellationToken, Task>? cancelAction = null;
+        string? jobId = null;
+        lock (_lock)
         {
-            if (string.IsNullOrWhiteSpace(_jobId))
-                return;
-            await CancelAction(_jobId, _workflowId, CancellationToken.None);
+            _cancelRequested = true;
+            if (!_cancellationSent &&
+                !string.IsNullOrWhiteSpace(_jobId) &&
+                CancelAction != null)
+            {
+                _cancellationSent = true;
+                cancelAction = CancelAction;
+                jobId = _jobId;
+            }
+        }
+        if (cancelAction != null && jobId != null)
+            await cancelAction(jobId, _workflowId, CancellationToken.None);
+    }
+
+    private async Task SendDeferredCancellationAsync(
+        Func<string, string?, CancellationToken, Task> cancelAction,
+        string jobId)
+    {
+        try
+        {
+            await cancelAction(jobId, _workflowId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            lock (_lock)
+            {
+                if (!IsCompleted)
+                    ErrorMessage = $"Failed to cancel job: {ex.Message}";
+            }
         }
     }
 

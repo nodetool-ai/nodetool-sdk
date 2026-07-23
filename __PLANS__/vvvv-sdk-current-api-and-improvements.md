@@ -298,7 +298,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [ ] Use the workflow interface type when encoding every input, including graph-derived image/audio/video/document inputs.
 - [ ] Prefer asset/reference transport for large media; set and test explicit inline payload limits.
 - [ ] Make execution timeout configurable globally and per node.
-- [ ] Support cancellation before job-ID assignment, while queued, and while running.
+- [ ] Support cancellation while server-queued; cancellation before job-ID assignment is now deferred and sent once, and running cancellation is supported.
 - [ ] Add reconnect/replay behavior using `reconnect_job` for interrupted sockets.
 - [x] Never invoke user/VL completion callbacks while holding an execution-session lock.
 - [ ] Marshal pin/state changes through the correct VL update context.
