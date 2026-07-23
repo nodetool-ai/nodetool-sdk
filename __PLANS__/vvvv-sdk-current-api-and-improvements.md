@@ -33,6 +33,14 @@ The preferred end state is:
 - The full `list_nodes` WebSocket response arrived in about 0.8 seconds and was about 6.36 MB, but used msgpackr extension type `0x00` for JavaScript `undefined`. MessagePack-CSharp rejects that private extension. The backend binary send path now emits standard MessagePack maps and encodes `undefined` as `nil`.
 - The Electron nightly package updater attempted the invalid PEP 440 pin `nodetool-core==0.7.1-nightly.20260714.696`, so the running bundle is useful as a drift fixture but not as the target current server.
 
+### Implementation audit — 2026-07-23
+
+- 117 of 178 checkable items are complete after reviewing the implementation, commits, and targeted test results in both repositories.
+- The focused C#/VL suite passes 33 tests. The NodeTool workflow-interface, WebSocket/interface, and protocol suites pass 7, 129, and 32 tests respectively.
+- Full NodeTool package verification remains blocked by pre-existing Sharp TypeScript import errors in the runtime and WebSocket packages. The unrelated package-manifest and lockfile changes in the working tree are not part of this plan.
+- The open Phase 1 graph-normalization items describe a legacy client-side inference path that authoritative workflow-interface v1 no longer uses. Before implementing them, decide whether to delete the remaining public legacy graph DTOs or retain them as a separate, non-workflow API.
+- The highest-value remaining proof is a flag-on/flag-off integration harness covering REST, tRPC, WebSocket, authorization, payload parity, and representative vvvv patches.
+
 ## Current-client safety rules
 
 - [x] Do not change the existing default shape of `GET /api/workflows`, `GET /api/workflows/:id`, tRPC `workflows.list/get`, or WebSocket `list_workflows/get_workflow` during this work.
@@ -198,7 +206,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 ### Phase 2 acceptance gate
 
 - [ ] The current example workflows produce useful interfaces without stored schemas.
-- [ ] Stored schemas do not override the authoritative v1 interface unless the v1 contract explicitly defines such a source.
+- [x] Stored schemas do not override the authoritative v1 interface unless the v1 contract explicitly defines such a source.
 - [ ] Type disagreements are visible in diagnostics and never silently downgraded without explanation.
 
 ## Phase 3 — Additive backend capability
@@ -227,7 +235,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 
 - [ ] Feature flag off: all existing tests pass and the new surface is unavailable in the documented way.
 - [ ] Feature flag on: existing workflow responses are unchanged and v1 interface tests pass.
-- [ ] No existing web or Electron call site needs modification to consume the new feature.
+- [x] No existing web or Electron call site needs modification to consume the new feature.
 
 ## Phase 4 — Discovery and VL factory lifecycle
 
@@ -244,7 +252,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Remove the graph-bearing list-then-sequential-detail discovery path entirely; pagination alone is insufficient for image-heavy graphs.
 - [x] Use the single-workflow interface request only for diagnostics, targeted refresh, or a changed workflow.
 - [x] Cache normalized metadata and workflow interfaces by workflow ID, workflow revision, node-registry revision, and authoritative interface `etag`.
-- [ ] Replace synchronous `Task.Run(...).Wait(...)` factory initialization with asynchronous stale-while-revalidate loading.
+- [ ] Replace synchronous `GetAwaiter().GetResult()` factory initialization with asynchronous stale-while-revalidate loading.
 - [x] Keep the last successful factory contents when refresh fails.
 - [x] Do not permanently cache an empty factory after a transient startup failure.
 - [x] Add explicit `Refresh`, `Last Refresh`, `Server Version`, `Interface Source`, and `Last Error` diagnostics for vvvv.
@@ -341,8 +349,8 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [ ] Existing NodeTool clients behave identically with the backend flag off and on.
 - [ ] The declared current NodeTool server and SDK versions work together through workflow-interface v1.
 - [ ] Workflow discovery, node creation, refresh, execution, streaming, cancellation, and media conversion have automated coverage.
-- [ ] No required work depends on stored `input_schema` or `output_schema` being populated.
-- [ ] The server-derived interface is the sole authoritative workflow I/O contract used by the SDK.
+- [x] No required work depends on stored `input_schema` or `output_schema` being populated.
+- [x] The server-derived interface is the sole authoritative workflow I/O contract used by the SDK.
 
 ## Likely implementation locations
 
@@ -378,8 +386,8 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 
 ## Explicit non-goals for the first release
 
-- [ ] Do not migrate or rewrite stored workflow graphs.
-- [ ] Do not require existing workflows to save generated schemas.
-- [ ] Do not make the new endpoint mandatory for non-SDK clients running workflows.
-- [ ] Do not redesign the NodeTool execution kernel as part of the SDK repair.
-- [ ] Do not generate arbitrary CLR record/enum assemblies at runtime until the stable type-binding layer and package policy are settled.
+- [x] Do not migrate or rewrite stored workflow graphs.
+- [x] Do not require existing workflows to save generated schemas.
+- [x] Do not make the new endpoint mandatory for non-SDK clients running workflows.
+- [x] Do not redesign the NodeTool execution kernel as part of the SDK repair.
+- [x] Do not generate arbitrary CLR record/enum assemblies at runtime until the stable type-binding layer and package policy are settled.
