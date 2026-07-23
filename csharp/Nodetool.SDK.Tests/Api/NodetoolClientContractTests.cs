@@ -43,6 +43,17 @@ public class NodetoolClientContractTests
 
         var node = Assert.Single(nodes);
         Assert.Equal("nodetool.constant.String", node.NodeType);
+        Assert.True(node.SupportsDynamicInputs);
+        Assert.True(node.SupportsDynamicOutputs);
+        Assert.True(node.IsStreamingInput);
+        Assert.True(node.IsStreamingOutput);
+        Assert.Equal("python", Assert.Single(node.RequiredRuntimes));
+        Assert.Equal("TEST_TOKEN", Assert.Single(node.RequiredSettings));
+        var property = Assert.Single(node.Properties);
+        Assert.True(property.Required);
+        Assert.Equal("list", property.Type.Type);
+        Assert.Equal("image", Assert.Single(property.Type.TypeArgs!).Type);
+        Assert.True(Assert.Single(node.Outputs).Stream);
         Assert.Equal("/api/nodes/metadata?fields=full", requestedUri?.PathAndQuery);
     }
 

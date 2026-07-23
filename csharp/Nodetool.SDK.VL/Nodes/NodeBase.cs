@@ -922,11 +922,34 @@ namespace Nodetool.SDK.VL.Nodes
                         return b;
                     return false;
                 }
-                else if (expectedType == typeof(string[]))
+                else if (expectedType == typeof(byte[]))
                 {
+                    if (value.TryGetBytes(out var bytes))
+                        return bytes;
                     if (value.Kind == NodeToolValueKind.List)
-                        return value.AsListOrEmpty().Select(v => v.AsString() ?? v.ToJsonString()).ToArray();
-                    return new[] { value.AsString() ?? value.ToJsonString() };
+                    {
+                        var items = value.AsListOrEmpty();
+                        var result = new byte[items.Count];
+                        for (var i = 0; i < items.Count; i++)
+                            result[i] = items[i].TryGetLong(out var item) ? unchecked((byte)item) : (byte)0;
+                        return result;
+                    }
+                    return Array.Empty<byte>();
+                }
+                else if (expectedType.IsArray &&
+                         expectedType.GetElementType() is Type elementType)
+                {
+                    IReadOnlyList<NodeToolValue> values = value.Kind == NodeToolValueKind.List
+                        ? value.AsListOrEmpty()
+                        : new[] { value };
+                    var result = Array.CreateInstance(elementType, values.Count);
+                    for (var i = 0; i < values.Count; i++)
+                    {
+                        result.SetValue(
+                            ConvertNodeToolValueToExpectedType(values[i], elementType),
+                            i);
+                    }
+                    return result;
                 }
                 else if (expectedType == typeof(object))
                 {

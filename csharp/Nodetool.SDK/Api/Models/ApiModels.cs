@@ -59,6 +59,12 @@ public class NodeProperty
 
     [JsonPropertyName("max")]
     public object? Max { get; set; }
+
+    [JsonPropertyName("values")]
+    public List<object>? Values { get; set; }
+
+    [JsonPropertyName("required")]
+    public bool Required { get; set; }
 }
 
 /// <summary>
@@ -108,14 +114,32 @@ public class NodeMetadataResponse
     [JsonPropertyName("recommended_models")]
     public List<object> RecommendedModels { get; set; } = new();
 
-    [JsonPropertyName("basic_fields")]
-    public List<string> BasicFields { get; set; } = new();
+    [JsonPropertyName("required_settings")]
+    public List<string> RequiredSettings { get; set; } = new();
 
-    [JsonPropertyName("is_dynamic")]
-    public bool IsDynamic { get; set; } = false;
+    [JsonPropertyName("required_runtimes")]
+    public List<string> RequiredRuntimes { get; set; } = new();
 
-    [JsonPropertyName("is_streaming")]
-    public bool IsStreaming { get; set; } = false;
+    [JsonPropertyName("supports_dynamic_inputs")]
+    public bool SupportsDynamicInputs { get; set; }
+
+    [JsonPropertyName("supports_dynamic_outputs")]
+    public bool SupportsDynamicOutputs { get; set; }
+
+    [JsonPropertyName("is_streaming_input")]
+    public bool IsStreamingInput { get; set; }
+
+    [JsonPropertyName("is_streaming_output")]
+    public bool IsStreamingOutput { get; set; }
+
+    [JsonPropertyName("hidden")]
+    public bool Hidden { get; set; }
+
+    [JsonPropertyName("deprecated")]
+    public bool Deprecated { get; set; }
+
+    [JsonPropertyName("replaced_by")]
+    public string? ReplacedBy { get; set; }
 }
 
 /// <summary>

@@ -4,7 +4,42 @@
     "title": "String",
     "namespace": "nodetool.constant",
     "description": "A current node metadata fixture.",
-    "properties": [],
-    "outputs": []
+    "properties": [
+      {
+        "name": "images",
+        "title": "Images",
+        "description": "Images to process.",
+        "type": {
+          "type": "list",
+          "optional": false,
+          "type_args": [
+            {
+              "type": "image",
+              "optional": false,
+              "type_args": []
+            }
+          ]
+        },
+        "default": [],
+        "required": true
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": {
+          "type": "image",
+          "optional": false,
+          "type_args": []
+        },
+        "stream": true
+      }
+    ],
+    "required_settings": ["TEST_TOKEN"],
+    "required_runtimes": ["python"],
+    "supports_dynamic_inputs": true,
+    "supports_dynamic_outputs": true,
+    "is_streaming_input": true,
+    "is_streaming_output": true
   }
 ]

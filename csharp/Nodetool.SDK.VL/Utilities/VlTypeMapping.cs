@@ -21,24 +21,39 @@ internal static class VlTypeMapping
                 Kind.Boolean => (typeof(bool), false),
                 Kind.String => (typeof(string), ""),
                 Kind.Object => (typeof(object), null),
-                _ => (typeof(string), "")
+                _ => (typeof(object), null)
             };
         }
 
         return t switch
         {
-            "str" or "string" => (typeof(string), ""),
+            "str" or "string" or "text" or "chunk" or "enum" => (typeof(string), ""),
             "int" or "integer" => (typeof(int), 0),
             "float" or "number" => (typeof(float), 0.0f),
             "bool" or "boolean" => (typeof(bool), false),
-            "list" or "array" => (typeof(string[]), Array.Empty<string>()),
-            "dict" or "object" => (typeof(object), null),
+            "bytes" => (typeof(byte[]), Array.Empty<byte>()),
+            "list" or "array" or "tuple" => MapCollection(nodeType),
+            "dict" or "object" or "json" or "record_type" => (typeof(object), null),
             // Node-level image/audio/video nodes currently use path-or-ref strings in VL.
             "image" => (typeof(string), ""),
             "audio" => (typeof(string), ""),
             "video" => (typeof(string), ""),
-            _ => (typeof(string), "")
+            "document" or "file" or "file_path" or "folder" => (typeof(string), ""),
+            // Preserve an unsupported structured value as an object/JSON value.
+            // Treating it as text makes the pin look more specific than the
+            // server metadata warrants and loses list/map structure.
+            _ => (typeof(object), null)
         };
+    }
+
+    private static (Type, object) MapCollection(NodeTypeDefinition nodeType)
+    {
+        var elementDefinition = nodeType.TypeArgs?.FirstOrDefault();
+        var elementType = elementDefinition == null
+            ? typeof(object)
+            : MapNodeType(elementDefinition).Item1 ?? typeof(object);
+        var arrayType = elementType.MakeArrayType();
+        return (arrayType, Array.CreateInstance(elementType, 0));
     }
 
     private enum Kind

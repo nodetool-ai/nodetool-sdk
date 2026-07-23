@@ -35,14 +35,16 @@ The preferred end state is:
 
 ### Implementation audit — 2026-07-23
 
-- 125 of 178 checkable items are complete after reviewing the implementation, commits, and targeted test results in both repositories.
-- The focused C# suite passes 33 tests, and the gamma 7.1 headless VL suite compiles both shipped VL documents offline. The NodeTool workflow-interface, WebSocket/interface, and protocol suites pass 7, 135, and 32 tests respectively.
+- 130 of 181 checkable items are complete after reviewing the implementation, commits, and targeted test results in both repositories.
+- The focused C# suite passes 38 tests, and the gamma 7.1 headless VL suite compiles both shipped VL documents offline. The NodeTool workflow-interface, WebSocket/interface, and protocol suites pass their targeted tests.
 - Full NodeTool package verification remains blocked by pre-existing Sharp TypeScript import errors in the runtime and WebSocket packages. The unrelated package-manifest and lockfile changes in the working tree are not part of this plan.
 - The open Phase 1 graph-normalization items describe a legacy client-side inference path that authoritative workflow-interface v1 no longer uses. Before implementing them, decide whether to delete the remaining public legacy graph DTOs or retain them as a separate, non-workflow API.
 - The cross-transport flag-on/flag-off integration harness is complete. The highest-value remaining proof is the representative headless and interactive vvvv smoke suite.
 - The transport integration harness found and fixed an absent-field drift where MessagePack encoded an explicit JavaScript `undefined` as `nil` while REST omitted the field.
 - The C# VL project, package manifest, and main VL document now share the first release target, vvvv gamma 7.1 / `VL.Core 2025.7.1`; the complete supported version pair and manual test preparation are documented in `vvvv-tests/README.md`.
 - All seven historical `vvvv-tests/*.vl` files were audited under gamma 7.1. They depend on retired factory names or local workflow nodes and old pin contracts, so they remain migration evidence rather than release smoke tests.
+- The live hybrid registry currently exposes 2,527 node definitions and 100 distinct recursive type tokens. It combines TypeScript registrations, Python package JSON metadata, and bridge-only Python metadata. The bridge merge is now centralized, preserves existing TypeScript/package metadata, maps current dynamic/streaming flags, and advances the shared registry revision when bridge-only nodes appear.
+- The current node metadata contract names structured types but does not provide a global structured-type schema catalog (`type_name` was absent from the live registry response). A future catalog can enumerate availability and recursive type usage, but generated CLR shapes still require an authoritative schema source rather than inference from names.
 
 ## Current-client safety rules
 
@@ -231,7 +233,9 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Do not populate or alter existing workflow `input_schema`/`output_schema` fields in this phase.
 - [x] Add authorization tests for owner, collaborator viewer, public workflow, unauthorized user, and missing workflow.
 - [x] Add parity tests proving REST, tRPC, and WebSocket return equivalent v1 payloads.
-- [ ] Add tests for TypeScript-native nodes, Python-bridge nodes, dynamic nodes, and unavailable node packs.
+- [x] Add tests for TypeScript-native nodes, Python-bridge nodes, dynamic nodes, and unavailable node packs.
+- [x] Centralize the live Python-bridge metadata merge into the shared registry and normalize dynamic-input plus streaming-input/output flags without overwriting TypeScript/package metadata.
+- [ ] Add a flag-gated, bounded SDK node/type inventory that reports registry revision, readiness/provenance, recursive type usage, and unavailable-pack diagnostics without returning one unbounded multi-megabyte response.
 - [x] Bound bulk computation to 100 workflows and cache derived interfaces by workflow `etag` plus node-registry revision, with a 512-entry per-registry cap.
 
 ### Phase 3 acceptance gate
@@ -287,6 +291,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Map audio, video, document, and generic asset pins to typed SDK asset references.
 - [x] Use an explicit JSON/object fallback pin for unsupported types instead of silently pretending they are strings.
 - [x] Surface per-workflow diagnostics when a pin uses a fallback type.
+- [x] Read current native/Python node metadata flags and recursively preserve list element and binary types for individual NodeTool node pins; use an object fallback for unsupported structured node types.
 - [x] Expose a consistent standard execution surface (`Trigger`, `Cancel`, `AutoRun`, status, error).
 - [ ] Add tests that load representative v1 `.vl` patches and verify node/pin resolution.
 - [x] Align `VL.Core` versions between the C# project and nuspec before publishing.
