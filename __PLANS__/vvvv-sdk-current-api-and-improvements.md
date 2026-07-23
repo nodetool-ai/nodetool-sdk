@@ -35,11 +35,12 @@ The preferred end state is:
 
 ### Implementation audit — 2026-07-23
 
-- 117 of 178 checkable items are complete after reviewing the implementation, commits, and targeted test results in both repositories.
-- The focused C#/VL suite passes 33 tests. The NodeTool workflow-interface, WebSocket/interface, and protocol suites pass 7, 129, and 32 tests respectively.
+- 121 of 178 checkable items are complete after reviewing the implementation, commits, and targeted test results in both repositories.
+- The focused C#/VL suite passes 33 tests. The NodeTool workflow-interface, WebSocket/interface, and protocol suites pass 7, 135, and 32 tests respectively.
 - Full NodeTool package verification remains blocked by pre-existing Sharp TypeScript import errors in the runtime and WebSocket packages. The unrelated package-manifest and lockfile changes in the working tree are not part of this plan.
 - The open Phase 1 graph-normalization items describe a legacy client-side inference path that authoritative workflow-interface v1 no longer uses. Before implementing them, decide whether to delete the remaining public legacy graph DTOs or retain them as a separate, non-workflow API.
 - The highest-value remaining proof is a flag-on/flag-off integration harness covering REST, tRPC, WebSocket, authorization, payload parity, and representative vvvv patches.
+- The transport integration harness found and fixed an absent-field drift where MessagePack encoded an explicit JavaScript `undefined` as `nil` while REST omitted the field.
 
 ## Current-client safety rules
 
@@ -226,8 +227,8 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Guard every SDK workflow-interface entry point with `NODETOOL_ENABLE_SDK_WORKFLOW_INTERFACE_V1` for the initial rollout.
 - [x] Return a stable feature-disabled/not-supported API error that the SDK can recognize.
 - [x] Do not populate or alter existing workflow `input_schema`/`output_schema` fields in this phase.
-- [ ] Add authorization tests for owner, collaborator viewer, public workflow, unauthorized user, and missing workflow.
-- [ ] Add parity tests proving REST, tRPC, and WebSocket return equivalent v1 payloads.
+- [x] Add authorization tests for owner, collaborator viewer, public workflow, unauthorized user, and missing workflow.
+- [x] Add parity tests proving REST, tRPC, and WebSocket return equivalent v1 payloads.
 - [ ] Add tests for TypeScript-native nodes, Python-bridge nodes, dynamic nodes, and unavailable node packs.
 - [x] Bound bulk computation to 100 workflows and cache derived interfaces by workflow `etag` plus node-registry revision, with a 512-entry per-registry cap.
 
@@ -330,8 +331,8 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 
 - [ ] Upgrade the SDK and generated-types projects from the vulnerable `MessagePack` 3.0.300 dependency to a patched release, guarded by binary protocol round-trip fixtures.
 
-- [ ] Add a backend integration harness that boots NodeTool with the feature flag both off and on.
-- [ ] Test the required workflow-interface v1 contract over REST and correlated WebSocket RPC in CI.
+- [x] Add a hermetic backend integration harness that constructs the production REST route plugin, tRPC router, and WebSocket runner with the feature flag both off and on.
+- [x] Test the required workflow-interface v1 contract over REST and correlated WebSocket RPC in CI.
 - [ ] Add vvvv smoke patches for discovery, primitive workflow execution, streaming text, image input/output, cancellation, and refresh.
 - [ ] Run NodeTool protocol, websocket, workflow, web, and Electron test suites affected by the additive backend route/command.
 - [ ] Run SDK unit tests, C# builds, VL builds, package creation, and package-content verification.
