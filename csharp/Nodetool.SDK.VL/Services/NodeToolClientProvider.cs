@@ -112,8 +112,8 @@ public static class NodeToolClientProvider
     {
         lock (_lock)
         {
-            var url = serverUrl ?? _currentUrl;
-            var key = apiKey ?? _currentApiKey;
+            var url = NormalizeServerUrl(serverUrl ?? _currentUrl);
+            var key = NormalizeApiKey(apiKey ?? _currentApiKey);
 
             // If settings changed, dispose current client but DO NOT eagerly create a new one here.
             // This is important for VL: default value injection should never fail node instantiation.
@@ -134,9 +134,14 @@ public static class NodeToolClientProvider
     {
         lock (_lock)
         {
+            var normalizedUrl = NormalizeServerUrl(serverUrl);
+            var normalizedApiKey = NormalizeApiKey(apiKey);
             var configurationChanged =
-                !string.Equals(serverUrl, _currentUrl, StringComparison.Ordinal) ||
-                !string.Equals(apiKey, _currentApiKey, StringComparison.Ordinal);
+                !string.Equals(normalizedUrl, _currentUrl, StringComparison.Ordinal) ||
+                !string.Equals(normalizedApiKey, _currentApiKey, StringComparison.Ordinal);
+
+            if (!configurationChanged)
+                return;
 
             if (disposeExistingClient && _client != null)
             {
@@ -152,12 +157,12 @@ public static class NodeToolClientProvider
                 _client = null;
             }
 
-            _currentUrl = serverUrl;
-            _currentApiKey = apiKey;
+            _currentUrl = normalizedUrl;
+            _currentApiKey = normalizedApiKey;
 
             try
             {
-                var workerUri = new Uri(serverUrl);
+                var workerUri = new Uri(normalizedUrl);
                 _currentApiBaseUrl = TryDeriveApiBaseUrl(workerUri);
                 Status = "disconnected";
                 LastError = null;
@@ -168,11 +173,8 @@ public static class NodeToolClientProvider
                 LastError = $"Invalid URL: {ex.Message}";
             }
 
-            if (configurationChanged)
-            {
-                WorkflowNodeFactory.Reset();
-                NodesFactory.Reset();
-            }
+            WorkflowNodeFactory.Reset();
+            NodesFactory.Reset();
 
             StatusChanged?.Invoke(Status);
         }
@@ -319,6 +321,25 @@ public static class NodeToolClientProvider
 
         return builder.Uri;
     }
+
+    private static string NormalizeServerUrl(string serverUrl)
+    {
+        var value = serverUrl.Trim();
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
+            return value;
+
+        var builder = new UriBuilder(uri);
+        if (builder.Path == "/")
+            builder.Path = "";
+
+        var normalized = builder.Uri.AbsoluteUri;
+        return string.IsNullOrEmpty(builder.Query) && string.IsNullOrEmpty(builder.Fragment)
+            ? normalized.TrimEnd('/')
+            : normalized;
+    }
+
+    private static string? NormalizeApiKey(string? apiKey)
+        => string.IsNullOrWhiteSpace(apiKey) ? null : apiKey;
 
     private sealed class NullNodeToolExecutionClient : INodeToolExecutionClient
     {
