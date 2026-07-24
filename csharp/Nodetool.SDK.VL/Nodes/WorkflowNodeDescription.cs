@@ -102,7 +102,7 @@ namespace Nodetool.SDK.VL.Nodes
                 var remarks = BuildInputRemarks(property);
                 
                 // Get consistent VL type and default value
-                var (vlType, typeDefault) = WorkflowVlTypeMapping.GetTypeAndDefault(property.Type);
+                var (vlType, typeDefault) = WorkflowVlTypeMapping.GetInputTypeAndDefault(property.Type);
                 var defaultValue = property.DefaultValue != null 
                     ? ConvertToVLType(property.DefaultValue, vlType) 
                     : typeDefault;

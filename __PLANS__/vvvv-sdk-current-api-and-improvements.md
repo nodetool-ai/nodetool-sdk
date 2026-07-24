@@ -54,8 +54,8 @@ The preferred end state is:
 
 ### Media extension — 2026-07-24
 
-- The focused SDK suite now passes 82 tests after adding typed asset-reference
-  coverage and local-file materialization tests.
+- The focused SDK suite now passes 96 tests after adding typed asset-reference,
+  native VL path, collection-shape, and local-file materialization coverage.
 - Individual-node metadata now maps image, audio, video, document, text,
   folder, font, model, and generic asset references to typed pins, including
   namespaced type names and `Spread<T>` media lists.
@@ -66,6 +66,13 @@ The preferred end state is:
   caches inline, data-URI, HTTP, storage, `asset://`, and ID-only assets as
   local files. It exposes loading, ready, cache, source, content-type, and error
   diagnostics.
+- File-backed workflow and individual-node inputs now use vvvv-native `Path`
+  pins (`Spread<Path>` for lists); execution converts those paths to NodeTool
+  asset payloads. Media outputs remain typed asset references, and
+  `AssetAsFile` returns a native `Path`.
+- Dynamic node identities tolerate a temporarily unavailable
+  `NodeContext.Path` during live recompilation instead of throwing from the
+  first update frame.
 
 ## Current-client safety rules
 
@@ -318,6 +325,9 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Map audio, video, document, and generic asset pins to typed SDK asset references.
 - [x] Map typed asset references for individual NodeTool nodes, including namespaced metadata and media lists.
 - [x] Add an asynchronous VL asset-to-file helper with deterministic caching, refresh, and explicit state/error outputs.
+- [x] Map file-backed media inputs and media-input lists to native VL `Path` pins while preserving typed asset-reference outputs.
+- [x] Return a native VL `Path` from the asset-to-file helper.
+- [ ] Verify native media-path pins and the null-safe first update interactively after a vvvv patch reload.
 - [x] Use an explicit JSON/object fallback pin for unsupported types instead of silently pretending they are strings.
 - [x] Surface per-workflow diagnostics when a pin uses a fallback type.
 - [x] Read current native/Python node metadata flags and recursively preserve list element and binary types for individual NodeTool node pins; use an object fallback for unsupported structured node types.

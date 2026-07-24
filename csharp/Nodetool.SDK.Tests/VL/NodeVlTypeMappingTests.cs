@@ -2,6 +2,7 @@ using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.Types.Assets;
 using Nodetool.SDK.VL.Utilities;
 using VL.Lib.Collections;
+using VlPath = VL.Lib.IO.Path;
 
 namespace Nodetool.SDK.Tests.VL;
 
@@ -59,6 +60,48 @@ public class NodeVlTypeMappingTests
 
         Assert.Equal(expectedType, type);
         Assert.IsType(expectedType, defaultValue);
+    }
+
+    [Theory]
+    [InlineData("audio")]
+    [InlineData("video")]
+    [InlineData("document")]
+    [InlineData("asset")]
+    [InlineData("folder")]
+    [InlineData("model_ref")]
+    [InlineData("model_3d")]
+    [InlineData("font")]
+    public void FileBackedAssetInputs_UseNativeVlPath(string typeName)
+    {
+        var (type, defaultValue) = VlTypeMapping.MapNodeInputType(
+            new NodeTypeDefinition { Type = typeName });
+
+        Assert.Equal(typeof(VlPath), type);
+        Assert.IsType<VlPath>(defaultValue);
+    }
+
+    [Fact]
+    public void ImageInput_RemainsATypedImageReference()
+    {
+        var (type, defaultValue) = VlTypeMapping.MapNodeInputType(
+            new NodeTypeDefinition { Type = "image" });
+
+        Assert.Equal(typeof(ImageRef), type);
+        Assert.IsType<ImageRef>(defaultValue);
+    }
+
+    [Fact]
+    public void FileBackedAssetInputList_UsesNativeVlPathSpread()
+    {
+        var (type, defaultValue) = VlTypeMapping.MapNodeInputType(
+            new NodeTypeDefinition
+            {
+                Type = "list",
+                TypeArgs = [new NodeTypeDefinition { Type = "audio" }]
+            });
+
+        Assert.Equal(typeof(Spread<VlPath>), type);
+        Assert.Empty(Assert.IsType<Spread<VlPath>>(defaultValue));
     }
 
     [Fact]

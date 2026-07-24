@@ -6,6 +6,7 @@ using System.Text.Json;
 using Nodetool.SDK.Types.Assets;
 using Nodetool.SDK.Values;
 using VL.Lib.Collections;
+using VlPath = VL.Lib.IO.Path;
 
 namespace Nodetool.SDK.VL.Utilities;
 
@@ -61,6 +62,9 @@ internal static class VlValueConversion
 
     public static object NormalizeForTransport(object value)
     {
+        if (value is VlPath path)
+            return path.ToString();
+
         if (value is AssetRef assetReference)
             return assetReference.ToDict();
 
@@ -235,6 +239,9 @@ internal static class VlValueConversion
             if (targetType == typeof(string))
                 return value.ToString() ?? "";
 
+            if (targetType == typeof(VlPath))
+                return new VlPath(value.ToString() ?? "");
+
             if (targetType == typeof(int))
                 return Convert.ToInt32(value, CultureInfo.InvariantCulture);
 
@@ -286,6 +293,15 @@ internal static class VlValueConversion
         if (targetType == typeof(string))
         {
             converted = je.ValueKind == JsonValueKind.String ? (je.GetString() ?? "") : (je.ToString() ?? "");
+            return true;
+        }
+
+        if (targetType == typeof(VlPath))
+        {
+            converted = new VlPath(
+                je.ValueKind == JsonValueKind.String
+                    ? je.GetString() ?? ""
+                    : je.ToString());
             return true;
         }
 

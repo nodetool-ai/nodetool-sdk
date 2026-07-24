@@ -1,11 +1,27 @@
 using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.Types.Assets;
 using VL.Lib.Collections;
+using VlPath = VL.Lib.IO.Path;
 
 namespace Nodetool.SDK.VL.Utilities;
 
 internal static class VlTypeMapping
 {
+    public static (Type?, object?) MapNodeInputType(NodeTypeDefinition? nodeType)
+    {
+        if (nodeType == null)
+            return MapNodeType(nodeType);
+
+        var type = nodeType.Type?.Trim().ToLowerInvariant();
+        if (type is "list" or "array" or "tuple")
+            return MapInputCollection(nodeType);
+
+        if (IsFileBackedAssetReference(nodeType))
+            return (typeof(VlPath), new VlPath(""));
+
+        return MapNodeType(nodeType);
+    }
+
     public static (Type?, object?) MapNodeType(NodeTypeDefinition? nodeType)
     {
         if (nodeType == null || string.IsNullOrWhiteSpace(nodeType.Type))
@@ -59,6 +75,39 @@ internal static class VlTypeMapping
         return MapAssetToken(nodeType.Type, includeTextReference: false);
     }
 
+    internal static bool IsFileBackedAssetReference(NodeTypeDefinition nodeType)
+    {
+        var type = nodeType.Type?.Trim().ToLowerInvariant();
+        if (type is "list" or "array" or "tuple")
+            return false;
+
+        return IsFileBackedAssetToken(nodeType.TypeName) ||
+               IsFileBackedAssetToken(nodeType.Type);
+    }
+
+    private static bool IsFileBackedAssetToken(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        var qualifiedToken = value
+            .Trim()
+            .Split(new[] { '.', '+', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
+            .LastOrDefault() ?? value;
+        var token = new string(qualifiedToken
+            .ToLowerInvariant()
+            .Where(char.IsLetterOrDigit)
+            .ToArray());
+        return token is
+            "audio" or "audioref" or
+            "video" or "videoref" or
+            "document" or "documentref" or
+            "asset" or "assetref" or
+            "folder" or "folderref" or
+            "modelref" or "model3d" or "model3dref" or
+            "font" or "fontref";
+    }
+
     private static (Type, object)? MapAssetToken(
         string? value,
         bool includeTextReference)
@@ -96,6 +145,16 @@ internal static class VlTypeMapping
         var elementType = elementDefinition == null
             ? typeof(object)
             : MapNodeType(elementDefinition).Item1 ?? typeof(object);
+        var spreadType = typeof(Spread<>).MakeGenericType(elementType);
+        return (spreadType, VlValueConversion.CreateEmptySpread(elementType));
+    }
+
+    private static (Type, object) MapInputCollection(NodeTypeDefinition nodeType)
+    {
+        var elementDefinition = nodeType.TypeArgs?.FirstOrDefault();
+        var elementType = elementDefinition == null
+            ? typeof(object)
+            : MapNodeInputType(elementDefinition).Item1 ?? typeof(object);
         var spreadType = typeof(Spread<>).MakeGenericType(elementType);
         return (spreadType, VlValueConversion.CreateEmptySpread(elementType));
     }

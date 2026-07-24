@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
@@ -8,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using VL.Core;
 using VL.Core.CompilerServices;
 using VL.Core.Diagnostics;
@@ -86,7 +88,7 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 foreach (var property in _nodeMetadata.Properties)
                 {
-                    var (vlType, defaultValue) = MapNodeType(property.Type);
+                    var (vlType, defaultValue) = VlTypeMapping.MapNodeInputType(property.Type);
                     var targetType = vlType ?? typeof(string);
                     var initial = VlValueConversion.ConvertOrFallback(property.Default, targetType, defaultValue);
                     var pin = new InternalPin(property.Name, targetType, initial);
@@ -127,7 +129,14 @@ namespace Nodetool.SDK.VL.Nodes
         // IVLObject implementation  
         public NodeContext Context => _nodeContext;
         public AppHost AppHost => _nodeContext.AppHost;
-        public uint Identity => (uint)_nodeContext.Path.GetHashCode();
+        public uint Identity
+        {
+            get
+            {
+                object? path = _nodeContext.Path;
+                return (uint)(path?.GetHashCode() ?? RuntimeHelpers.GetHashCode(this));
+            }
+        }
 
         public IVLObject With(IReadOnlyDictionary<string, object> values)
         {
@@ -321,7 +330,12 @@ namespace Nodetool.SDK.VL.Nodes
                         if (_inputPins.TryGetValue(property.Name, out var inputPin))
                         {
                             var inputValue = inputPin.Value ?? property.Default ?? "";
-                            inputData[property.Name] = VlValueConversion.NormalizeForTransport(inputValue);
+                            inputData[property.Name] =
+                                await ConvertNodeInputValueAsync(
+                                    property.Name,
+                                    property.Type,
+                                    inputValue,
+                                    linked.Token);
                         }
                         else
                         {
@@ -511,6 +525,84 @@ namespace Nodetool.SDK.VL.Nodes
 
             var s = status.Trim().ToLowerInvariant();
             return s is "completed" or "failed" or "cancelled" or "canceled" or "error";
+        }
+
+        private static string ResolveMediaType(NodeTypeDefinition nodeType)
+        {
+            var candidates = new[] { nodeType.TypeName, nodeType.Type };
+            foreach (var candidate in candidates)
+            {
+                if (string.IsNullOrWhiteSpace(candidate))
+                    continue;
+                var qualifiedToken = candidate
+                    .Trim()
+                    .Split(new[] { '.', '+', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
+                    .LastOrDefault()?
+                    .ToLowerInvariant() ?? "";
+                var token = new string(qualifiedToken
+                    .Where(char.IsLetterOrDigit)
+                    .ToArray());
+                token = token switch
+                {
+                    "audioref" => "audio",
+                    "videoref" => "video",
+                    "documentref" => "document",
+                    "assetref" => "asset",
+                    "folderref" => "folder",
+                    "modelref" => "model_ref",
+                    "model3d" or "model3dref" => "model_3d",
+                    "fontref" => "font",
+                    _ => token
+                };
+                if (token is
+                    "audio" or "video" or "document" or "asset" or "folder" or
+                    "model_ref" or "model_3d" or "font")
+                {
+                    return token;
+                }
+            }
+
+            return "asset";
+        }
+
+        private static async Task<object> ConvertNodeInputValueAsync(
+            string inputName,
+            NodeTypeDefinition? nodeType,
+            object? rawValue,
+            CancellationToken cancellationToken)
+        {
+            if (nodeType == null)
+                return rawValue == null ? "" : VlValueConversion.NormalizeForTransport(rawValue);
+
+            var type = nodeType.Type?.Trim().ToLowerInvariant();
+            if (type is "list" or "array" or "tuple" &&
+                nodeType.TypeArgs?.FirstOrDefault() is { } elementType &&
+                rawValue is IEnumerable values and not string)
+            {
+                var converted = new List<object?>();
+                var index = 0;
+                foreach (var value in values)
+                {
+                    converted.Add(await ConvertNodeInputValueAsync(
+                        $"{inputName}[{index++}]",
+                        elementType,
+                        value,
+                        cancellationToken));
+                }
+
+                return converted.ToArray();
+            }
+
+            if (VlTypeMapping.IsFileBackedAssetReference(nodeType))
+            {
+                return await WorkflowNodeBase.ConvertMediaInputAsync(
+                    inputName,
+                    ResolveMediaType(nodeType),
+                    rawValue,
+                    cancellationToken);
+            }
+
+            return rawValue == null ? "" : VlValueConversion.NormalizeForTransport(rawValue);
         }
 
         private void ApplyBufferedOutputs(IExecutionSession session)

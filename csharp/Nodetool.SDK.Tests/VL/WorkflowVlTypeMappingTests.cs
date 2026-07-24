@@ -12,6 +12,7 @@ using VL.Lib.Collections;
 using AssetAudioRef = Nodetool.SDK.Types.Assets.AudioRef;
 using AssetDocumentRef = Nodetool.SDK.Types.Assets.DocumentRef;
 using AssetVideoRef = Nodetool.SDK.Types.Assets.VideoRef;
+using VlPath = VL.Lib.IO.Path;
 
 namespace Nodetool.SDK.Tests.VL;
 
@@ -159,6 +160,81 @@ public class WorkflowVlTypeMappingTests
 
         Assert.Equal(typeof(Spread<int>), type);
         Assert.Empty(Assert.IsType<Spread<int>>(defaultValue));
+    }
+
+    [Fact]
+    public void AudioWorkflowInput_UsesNativeVlPathWhileOutputStaysTyped()
+    {
+        var metadata = new TypeMetadata { Type = "audio" };
+
+        var (inputType, inputDefault) =
+            WorkflowVlTypeMapping.GetInputTypeAndDefault(metadata);
+        var (outputType, outputDefault) =
+            WorkflowVlTypeMapping.GetTypeAndDefault(metadata);
+
+        Assert.Equal(typeof(VlPath), inputType);
+        Assert.IsType<VlPath>(inputDefault);
+        Assert.Equal(typeof(AssetAudioRef), outputType);
+        Assert.IsType<AssetAudioRef>(outputDefault);
+    }
+
+    [Fact]
+    public void AudioWorkflowInputList_UsesNativeVlPathSpread()
+    {
+        var metadata = new TypeMetadata
+        {
+            Type = "list",
+            TypeArgs = [new TypeMetadata { Type = "audio" }]
+        };
+
+        var (type, defaultValue) =
+            WorkflowVlTypeMapping.GetInputTypeAndDefault(metadata);
+
+        Assert.Equal(typeof(Spread<VlPath>), type);
+        Assert.Empty(Assert.IsType<Spread<VlPath>>(defaultValue));
+    }
+
+    [Fact]
+    public void NativeVlPath_ConvertsFromDefaultsAndNormalizesForTransport()
+    {
+        const string rawPath = @"C:\media\sound.wav";
+
+        var converted = Assert.IsType<VlPath>(
+            VlValueConversion.ConvertOrFallback(
+                rawPath,
+                typeof(VlPath),
+                new VlPath("")));
+
+        Assert.Equal(rawPath, converted.ToString());
+        Assert.Equal(rawPath, VlValueConversion.NormalizeForTransport(converted));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task NativeVlAudioPath_BecomesAnExecutionAssetPayload()
+    {
+        var filePath = Path.Combine(
+            Path.GetTempPath(),
+            $"nodetool-sdk-audio-{Guid.NewGuid():N}.wav");
+        var expectedBytes = new byte[] { 1, 2, 3, 4 };
+        await File.WriteAllBytesAsync(filePath, expectedBytes);
+
+        try
+        {
+            var converted = await WorkflowNodeBase.ConvertMediaInputAsync(
+                "audio",
+                "audio",
+                new VlPath(filePath),
+                CancellationToken.None);
+            var payload = Assert.IsType<Dictionary<string, object?>>(converted);
+
+            Assert.Equal("audio", payload["type"]);
+            Assert.Equal(new Uri(filePath).AbsoluteUri, payload["uri"]);
+            Assert.Equal(expectedBytes, Assert.IsType<byte[]>(payload["data"]));
+        }
+        finally
+        {
+            File.Delete(filePath);
+        }
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.IO;
@@ -9,10 +10,12 @@ using System.Text.Json;
 using System.Threading;
 using System.Reflection;
 using System.Net.Http.Headers;
+using System.Runtime.CompilerServices;
 using SkiaSharp;
 using Nodetool.SDK.Api;
 using VL.Core;
 using Nodetool.SDK.Execution;
+using Nodetool.SDK.Types;
 using Nodetool.SDK.Values;
 using Nodetool.SDK.Types.Assets;
 using Nodetool.SDK.VL.Models;
@@ -78,7 +81,7 @@ namespace Nodetool.SDK.VL.Nodes
             foreach (var property in _workflow.GetInputProperties())
             {
                 // Get consistent VL type and default value
-                var (vlType, typeDefault) = WorkflowVlTypeMapping.GetTypeAndDefault(property.Type);
+                var (vlType, typeDefault) = WorkflowVlTypeMapping.GetInputTypeAndDefault(property.Type);
                 var defaultValue = property.DefaultValue != null 
                     ? ConvertToExpectedType(property.DefaultValue, vlType) 
                     : typeDefault;
@@ -139,7 +142,14 @@ namespace Nodetool.SDK.VL.Nodes
         public IVLNodeDescription NodeDescription => _description;
         public NodeContext Context => _nodeContext;
         public AppHost AppHost => _nodeContext.AppHost;
-        public uint Identity => (uint)_nodeContext.Path.GetHashCode();
+        public uint Identity
+        {
+            get
+            {
+                object? path = _nodeContext.Path;
+                return (uint)(path?.GetHashCode() ?? RuntimeHelpers.GetHashCode(this));
+            }
+        }
 
         public IVLObject With(IReadOnlyDictionary<string, object> values)
         {
@@ -1411,14 +1421,17 @@ namespace Nodetool.SDK.VL.Nodes
 
         private async Task<object> ConvertInputValueForWorkflowAsync(string inputName, object? rawValue, CancellationToken cancellationToken)
         {
-            var interfaceType = _workflow.Interface?.Inputs
-                .FirstOrDefault(input => string.Equals(input.Name, inputName, StringComparison.Ordinal))
-                ?.Type.Type.ToLowerInvariant();
-            if (interfaceType is
-                "image" or "audio" or "video" or "document" or "asset" or "asset_ref" or
-                "folder" or "model_ref" or "model_3d" or "font")
+            var interfaceType = _workflow.GetInputProperties()
+                .FirstOrDefault(input =>
+                    string.Equals(input.Name, inputName, StringComparison.Ordinal))
+                .Type;
+            if (interfaceType != null && ContainsMediaType(interfaceType))
             {
-                return await ConvertMediaInputAsync(inputName, interfaceType, rawValue, cancellationToken);
+                return await ConvertInterfaceInputAsync(
+                    inputName,
+                    interfaceType,
+                    rawValue,
+                    cancellationToken);
             }
 
             // If we don't have schema, pass through as string for compatibility with TEST_SDK_01.
@@ -1521,7 +1534,60 @@ namespace Nodetool.SDK.VL.Nodes
                 : VlValueConversion.NormalizeForTransport(rawValue);
         }
 
-        private static async Task<object> ConvertMediaInputAsync(
+        private static bool ContainsMediaType(TypeMetadata metadata)
+        {
+            var type = metadata.Type?.Trim().ToLowerInvariant();
+            if (type is
+                "image" or "audio" or "video" or "document" or "asset" or "asset_ref" or
+                "folder" or "model_ref" or "model_3d" or "font")
+            {
+                return true;
+            }
+
+            return type is "list" or "array" &&
+                   metadata.TypeArgs.Any(ContainsMediaType);
+        }
+
+        private static async Task<object> ConvertInterfaceInputAsync(
+            string inputName,
+            TypeMetadata metadata,
+            object? rawValue,
+            CancellationToken cancellationToken)
+        {
+            var type = metadata.Type?.Trim().ToLowerInvariant() ?? "";
+            if (type is "list" or "array" &&
+                metadata.TypeArgs.FirstOrDefault() is { } elementType &&
+                rawValue is IEnumerable values and not string)
+            {
+                var converted = new List<object?>();
+                var index = 0;
+                foreach (var value in values)
+                {
+                    converted.Add(await ConvertInterfaceInputAsync(
+                        $"{inputName}[{index++}]",
+                        elementType,
+                        value,
+                        cancellationToken));
+                }
+
+                return converted.ToArray();
+            }
+
+            if (type is
+                "image" or "audio" or "video" or "document" or "asset" or "asset_ref" or
+                "folder" or "model_ref" or "model_3d" or "font")
+            {
+                return await ConvertMediaInputAsync(
+                    inputName,
+                    type,
+                    rawValue,
+                    cancellationToken);
+            }
+
+            return rawValue == null ? "" : VlValueConversion.NormalizeForTransport(rawValue);
+        }
+
+        internal static async Task<object> ConvertMediaInputAsync(
             string inputName,
             string mediaType,
             object? rawValue,

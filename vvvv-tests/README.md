@@ -109,10 +109,10 @@ identity changes from display-name changes.
 4. Run `SDK Test - Image Roundtrip` with a small PNG and inspect the returned
    image.
 5. Run `SDK Test - Media References` with small local or uploaded fixtures.
-   Confirm that the workflow pins remain typed and that
-   `Nodetool.Assets -> AssetAsFile` produces usable local paths for the audio,
-   video, and document results. Run it twice and confirm the second
-   materialization reports `FromCache`.
+   Confirm that file-backed inputs are native `Path` pins, outputs remain typed
+   asset references, and `Nodetool.Assets -> AssetAsFile` produces native,
+   usable paths for the audio, video, and document results. Run it twice and
+   confirm the second materialization reports `FromCache`.
 6. Start and cancel `SDK Test - Cancellation`; confirm that vvvv does not remain
    in a running state.
 7. Rename `SDK Test - Rename Refresh`, trigger refresh, and confirm that the node

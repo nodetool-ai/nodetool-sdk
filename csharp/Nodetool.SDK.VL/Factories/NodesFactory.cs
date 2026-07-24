@@ -219,7 +219,7 @@ namespace Nodetool.SDK.VL.Factories
                                     {
                                         foreach (var property in nodeMetadata.Properties)
                                         {
-                                            var (vlType, defaultValue) = MapNodeType(property.Type);
+                                            var (vlType, defaultValue) = VlTypeMapping.MapNodeInputType(property.Type);
                                             var targetType = vlType ?? typeof(string);
                                             var initial = VlValueConversion.ConvertOrFallback(property.Default, targetType, defaultValue);
                                             var pinSummary = TextCleanup.StripTrailingPeriod(property.Description ?? property.Title ?? property.Name);

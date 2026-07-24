@@ -2,6 +2,7 @@ using Nodetool.SDK.Types.Assets;
 using Nodetool.SDK.VL.Services;
 using VL.Core;
 using VL.Core.CompilerServices;
+using VlPath = VL.Lib.IO.Path;
 
 namespace Nodetool.SDK.VL.Factories;
 
@@ -30,8 +31,8 @@ internal static class AssetNodeFactory
                     "Trigger on a rising edge to download or rewrite the cached file again.");
                 var pathPin = bc.Pin(
                     "Path",
-                    typeof(string),
-                    "",
+                    typeof(VlPath),
+                    new VlPath(""),
                     "Local file path",
                     "Existing local source path or the downloaded/cached file path.");
                 var contentTypePin = bc.Pin(
@@ -85,7 +86,7 @@ internal static class AssetNodeFactory
                         string currentIdentity = "";
                         bool lastRefresh = false;
                         long requestVersion = 0;
-                        string path = "";
+                        VlPath path = new("");
                         string contentType = "";
                         string sourceUri = "";
                         bool isReady = false;
@@ -105,7 +106,7 @@ internal static class AssetNodeFactory
                                 lock (stateLock)
                                 {
                                     requestVersion++;
-                                    path = "";
+                                    path = new VlPath("");
                                     contentType = "";
                                     sourceUri = "";
                                     isReady = false;
@@ -141,7 +142,7 @@ internal static class AssetNodeFactory
                                         return;
                                     lock (stateLock)
                                     {
-                                        path = result.Path;
+                                        path = new VlPath(result.Path);
                                         contentType = result.ContentType;
                                         sourceUri = result.SourceUri;
                                         fromCache = result.FromCache;
@@ -160,7 +161,7 @@ internal static class AssetNodeFactory
                                         return;
                                     lock (stateLock)
                                     {
-                                        path = "";
+                                        path = new VlPath("");
                                         contentType = "";
                                         sourceUri = "";
                                         fromCache = false;
@@ -194,7 +195,7 @@ internal static class AssetNodeFactory
                             },
                             outputs: new IVLPin[]
                             {
-                                ibc.Output<string>(() => { lock (stateLock) return path; }),
+                                ibc.Output<VlPath>(() => { lock (stateLock) return path; }),
                                 ibc.Output<string>(() => { lock (stateLock) return contentType; }),
                                 ibc.Output<string>(() => { lock (stateLock) return sourceUri; }),
                                 ibc.Output<bool>(() => { lock (stateLock) return isReady; }),
