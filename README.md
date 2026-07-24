@@ -7,8 +7,11 @@ SDK and integration for NodeTool clients.
 From `csharp/`:
 
 ```powershell
-.\regen-and-verify.ps1 -IncludeVL -SkipGeneration -SkipGitDiff
+.\regen-and-verify.ps1 -IncludeVL -SkipGeneration -SkipGitDiff -VerifySdkPackage
 ```
+
+For an already-restored or offline workspace, add `-NoRestore`. Verification
+stops immediately if a `dotnet` build, test or pack command fails.
 
 Default build output:
 

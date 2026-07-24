@@ -93,7 +93,7 @@ public class ExecutionSession : IExecutionSession
     }
 
     /// <inheritdoc/>
-    public async Task CancelAsync()
+    public async Task CancelAsync(CancellationToken cancellationToken = default)
     {
         Func<string, string?, CancellationToken, Task>? cancelAction = null;
         string? jobId = null;
@@ -108,7 +108,7 @@ public class ExecutionSession : IExecutionSession
             }
         }
         if (cancelAction != null && jobId != null)
-            await cancelAction(jobId, _workflowId, CancellationToken.None);
+            await cancelAction(jobId, _workflowId, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -117,14 +117,7 @@ public class ExecutionSession : IExecutionSession
         if (IsCompleted)
             return ErrorMessage == null;
 
-        try
-        {
-            return await _completionSource.Task.WaitAsync(cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            return false;
-        }
+        return await _completionSource.Task.WaitAsync(cancellationToken);
     }
 
     /// <summary>

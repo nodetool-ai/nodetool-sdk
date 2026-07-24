@@ -54,7 +54,7 @@ The preferred end state is:
 
 ### Media extension — 2026-07-24
 
-- The focused SDK suite now passes 96 tests after adding typed asset-reference,
+- The focused SDK suite now passes 101 tests after adding typed asset-reference,
   native VL path, collection-shape, and local-file materialization coverage.
 - Individual-node metadata now maps image, audio, video, document, text,
   folder, font, model, and generic asset references to typed pins, including
@@ -73,6 +73,29 @@ The preferred end state is:
 - Dynamic node identities tolerate a temporarily unavailable
   `NodeContext.Path` during live recompilation instead of throwing from the
   first update frame.
+
+### Base C# SDK cleanup — 2026-07-24
+
+- The public asset manager now consumes and returns the canonical
+  `Nodetool.SDK.Types.Assets.AssetRef` hierarchy instead of maintaining a
+  second incompatible asset-reference class.
+- Asset-manager uploads preserve their explicit MIME type through
+  `INodetoolClient` and return the appropriate typed image, audio, video,
+  document, or generic reference.
+- `NodetoolClient` and `AssetManager` dispose internally created HTTP clients
+  while leaving injected clients under caller ownership.
+- Execution-session wait cancellation now follows normal .NET semantics:
+  cancelling the wait throws without misreporting the remote job as failed.
+  Remote cancellation remains explicit through `CancelAsync`.
+- WebSocket and execution clients implement deterministic `IAsyncDisposable`
+  cleanup; pending correlated requests fail when the socket disconnects.
+- The standalone `Nodetool.SDK` package now declares its required
+  `Nodetool.Types` dependency, trims unused runtime dependencies, and includes
+  repository/license metadata. The base registry explicitly loads those
+  generated DTOs before discovery.
+- `-VerifySdkPackage` checks the dependency graph, `-NoRestore` supports
+  restored/offline workspaces, and native build/test/pack failures now stop the
+  verification script instead of printing a false success.
 
 ## Current-client safety rules
 
@@ -382,6 +405,9 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 **Outcome:** The change is deployable incrementally and reversible without breaking other NodeTool clients.
 
 - [x] Upgrade the SDK and generated-types projects from the vulnerable `MessagePack` 3.0.300 dependency to 3.1.8, align the VL nuspec dependency, and guard the change with standard-nil, binary-media, unknown-field, request-envelope, and typed-message protocol tests.
+- [x] Make the standalone C# SDK package consumable by declaring its public `Nodetool.Types` dependency and verifying the produced nuspec.
+- [x] Unify base SDK and VL media APIs on the canonical typed asset-reference hierarchy.
+- [x] Make HTTP and WebSocket resource ownership explicit and deterministically disposable.
 
 - [x] Add a hermetic backend integration harness that constructs the production REST route plugin, tRPC router, and WebSocket runner with the feature flag both off and on.
 - [x] Test the required workflow-interface v1 contract over REST and correlated WebSocket RPC in CI.

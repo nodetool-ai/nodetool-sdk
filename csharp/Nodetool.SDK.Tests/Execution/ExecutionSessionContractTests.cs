@@ -176,6 +176,20 @@ public class ExecutionSessionContractTests
     }
 
     [Fact]
+    public async Task CancellingAWait_DoesNotReportAJobFailure()
+    {
+        using var session = new ExecutionSession("job-1", "workflow-1");
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => session.WaitForCompletionAsync(cancellation.Token));
+
+        Assert.False(session.IsCompleted);
+        Assert.Null(session.ErrorMessage);
+    }
+
+    [Fact]
     public void ScopedUpdates_DoNotCrossRouteBetweenConcurrentSessions()
     {
         using var client = new NodeToolExecutionClient(new NodeToolClientOptions

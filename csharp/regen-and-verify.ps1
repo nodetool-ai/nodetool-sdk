@@ -3,7 +3,9 @@ param(
     [switch]$SkipGeneration,
     [switch]$IncludeVL,
     [switch]$IncludeVLTests,
+    [switch]$VerifySdkPackage,
     [switch]$VerifyVLPackage,
+    [switch]$NoRestore,
     [string]$OutputDir
 )
 
@@ -16,6 +18,19 @@ $typesDir = Join-Path $csharpDir "Nodetool.Types"
 $sdkDir = Join-Path $csharpDir "Nodetool.SDK"
 $testsDir = Join-Path $csharpDir "Nodetool.SDK.Tests"
 $vlTestsDir = Join-Path $csharpDir "Nodetool.SDK.VL.Tests"
+$noRestoreArguments = if ($NoRestore) { @("--no-restore") } else { @() }
+
+function Invoke-DotNet {
+    param(
+        [Parameter(Mandatory)]
+        [string[]]$Arguments
+    )
+
+    & dotnet @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "dotnet $($Arguments -join ' ') failed with exit code $LASTEXITCODE."
+    }
+}
 
 if ($IncludeVLTests -and -not $IncludeVL) {
     throw "-IncludeVLTests requires -IncludeVL so the current VL assemblies are built first."
@@ -47,6 +62,9 @@ if ($SkipGeneration) {
     $hasNodeTool = $true
     try {
         python -c "import nodetool" | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "Python could not import nodetool."
+        }
     } catch {
         $hasNodeTool = $false
         Write-Host "Skipping generation: Python module 'nodetool' is not available in this environment." -ForegroundColor Yellow
@@ -58,6 +76,9 @@ if ($hasNodeTool) {
     Push-Location $typesDir
     try {
         python .\scripts\generate-all-types.py --output-dir .\generated --namespace Nodetool.Types
+        if ($LASTEXITCODE -ne 0) {
+            throw "C# type generation failed with exit code $LASTEXITCODE."
+        }
     } finally {
         Pop-Location
     }
@@ -79,7 +100,13 @@ if (-not $SkipGitDiff) {
     if ($gitOk) {
         # If generation was skipped, this will still detect local drift from other edits.
         git diff --exit-code -- $typesDir\generated
+        if ($LASTEXITCODE -ne 0) {
+            throw "Generated Nodetool.Types output differs from the committed files."
+        }
         git diff --exit-code -- $sdkDir
+        if ($LASTEXITCODE -ne 0) {
+            throw "Nodetool.SDK differs from the committed files."
+        }
     }
 }
 
@@ -87,22 +114,65 @@ if (-not $SkipGitDiff) {
 Write-Host ""
 Write-Host ">>> Building C# projects..." -ForegroundColor Cyan
 
-dotnet build (Join-Path $typesDir "Nodetool.Types.csproj") -c Release -o $resolvedOutputDir
-dotnet build (Join-Path $sdkDir "Nodetool.SDK.csproj") -c Release -o $resolvedOutputDir
-dotnet build (Join-Path $sdkDir "TestConsole\Nodetool.SDK.TestConsole.csproj") -c Release -o $resolvedOutputDir
-dotnet test (Join-Path $testsDir "Nodetool.SDK.Tests.csproj") -c Release
+Invoke-DotNet (@("build", (Join-Path $typesDir "Nodetool.Types.csproj"), "-c", "Release", "-o", $resolvedOutputDir) + $noRestoreArguments)
+Invoke-DotNet (@("build", (Join-Path $sdkDir "Nodetool.SDK.csproj"), "-c", "Release", "-o", $resolvedOutputDir) + $noRestoreArguments)
+Invoke-DotNet (@("build", (Join-Path $sdkDir "TestConsole\Nodetool.SDK.TestConsole.csproj"), "-c", "Release", "-o", $resolvedOutputDir) + $noRestoreArguments)
+Invoke-DotNet (@("test", (Join-Path $testsDir "Nodetool.SDK.Tests.csproj"), "-c", "Release") + $noRestoreArguments)
+
+if ($VerifySdkPackage) {
+    Write-Host ""
+    Write-Host ">>> Creating and verifying base C# SDK packages..." -ForegroundColor Cyan
+    $packageDir = Join-Path $root "artifacts\sdk-package-verify"
+    if (-not (Test-Path $packageDir)) {
+        New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+    }
+
+    Invoke-DotNet @("pack", (Join-Path $typesDir "Nodetool.Types.csproj"), "-c", "Release", "--no-restore", "-o", $packageDir)
+    Invoke-DotNet @("pack", (Join-Path $sdkDir "Nodetool.SDK.csproj"), "-c", "Release", "--no-restore", "-o", $packageDir)
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $sdkPackage = Get-ChildItem -LiteralPath $packageDir -Filter "Nodetool.SDK.*.nupkg" |
+        Where-Object { $_.Name -notlike "*.symbols.nupkg" } |
+        Sort-Object LastWriteTimeUtc -Descending |
+        Select-Object -First 1
+    if ($null -eq $sdkPackage) {
+        throw "Nodetool.SDK package was not created."
+    }
+
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($sdkPackage.FullName)
+    try {
+        $nuspecEntry = $archive.Entries |
+            Where-Object { $_.FullName -eq "Nodetool.SDK.nuspec" } |
+            Select-Object -First 1
+        if ($null -eq $nuspecEntry) {
+            throw "Nodetool.SDK.nuspec is missing from $($sdkPackage.Name)."
+        }
+
+        $reader = [System.IO.StreamReader]::new($nuspecEntry.Open())
+        try {
+            $nuspec = $reader.ReadToEnd()
+        } finally {
+            $reader.Dispose()
+        }
+        if ($nuspec -notmatch '<dependency id="Nodetool\.Types"') {
+            throw "Nodetool.SDK package does not declare its required Nodetool.Types dependency."
+        }
+    } finally {
+        $archive.Dispose()
+    }
+}
 
 if ($IncludeVL) {
     Write-Host ""
     Write-Host ">>> Building VL project..." -ForegroundColor Cyan
     $vlDir = Join-Path $csharpDir "Nodetool.SDK.VL"
-    dotnet build (Join-Path $vlDir "Nodetool.SDK.VL.csproj") -c Release -o $resolvedOutputDir
+    Invoke-DotNet (@("build", (Join-Path $vlDir "Nodetool.SDK.VL.csproj"), "-c", "Release", "-o", $resolvedOutputDir) + $noRestoreArguments)
 }
 
 if ($IncludeVLTests) {
     Write-Host ""
     Write-Host ">>> Running headless VL document tests..." -ForegroundColor Cyan
-    dotnet test (Join-Path $vlTestsDir "Nodetool.SDK.VL.Tests.csproj") -c Release
+    Invoke-DotNet (@("test", (Join-Path $vlTestsDir "Nodetool.SDK.VL.Tests.csproj"), "-c", "Release") + $noRestoreArguments)
 }
 
 if ($VerifyVLPackage) {

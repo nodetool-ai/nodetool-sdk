@@ -1,7 +1,6 @@
 using Nodetool.SDK.Types;
 using Nodetool.SDK.Types.Assets;
 using SkiaSharp;
-using System.Reflection;
 using VL.Lib.Collections;
 using VlPath = VL.Lib.IO.Path;
 
@@ -85,17 +84,6 @@ internal static class WorkflowVlTypeMapping
 
     private static NodeToolTypeRegistry CreateTypeRegistry()
     {
-        // The project reference can remain unloaded until a CLR type is used. Load it
-        // explicitly before registry discovery so workflow pins see generated DTOs.
-        try
-        {
-            Assembly.Load("Nodetool.Types");
-        }
-        catch
-        {
-            // The object fallback remains available when generated types are not packaged.
-        }
-
         var registry = new NodeToolTypeRegistry();
         registry.RegisterAllTypes();
         return registry;

@@ -432,5 +432,6 @@ public static class NodeToolClientProvider
             => Task.FromException<AssetResponse?>(new InvalidOperationException("Not connected."));
 
         public void Dispose() { }
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

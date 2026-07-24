@@ -36,6 +36,20 @@ public class NodeToolTypeRegistry
 
         _logger.LogInformation("Discovering and registering NodeTool types...");
 
+        // A package/project reference does not guarantee that the CLR has loaded the
+        // generated DTO assembly yet. Load it before scanning AppDomain assemblies so
+        // base SDK consumers get deterministic discovery without touching a DTO first.
+        try
+        {
+            Assembly.Load("Nodetool.Types");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Nodetool.Types could not be loaded; only already-loaded NodeTool types will be discovered");
+        }
+
         var discoveredTypes = 0;
         var assemblies = AppDomain.CurrentDomain.GetAssemblies();
 

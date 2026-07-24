@@ -1,245 +1,185 @@
-# 🎯 Nodetool.SDK - Universal .NET Integration
+# Nodetool.SDK
 
-C# SDK for integrating Nodetool AI workflows into any .NET application.
+.NET 8 client library for discovering and executing NodeTool workflows and
+nodes over the current HTTP and MessagePack WebSocket APIs.
 
-## 🌟 Features
-
-- **WebSocket Communication**: Real-time workflow execution with progress updates
-- **Execution Sessions**: Track job progress and retrieve results asynchronously
-- **Asset Management**: Download/upload assets with local caching
-- **Type-Safe API**: Strongly typed models matching Nodetool's type system
-- **VL/VVVV Integration**: Ready for visual programming environments
-
-## 🚀 Quick Start
-
-### Installation
+## Installation
 
 ```xml
-<PackageReference Include="Nodetool.SDK" Version="0.1.0" />
+<PackageReference Include="Nodetool.SDK" Version="0.1.1" />
 ```
 
-### Run the included Test Console (local)
+The package declares its required `Nodetool.Types` dependency and loads its
+generated DTOs during type discovery. Applications do not need to reference or
+touch that package separately.
 
-The SDK repository includes a runnable console project at `csharp/Nodetool.SDK/TestConsole`.
-
-Example: run your `TEST_SDK_01` workflow by name (discover via HTTP, execute via worker WebSocket):
-
-```bash
-cd M:\P\NODETOOL\nodetool-sdk\csharp\Nodetool.SDK
-dotnet run -c Release --project .\TestConsole\Nodetool.SDK.TestConsole.csproj -- run-workflow --ws http://localhost:7777/ws --http http://localhost:7777 --workflow TEST_SDK_01
-```
-
-### Basic Usage - WebSocket Execution (Recommended)
+## WebSocket execution
 
 ```csharp
-using Nodetool.SDK.Execution;
 using Nodetool.SDK.Configuration;
+using Nodetool.SDK.Execution;
 
-// Create execution client (provide explicit endpoints; no library defaults)
 var options = new NodeToolClientOptions
 {
-    WorkerWebSocketUrl = new Uri("ws://localhost:7777/ws"),
-    // ApiBaseUrl = new Uri("http://localhost:7777"), // optional (discovery)
-    // AuthToken = "...", UserId = "...", ApiUrl = "http://..."
-};
-using var client = new NodeToolExecutionClient(options);
-
-// Connect to server
-await client.ConnectAsync();
-
-// Execute a workflow
-var inputs = new Dictionary<string, object>
-{
-    ["prompt"] = "Generate an image of a sunset",
-    ["width"] = 512,
-    ["height"] = 512
+    WorkerWebSocketUrl = new Uri("ws://127.0.0.1:7777/ws"),
+    ApiBaseUrl = new Uri("http://127.0.0.1:7777"),
+    AutoReconnect = true
 };
 
-var session = await client.ExecuteWorkflowAsync("workflow-id", inputs);
+await using var client = new NodeToolExecutionClient(options);
+if (!await client.ConnectAsync())
+    throw new InvalidOperationException(client.LastError ?? "Connection failed.");
 
-// Monitor progress
-session.ProgressChanged += (progress) => Console.WriteLine($"Progress: {progress:P0}");
-session.OutputReceived += (update) =>
+var session = await client.ExecuteWorkflowAsync(
+    "workflow-id",
+    new Dictionary<string, object>
+    {
+        ["prompt"] = "hello from C#"
+    });
+
+session.OutputReceived += update =>
 {
     Console.WriteLine(
-        $"Output {update.NodeName}.{update.OutputName} ({update.OutputType}): {update.Value.ToJsonString()}"
-    );
-};
-session.PreviewReceived += (preview) =>
-{
-    Console.WriteLine($"Preview from {preview.NodeId}: kind={preview.Value.Kind}");
+        $"{update.NodeName}.{update.OutputName}: {update.Value.ToJsonString()}");
 };
 
-// Wait for completion
-bool success = await session.WaitForCompletionAsync();
-
-if (success)
-{
-    var outputs = session.GetLatestOutputs();
-    Console.WriteLine($"Workflow completed with {outputs.Count} outputs");
-}
-else
-{
-    Console.WriteLine($"Workflow failed: {session.ErrorMessage}");
-}
+var succeeded = await session.WaitForCompletionAsync();
+if (!succeeded)
+    Console.WriteLine(session.ErrorMessage);
 ```
 
-### Convenience: execute by workflow name
+`WaitForCompletionAsync` returns `false` when the remote job fails or is
+cancelled. Cancelling its token cancels only the local wait and throws
+`OperationCanceledException`. Call `session.CancelAsync()` to cancel the remote
+job.
 
-If you have HTTP access to the server API, you can execute by **workflow name** (case-insensitive).
-This requires `NodeToolClientOptions.ApiBaseUrl`.
+The execution client supports:
 
-```csharp
-var options = new NodeToolClientOptions
-{
-    WorkerWebSocketUrl = new Uri("ws://localhost:7777/ws"),
-    ApiBaseUrl = new Uri("http://localhost:7777"),
-};
+- workflow execution by ID or case-insensitive name;
+- single-node and explicit-graph execution;
+- output, preview, node, progress, and completion events;
+- queued and running job cancellation;
+- reconnecting active sessions;
+- compact workflow-summary and authoritative workflow-interface discovery;
+- full node metadata and recursive node-type inventory discovery.
 
-using var client = new NodeToolExecutionClient(options);
-await client.ConnectAsync();
+## HTTP API
 
-var session = await client.ExecuteWorkflowByNameAsync("TEST_SDK_01", new Dictionary<string, object>
-{
-    ["string_input_1"] = "hello from c#"
-});
-
-await session.WaitForCompletionAsync();
-```
-
-### HTTP API (Synchronous)
+Use the HTTP client for health checks, metadata, workflow interfaces, assets,
+and the synchronous execution routes:
 
 ```csharp
 using Nodetool.SDK.Api;
 
-// Create and configure the client
-var client = new NodetoolClient();
-client.Configure("http://localhost:7777");
+using var client = new NodetoolClient(new Uri("http://127.0.0.1:7777"));
 
-// Get available node types
-var nodeTypes = await client.GetNodeTypesAsync();
-
-// Compact recursive type usage across TypeScript and Python-backed nodes.
-// Page size is bounded to 100 entries.
-var typeInventory = await client.GetNodeTypeInventoryAsync(cursor: 0, limit: 100);
-Console.WriteLine($"Found {nodeTypes.Count} node types");
-
-// Execute a workflow (blocking)
-var parameters = new Dictionary<string, object>
-{
-    ["input_text"] = "Hello, world!"
-};
-
-var result = await client.ExecuteWorkflowAsync("my-workflow-id", parameters);
+var health = await client.GetHealthAsync();
+var summaries = await client.GetWorkflowSummariesAsync();
+var interfaces = await client.GetWorkflowInterfacesAsync(
+    summaries.Take(20).Select(workflow => workflow.Id).ToArray());
+var nodeTypes = await client.GetNodeTypeInventoryAsync(cursor: 0, limit: 100);
 ```
 
-### Asset Management
+`NodetoolClient(Uri, ...)` is the preferred constructor because the endpoint is
+explicit. The parameterless constructor retains the localhost development
+endpoint for convenience.
+
+When a caller injects an `HttpClient`, disposing `NodetoolClient` does not
+dispose that externally owned instance.
+
+## Assets
+
+The asset manager uses the canonical typed references from
+`Nodetool.SDK.Types.Assets`:
 
 ```csharp
+using Nodetool.SDK.Api;
 using Nodetool.SDK.Assets;
+using Nodetool.SDK.Types.Assets;
 
-// Create asset manager with caching
-var assetManager = new AssetManager();
+using var api = new NodetoolClient(new Uri("http://127.0.0.1:7777"));
+using var assets = new AssetManager(nodetoolClient: api);
 
-// Download an asset
-string localPath = await assetManager.DownloadAssetAsync(new AssetRef
-{
-    Type = "image",
-    Uri = "https://api.nodetool.ai/api/assets/abc123/download"
-});
+AssetRef uploaded = await assets.UploadAssetAsync(
+    @"C:\media\sample.wav",
+    "audio/wav");
 
-// Check cache
-string? cachedPath = assetManager.GetCachedPath(assetUri);
+var audio = (AudioRef)uploaded;
+Console.WriteLine(audio.Uri);
 
-// Clear cache
-assetManager.ClearCache();
+var localPath = await assets.DownloadAssetAsync(audio);
 ```
 
-## Architecture
+Uploads preserve their MIME content type and return `ImageRef`, `AudioRef`,
+`VideoRef`, `DocumentRef`, or `GenericAssetRef` as appropriate. Downloads
+support HTTP(S), data URIs, file URIs, and existing local paths.
 
-### Core Components
+The default asset cache is:
 
-#### Execution System
-
-- **`INodeToolExecutionClient`**: Main interface for workflow/node execution
-- **`NodeToolExecutionClient`**: WebSocket-based implementation
-- **`IExecutionSession`**: Track job progress and results
-- **`ExecutionSession`**: Session implementation with events
-
-The execution client also exposes correlated MessagePack discovery calls:
-`GetWorkflowSummariesAsync`, `GetWorkflowInterfaceAsync`, and
-`GetWorkflowInterfacesAsync`. These return compact, graph-derived workflow
-contracts without downloading workflow graphs or inline media.
-
-#### Asset System
-
-- **`IAssetManager`**: Asset download/upload with caching
-- **`AssetManager`**: Implementation with local file cache
-
-#### HTTP API
-
-- **`INodetoolClient`**: HTTP API interface
-- **`NodetoolClient`**: HTTP client implementation
-
-### Message Types
-
-The SDK handles these WebSocket message types:
-
-- `JobUpdate`: Job lifecycle changes (running, completed, failed)
-- `NodeUpdate`: Individual node execution status
-- `NodeProgress`: Progress for long-running nodes
-- `OutputUpdate`: Streaming output values
-- `PreviewUpdate`: Streaming preview values (often image-like)
-
-## VL/VVVV Integration
-
-For VL/VVVV Gamma integration, use the `Nodetool.SDK.VL` package which provides:
-
-- **Connect** node: Establish connection to NodeTool server
-- **ConnectionStatus** node: Monitor connection state
-- Node factory for dynamically created nodes from API metadata
-
-## Type System
-
-| Nodetool Type | C# Type                      | Description      |
-| ------------- | ---------------------------- | ---------------- |
-| `str`         | `string`                     | Text strings     |
-| `int`         | `int`                        | Integers         |
-| `float`       | `float`                      | Floating point   |
-| `bool`        | `bool`                       | Booleans         |
-| `list`        | `List<object>`               | Lists            |
-| `dict`        | `Dictionary<string, object>` | Dictionaries     |
-| `image`       | `ImageRef`                   | Image references |
-| `audio`       | `AudioRef`                   | Audio references |
-| `video`       | `VideoRef`                   | Video references |
-
-## Configuration
-
-### Connection Settings
-
-There are **no hardcoded defaults** in library code. Provide explicit endpoints via `NodeToolClientOptions`.
-
-Override via constructor or configuration:
-
-```csharp
-var options = new NodeToolClientOptions { WorkerWebSocketUrl = new Uri("wss://api.nodetool.ai/ws") };
-var client = new NodeToolExecutionClient(options, apiKey: "your-api-key");
+```text
+%USERPROFILE%\.nodetool\cache\assets
 ```
 
-### Asset Cache
+An injected `HttpClient` remains owned by the caller. An internally created
+client is disposed with `AssetManager`.
 
-Default cache location: `~/.nodetool/cache/assets/`
+## NodeTool type mapping
 
-Override via constructor:
+| NodeTool type | C# representation |
+| --- | --- |
+| `str`, `text` | `string` |
+| `int` | `int` |
+| `float` | `float` |
+| `bool` | `bool` |
+| `list` | typed collection or `List<object>` |
+| `dict`, `object` | `Dictionary<string, object>` or generated DTO |
+| `image` | `ImageRef` |
+| `audio` | `AudioRef` |
+| `video` | `VideoRef` |
+| `document` | `DocumentRef` |
+| `asset` | `GenericAssetRef` |
 
-```csharp
-var assetManager = new AssetManager("/custom/cache/path");
+Dynamic values received during execution are exposed as `NodeToolValue`, which
+preserves scalar, binary, list, map, and typed-reference shapes without forcing
+callers through JSON strings.
+
+## Test console
+
+```bash
+cd /m/P/NODETOOL/____REPOS____/nodetool-sdk/csharp/Nodetool.SDK
+dotnet run -c Release --project ./TestConsole/Nodetool.SDK.TestConsole.csproj -- \
+  run-workflow \
+  --ws http://127.0.0.1:7777/ws \
+  --http http://127.0.0.1:7777 \
+  --workflow "SDK Test - Primitives"
 ```
 
-## Contributing
+## Build and package verification
 
-Contributions welcome! See the main Nodetool repository for guidelines.
+From `csharp/`:
+
+```powershell
+.\regen-and-verify.ps1 `
+  -SkipGeneration `
+  -SkipGitDiff `
+  -NoRestore `
+  -IncludeVL `
+  -IncludeVLTests `
+  -VerifySdkPackage `
+  -VerifyVLPackage
+```
+
+`-VerifySdkPackage` packs both base packages and verifies that
+`Nodetool.SDK.nuspec` declares the `Nodetool.Types` dependency required by its
+public API. Use `-NoRestore` only after restoring the solution; any failed
+build, test or pack command terminates verification.
+
+## VL/vvvv
+
+Use the separate `Nodetool.SDK.VL` / `VL.Nodetool` package for vvvv gamma
+integration, dynamic node factories, native `Path` media inputs, and
+`Spread<T>` collections.
 
 ## License
 
-AGPL-3.0 (same as Nodetool project)
+AGPL-3.0-only.

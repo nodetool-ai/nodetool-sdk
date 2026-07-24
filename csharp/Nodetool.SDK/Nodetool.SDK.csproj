@@ -10,15 +10,15 @@
     <Version>0.1.1</Version>
     <Description>C# SDK for NodeTool with WebSocket communication and type support</Description>
     <Authors>NodeTool Contributors</Authors>
+    <RepositoryUrl>https://github.com/nodetool-ai/nodetool-sdk</RepositoryUrl>
+    <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Remove="TestConsole\**\*.cs" />
     <PackageReference Include="MessagePack" Version="3.1.8" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
-    <PackageReference Include="System.Net.WebSockets.Client" Version="4.3.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../Nodetool.Types/Nodetool.Types.csproj" PrivateAssets="all" />
+    <ProjectReference Include="../Nodetool.Types/Nodetool.Types.csproj" />
   </ItemGroup>
 
 </Project>

@@ -12,6 +12,11 @@ public interface IExecutionSession : IDisposable
     string JobId { get; }
 
     /// <summary>
+    /// Workflow identifier associated with the execution, when available.
+    /// </summary>
+    string? WorkflowId { get; }
+
+    /// <summary>
     /// Whether the execution is currently running.
     /// </summary>
     bool IsRunning { get; }
@@ -27,7 +32,7 @@ public interface IExecutionSession : IDisposable
     string? ErrorMessage { get; }
 
     /// <summary>
-    /// Current progress as a percentage (0.0 to 1.0).
+    /// Current normalized progress (0.0 to 1.0).
     /// </summary>
     float ProgressPercent { get; }
 
@@ -77,11 +82,16 @@ public interface IExecutionSession : IDisposable
     /// <summary>
     /// Cancel the running execution.
     /// </summary>
-    Task CancelAsync();
+    Task CancelAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Wait for the execution to complete.
     /// </summary>
-    /// <returns>True if completed successfully, false if failed or cancelled.</returns>
+    /// <returns>True if completed successfully; false if the job failed or was cancelled.</returns>
+    /// <remarks>
+    /// Cancelling <paramref name="cancellationToken"/> cancels only this wait and
+    /// throws <see cref="OperationCanceledException"/>; call <see cref="CancelAsync"/>
+    /// to cancel the remote job.
+    /// </remarks>
     Task<bool> WaitForCompletionAsync(CancellationToken cancellationToken = default);
 }

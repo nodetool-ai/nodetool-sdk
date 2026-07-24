@@ -883,23 +883,27 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     /// <inheritdoc/>
     public void Dispose()
     {
-        if (!_disposed)
-        {
-            _disposed = true;
-            _disconnectRequested = true;
-            _lifetimeCts.Cancel();
-            _webSocketClient.MessageReceived -= OnMessageReceived;
-            _webSocketClient.ConnectionStatusChanged -= OnConnectionStatusChanged;
-            _webSocketClient.Dispose();
+        DisposeAsync().AsTask().GetAwaiter().GetResult();
+    }
 
-            foreach (var session in _sessions.Values)
-            {
-                session.Dispose();
-            }
-            _sessions.Clear();
-            _workflowIdsByName.Clear();
-            _recoveryMonitors.Clear();
-            _lifetimeCts.Dispose();
-        }
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        _disconnectRequested = true;
+        _lifetimeCts.Cancel();
+        _webSocketClient.MessageReceived -= OnMessageReceived;
+        _webSocketClient.ConnectionStatusChanged -= OnConnectionStatusChanged;
+        await _webSocketClient.DisposeAsync().ConfigureAwait(false);
+
+        foreach (var session in _sessions.Values)
+            session.Dispose();
+        _sessions.Clear();
+        _workflowIdsByName.Clear();
+        _recoveryMonitors.Clear();
+        _lifetimeCts.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

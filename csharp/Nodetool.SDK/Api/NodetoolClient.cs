@@ -12,12 +12,14 @@ namespace Nodetool.SDK.Api;
 public class NodetoolClient : INodetoolClient
 {
     private readonly HttpClient _httpClient;
+    private readonly bool _ownsHttpClient;
     private readonly ILogger<NodetoolClient>? _logger;
     private readonly JsonSerializerOptions _jsonOptions;
     
     public NodetoolClient(HttpClient? httpClient = null, ILogger<NodetoolClient>? logger = null)
     {
         _httpClient = httpClient ?? new HttpClient();
+        _ownsHttpClient = httpClient == null;
         _logger = logger;
         _jsonOptions = new JsonSerializerOptions
         {
@@ -30,8 +32,23 @@ public class NodetoolClient : INodetoolClient
         Configure(NodetoolConstants.Defaults.BaseUrl);
     }
 
+    /// <summary>
+    /// Creates an HTTP client configured for an explicit NodeTool API endpoint.
+    /// </summary>
+    public NodetoolClient(
+        Uri baseAddress,
+        string? apiKey = null,
+        HttpClient? httpClient = null,
+        ILogger<NodetoolClient>? logger = null)
+        : this(httpClient, logger)
+    {
+        ArgumentNullException.ThrowIfNull(baseAddress);
+        Configure(baseAddress.AbsoluteUri, apiKey);
+    }
+
     public void Configure(string baseUrl, string? apiKey = null)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(baseUrl);
         _httpClient.BaseAddress = new Uri(baseUrl);
         _httpClient.DefaultRequestHeaders.Clear();
         
@@ -102,6 +119,8 @@ public class NodetoolClient : INodetoolClient
         Dictionary<string, object> inputs, 
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nodeType);
+        ArgumentNullException.ThrowIfNull(inputs);
         _logger?.LogDebug("Executing node: {NodeType}", nodeType);
         
         var request = new NodeExecutionRequest
@@ -295,6 +314,7 @@ public class NodetoolClient : INodetoolClient
 
     public async Task<WorkflowResponse> GetWorkflowAsync(string workflowId, CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workflowId);
         _logger?.LogDebug("Fetching workflow: {WorkflowId}", workflowId);
         
         var endpoint = string.Format(NodetoolConstants.Endpoints.WorkflowById, workflowId);
@@ -313,6 +333,8 @@ public class NodetoolClient : INodetoolClient
         Dictionary<string, object> parameters, 
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workflowId);
+        ArgumentNullException.ThrowIfNull(parameters);
         _logger?.LogDebug("Executing workflow: {WorkflowId}", workflowId);
         
         var request = new WorkflowExecutionRequest
@@ -350,6 +372,9 @@ public class NodetoolClient : INodetoolClient
         string contentType,
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
+        ArgumentNullException.ThrowIfNull(content);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentType);
         _logger?.LogDebug("Uploading asset: {FileName}", fileName);
         
         using var form = new MultipartFormDataContent();
@@ -369,6 +394,7 @@ public class NodetoolClient : INodetoolClient
 
     public async Task<AssetResponse> GetAssetAsync(string assetId, CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(assetId);
         _logger?.LogDebug("Fetching asset: {AssetId}", assetId);
         
         var endpoint = string.Format(NodetoolConstants.Endpoints.AssetById, assetId);
@@ -384,13 +410,11 @@ public class NodetoolClient : INodetoolClient
 
     public async Task<Stream> DownloadAssetAsync(string assetId, CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(assetId);
         _logger?.LogDebug("Downloading asset: {AssetId}", assetId);
         
         var endpoint = string.Format(NodetoolConstants.Endpoints.AssetDownload, assetId);
-        var response = await _httpClient.GetAsync(endpoint, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        
-        return await response.Content.ReadAsStreamAsync(cancellationToken);
+        return await _httpClient.GetStreamAsync(endpoint, cancellationToken);
     }
 
     #endregion
@@ -399,6 +423,7 @@ public class NodetoolClient : INodetoolClient
 
     public async Task<JobResponse> GetJobAsync(string jobId, CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(jobId);
         _logger?.LogDebug("Fetching job: {JobId}", jobId);
         
         var endpoint = string.Format(NodetoolConstants.Endpoints.JobById, jobId);
@@ -414,6 +439,7 @@ public class NodetoolClient : INodetoolClient
 
     public async Task CancelJobAsync(string jobId, CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(jobId);
         _logger?.LogDebug("Cancelling job: {JobId}", jobId);
         
         var endpoint = string.Format(NodetoolConstants.Endpoints.JobCancel, jobId);
@@ -427,7 +453,8 @@ public class NodetoolClient : INodetoolClient
 
     public void Dispose()
     {
-        _httpClient?.Dispose();
+        if (_ownsHttpClient)
+            _httpClient.Dispose();
         GC.SuppressFinalize(this);
     }
 }

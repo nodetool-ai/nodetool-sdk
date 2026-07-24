@@ -13,11 +13,12 @@ namespace Nodetool.SDK.WebSocket;
 /// WebSocket client with MessagePack support and JSON fallback for NodeTool communication.
 /// Integrates with the type registry system for automatic message deserialization.
 /// </summary>
-public class MessagePackWebSocketClient : IDisposable
+public class MessagePackWebSocketClient : IDisposable, IAsyncDisposable
 {
     private readonly ILogger _logger;
     private ClientWebSocket? _webSocket;
     private CancellationTokenSource? _cancellationTokenSource;
+    private Task? _receiveTask;
     private readonly SemaphoreSlim _sendSemaphore = new(1, 1);
     private bool _disposed = false;
     private readonly MessagePackSerializerOptions _options;
@@ -84,7 +85,9 @@ public class MessagePackWebSocketClient : IDisposable
             _logger.LogInformation("Successfully connected to NodeTool WebSocket");
 
             // Start receiving messages
-            _ = Task.Run(() => ReceiveLoop(_cancellationTokenSource.Token), _cancellationTokenSource.Token);
+            _receiveTask = Task.Run(
+                () => ReceiveLoop(_cancellationTokenSource.Token),
+                _cancellationTokenSource.Token);
 
             OnConnectionStatusChanged(new ConnectionStatusEventArgs 
             { 
@@ -113,13 +116,29 @@ public class MessagePackWebSocketClient : IDisposable
     /// </summary>
     public async Task DisconnectAsync()
     {
+        var receiveTask = _receiveTask;
         try
         {
             _cancellationTokenSource?.Cancel();
 
             if (_webSocket?.State == WebSocketState.Open)
             {
-                await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Client disconnecting", CancellationToken.None);
+                await _webSocket.CloseAsync(
+                    WebSocketCloseStatus.NormalClosure,
+                    "Client disconnecting",
+                    CancellationToken.None).ConfigureAwait(false);
+            }
+
+            if (receiveTask != null)
+            {
+                try
+                {
+                    await receiveTask.ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected when the local client initiates the disconnect.
+                }
             }
 
             OnConnectionStatusChanged(new ConnectionStatusEventArgs 
@@ -138,6 +157,12 @@ public class MessagePackWebSocketClient : IDisposable
             _webSocket = null;
             _cancellationTokenSource?.Dispose();
             _cancellationTokenSource = null;
+            _receiveTask = null;
+
+            var disconnected = new WebSocketException("The NodeTool WebSocket disconnected.");
+            foreach (var pending in _pendingRequests.Values)
+                pending.TrySetException(disconnected);
+            _pendingRequests.Clear();
         }
     }
 
@@ -519,12 +544,18 @@ public class MessagePackWebSocketClient : IDisposable
 
     public void Dispose()
     {
-        if (!_disposed)
-        {
-            _ = DisconnectAsync();
-            _sendSemaphore.Dispose();
-            _disposed = true;
-        }
+        DisposeAsync().AsTask().GetAwaiter().GetResult();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        await DisconnectAsync().ConfigureAwait(false);
+        _sendSemaphore.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
 

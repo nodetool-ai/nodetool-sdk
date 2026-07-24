@@ -103,6 +103,20 @@ public interface INodetoolClient : IDisposable
         string fileName, 
         Stream content, 
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Upload an asset with an explicit MIME content type.
+    /// </summary>
+    /// <param name="fileName">The file name.</param>
+    /// <param name="content">The file content.</param>
+    /// <param name="contentType">The MIME content type sent with the upload.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The uploaded asset information.</returns>
+    Task<AssetResponse> UploadAssetAsync(
+        string fileName,
+        Stream content,
+        string contentType,
+        CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Get asset information

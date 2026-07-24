@@ -2,6 +2,8 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Nodetool.SDK.Api;
+using Nodetool.SDK.Api.Models;
+using Nodetool.SDK.Types.Assets;
 
 namespace Nodetool.SDK.Assets;
 
@@ -14,6 +16,8 @@ public class AssetManager : IAssetManager
     private readonly INodetoolClient? _nodetoolClient;
     private readonly ILogger<AssetManager> _logger;
     private readonly string _cacheDirectory;
+    private readonly bool _ownsHttpClient;
+    private bool _disposed;
 
     /// <inheritdoc/>
     public string CacheDirectory => _cacheDirectory;
@@ -34,6 +38,7 @@ public class AssetManager : IAssetManager
         _cacheDirectory = cacheDirectory ?? GetDefaultCacheDirectory();
         _nodetoolClient = nodetoolClient;
         _httpClient = httpClient ?? new HttpClient();
+        _ownsHttpClient = httpClient == null;
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<AssetManager>.Instance;
 
         // Ensure cache directory exists
@@ -46,12 +51,15 @@ public class AssetManager : IAssetManager
     /// <inheritdoc/>
     public async Task<string> DownloadAssetAsync(AssetRef asset, string? localPath = null, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(asset);
         return await DownloadAssetAsync(asset.Uri, localPath, cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<string> DownloadAssetAsync(string uri, string? localPath = null, CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(uri);
+
         // Check if already cached
         var cachedPath = GetCachedPath(uri);
         if (cachedPath != null && File.Exists(cachedPath))
@@ -61,22 +69,24 @@ public class AssetManager : IAssetManager
         }
 
         // Handle data URIs (base64)
-        if (uri.StartsWith("data:"))
+        if (uri.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
         {
             return await SaveDataUri(uri, localPath, cancellationToken);
         }
 
         // Handle file URIs
-        if (uri.StartsWith("file://"))
+        if (Uri.TryCreate(uri, UriKind.Absolute, out var fileUri) &&
+            fileUri.IsFile)
         {
-            var filePath = uri.Substring(7);
+            var filePath = fileUri.LocalPath;
             if (File.Exists(filePath))
                 return filePath;
             throw new FileNotFoundException($"Local file not found: {filePath}");
         }
 
         // Handle HTTP/HTTPS URIs
-        if (uri.StartsWith("http://") || uri.StartsWith("https://"))
+        if (uri.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            uri.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
             return await DownloadHttpAsset(uri, localPath, cancellationToken);
         }
@@ -91,6 +101,7 @@ public class AssetManager : IAssetManager
     /// <inheritdoc/>
     public string? GetCachedPath(AssetRef asset)
     {
+        ArgumentNullException.ThrowIfNull(asset);
         return GetCachedPath(asset.Uri);
     }
 
@@ -123,14 +134,13 @@ public class AssetManager : IAssetManager
         var fileName = Path.GetFileName(localPath);
         await using var stream = File.OpenRead(localPath);
 
-        var response = await _nodetoolClient.UploadAssetAsync(fileName, stream, cancellationToken);
+        var response = await _nodetoolClient.UploadAssetAsync(
+            fileName,
+            stream,
+            contentType,
+            cancellationToken);
 
-        return new AssetRef
-        {
-            Type = InferAssetType(contentType),
-            Uri = $"/api/assets/{response.Id}/download",
-            AssetId = response.Id
-        };
+        return CreateAssetReference(response, contentType);
     }
 
     /// <inheritdoc/>
@@ -161,6 +171,18 @@ public class AssetManager : IAssetManager
 
         return Directory.GetFiles(_cacheDirectory)
             .Sum(f => new FileInfo(f).Length);
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        if (_ownsHttpClient)
+            _httpClient.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     private async Task<string> DownloadHttpAsset(string uri, string? localPath, CancellationToken cancellationToken)
@@ -281,17 +303,37 @@ public class AssetManager : IAssetManager
         };
     }
 
-    private static string InferAssetType(string contentType)
+    private static AssetRef CreateAssetReference(
+        AssetResponse response,
+        string requestedContentType)
     {
-        if (contentType.StartsWith("image/"))
-            return "image";
-        if (contentType.StartsWith("audio/"))
-            return "audio";
-        if (contentType.StartsWith("video/"))
-            return "video";
-        if (contentType == "text/csv" || contentType == "application/json")
-            return "dataframe";
-        return "file";
+        var contentType = string.IsNullOrWhiteSpace(response.ContentType)
+            ? requestedContentType
+            : response.ContentType;
+        AssetRef result = contentType.ToLowerInvariant() switch
+        {
+            var value when value.StartsWith("image/") => new ImageRef
+            {
+                MimeType = contentType
+            },
+            var value when value.StartsWith("audio/") => new AudioRef(),
+            var value when value.StartsWith("video/") => new VideoRef(),
+            "application/pdf" => new DocumentRef(),
+            _ => new GenericAssetRef()
+        };
+
+        result.AssetId = response.Id;
+        result.Uri = response.GetUrl
+            ?? (!string.IsNullOrWhiteSpace(response.Uri)
+                ? response.Uri
+                : $"/api/assets/{response.Id}/download");
+        result.Metadata = new Dictionary<string, object?>
+        {
+            ["content_type"] = contentType,
+            ["name"] = response.Name,
+            ["size"] = response.Size
+        };
+        return result;
     }
 
     private static string GetDefaultCacheDirectory()

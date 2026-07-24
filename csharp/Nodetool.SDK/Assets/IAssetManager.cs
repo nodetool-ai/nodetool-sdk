@@ -1,30 +1,11 @@
+using Nodetool.SDK.Types.Assets;
+
 namespace Nodetool.SDK.Assets;
-
-/// <summary>
-/// Represents a reference to an asset (image, audio, video, etc.).
-/// </summary>
-public class AssetRef
-{
-    /// <summary>
-    /// Type of asset: "image", "audio", "video", "dataframe", etc.
-    /// </summary>
-    public string Type { get; set; } = "";
-
-    /// <summary>
-    /// URI of the asset (could be http URL, data URI, or file path).
-    /// </summary>
-    public string Uri { get; set; } = "";
-
-    /// <summary>
-    /// Optional asset ID for server-stored assets.
-    /// </summary>
-    public string? AssetId { get; set; }
-}
 
 /// <summary>
 /// Interface for managing asset downloads and caching.
 /// </summary>
-public interface IAssetManager
+public interface IAssetManager : IDisposable
 {
     /// <summary>
     /// Download an asset to the local cache.

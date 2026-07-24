@@ -6,7 +6,7 @@ namespace Nodetool.SDK.Execution;
 /// Client interface for executing NodeTool workflows and nodes.
 /// This is the main entry point for SDK users.
 /// </summary>
-public interface INodeToolExecutionClient : IDisposable
+public interface INodeToolExecutionClient : IDisposable, IAsyncDisposable
 {
     /// <summary>
     /// Whether the client is connected to the NodeTool server.

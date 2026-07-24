@@ -447,7 +447,7 @@ namespace Nodetool.SDK.VL.Nodes
                     }
                     else
                     {
-                        ok = ((Task<bool>)completedTask).Result;
+                        ok = await ((Task<bool>)completedTask);
                         if (!ok)
                         {
                             lock (_lock)
