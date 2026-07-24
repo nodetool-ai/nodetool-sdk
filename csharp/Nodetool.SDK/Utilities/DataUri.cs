@@ -40,10 +40,23 @@ public static class DataUri
             "mp3" => "audio/mpeg",
             "ogg" => "audio/ogg",
             "flac" => "audio/flac",
+            "m4a" => "audio/mp4",
+            "aac" => "audio/aac",
 
-            // Video (if we later support)
+            // Video
             "mp4" => "video/mp4",
             "webm" => "video/webm",
+            "mov" => "video/quicktime",
+            "avi" => "video/x-msvideo",
+            "mkv" => "video/x-matroska",
+
+            // Documents and generic files
+            "pdf" => "application/pdf",
+            "json" => "application/json",
+            "txt" or "md" => "text/plain",
+            "csv" => "text/csv",
+            "doc" => "application/msword",
+            "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 
             _ => "application/octet-stream"
         };

@@ -1214,10 +1214,11 @@ namespace Nodetool.SDK.VL.Nodes
                 return value.AsString() ?? value.ToJsonString();
             }
 
-            if (typeof(AssetRef).IsAssignableFrom(expectedType) &&
-                ExtractFirstMap(value) is { } assetMap)
+            if (typeof(AssetRef).IsAssignableFrom(expectedType))
             {
-                return ConvertAssetRefValue(assetMap, expectedType);
+                return VlValueConversion.ConvertNodeToolValueToAssetRef(
+                    value,
+                    expectedType);
             }
 
             if (expectedType == typeof(object))
@@ -1270,32 +1271,6 @@ namespace Nodetool.SDK.VL.Nodes
             }
 
             return ConvertToExpectedType(value.Raw ?? value.AsString() ?? value.ToJsonString(), expectedType);
-        }
-
-        private static AssetRef ConvertAssetRefValue(
-            IReadOnlyDictionary<string, NodeToolValue> map,
-            Type expectedType)
-        {
-            var result = (AssetRef)(Activator.CreateInstance(expectedType)
-                ?? throw new InvalidOperationException($"Cannot create asset reference type {expectedType.Name}."));
-            if (map.TryGetValue("uri", out var uri))
-                result.Uri = uri.AsString() ?? "";
-            if (map.TryGetValue("asset_id", out var assetId))
-                result.AssetId = assetId.AsString();
-            if (map.TryGetValue("data", out var data))
-            {
-                result.Data = data.TryGetBytes(out var bytes)
-                    ? bytes
-                    : data.Raw;
-            }
-            if (result is VideoRef video)
-            {
-                if (map.TryGetValue("duration", out var duration) && duration.TryGetDouble(out var seconds))
-                    video.Duration = (float)seconds;
-                if (map.TryGetValue("format", out var format))
-                    video.Format = format.AsString();
-            }
-            return result;
         }
 
         private static bool TryRenderTypedText(NodeToolValue value, out string text)
@@ -1439,8 +1414,12 @@ namespace Nodetool.SDK.VL.Nodes
             var interfaceType = _workflow.Interface?.Inputs
                 .FirstOrDefault(input => string.Equals(input.Name, inputName, StringComparison.Ordinal))
                 ?.Type.Type.ToLowerInvariant();
-            if (interfaceType is "image" or "audio" or "video" or "document" or "asset" or "asset_ref")
+            if (interfaceType is
+                "image" or "audio" or "video" or "document" or "asset" or "asset_ref" or
+                "folder" or "model_ref" or "model_3d" or "font")
+            {
                 return await ConvertMediaInputAsync(inputName, interfaceType, rawValue, cancellationToken);
+            }
 
             // If we don't have schema, pass through as string for compatibility with TEST_SDK_01.
             var propDef = _workflow.InputSchema?.Properties != null && _workflow.InputSchema.Properties.TryGetValue(inputName, out var p)
@@ -1569,13 +1548,9 @@ namespace Nodetool.SDK.VL.Nodes
 
                 if (!assetRef.IsEmpty())
                 {
-                    return new Dictionary<string, object?>
-                    {
-                        ["type"] = mediaType,
-                        ["asset_id"] = assetRef.AssetId,
-                        ["uri"] = assetRef.Uri,
-                        ["data"] = assetRef.Data
-                    };
+                    var transportValue = assetRef.ToDict();
+                    transportValue["type"] = mediaType;
+                    return transportValue;
                 }
             }
             else if (rawValue is SKImage image)

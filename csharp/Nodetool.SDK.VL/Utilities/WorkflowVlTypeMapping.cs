@@ -25,6 +25,10 @@ internal static class WorkflowVlTypeMapping
             "video" => (typeof(VideoRef), new VideoRef()),
             "document" => (typeof(DocumentRef), new DocumentRef()),
             "asset" or "asset_ref" => (typeof(GenericAssetRef), new GenericAssetRef()),
+            "folder" => (typeof(FolderRef), new FolderRef()),
+            "model_ref" => (typeof(ModelRef), new ModelRef()),
+            "model_3d" => (typeof(Model3DRef), new Model3DRef()),
+            "font" => (typeof(FontRef), new FontRef()),
             _ => GetStructuredTypeAndDefault(metadata)
         };
     }

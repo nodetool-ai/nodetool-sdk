@@ -1,4 +1,5 @@
 using Nodetool.SDK.Api.Models;
+using Nodetool.SDK.Types.Assets;
 using Nodetool.SDK.VL.Utilities;
 using VL.Lib.Collections;
 
@@ -39,5 +40,81 @@ public class NodeVlTypeMappingTests
 
         Assert.Equal(typeof(object), type);
         Assert.Null(defaultValue);
+    }
+
+    [Theory]
+    [InlineData("image", typeof(ImageRef))]
+    [InlineData("audio", typeof(AudioRef))]
+    [InlineData("video", typeof(VideoRef))]
+    [InlineData("document", typeof(DocumentRef))]
+    [InlineData("asset", typeof(GenericAssetRef))]
+    [InlineData("folder", typeof(FolderRef))]
+    [InlineData("model_ref", typeof(ModelRef))]
+    [InlineData("model_3d", typeof(Model3DRef))]
+    [InlineData("font", typeof(FontRef))]
+    public void AssetReferenceTypes_UseTypedPins(string typeName, Type expectedType)
+    {
+        var (type, defaultValue) = VlTypeMapping.MapNodeType(
+            new NodeTypeDefinition { Type = typeName });
+
+        Assert.Equal(expectedType, type);
+        Assert.IsType(expectedType, defaultValue);
+    }
+
+    [Fact]
+    public void AnyWithAudioRefTypeName_UsesTypedAudioPin()
+    {
+        var (type, defaultValue) = VlTypeMapping.MapNodeType(
+            new NodeTypeDefinition
+            {
+                Type = "any",
+                TypeName = "AudioRef"
+            });
+
+        Assert.Equal(typeof(AudioRef), type);
+        Assert.IsType<AudioRef>(defaultValue);
+    }
+
+    [Fact]
+    public void NamespacedAssetTypeName_UsesTypedPin()
+    {
+        var (type, defaultValue) = VlTypeMapping.MapNodeType(
+            new NodeTypeDefinition
+            {
+                Type = "any",
+                TypeName = "nodetool.types.AudioRef"
+            });
+
+        Assert.Equal(typeof(AudioRef), type);
+        Assert.IsType<AudioRef>(defaultValue);
+    }
+
+    [Fact]
+    public void ListTypeName_DoesNotOverrideCollectionShape()
+    {
+        var (type, defaultValue) = VlTypeMapping.MapNodeType(
+            new NodeTypeDefinition
+            {
+                Type = "list",
+                TypeName = "VideoRef",
+                TypeArgs = [new NodeTypeDefinition { Type = "video" }]
+            });
+
+        Assert.Equal(typeof(Spread<VideoRef>), type);
+        Assert.Empty(Assert.IsType<Spread<VideoRef>>(defaultValue));
+    }
+
+    [Fact]
+    public void AssetReferenceList_UsesTypedVlSpread()
+    {
+        var (type, defaultValue) = VlTypeMapping.MapNodeType(
+            new NodeTypeDefinition
+            {
+                Type = "list",
+                TypeArgs = [new NodeTypeDefinition { Type = "video" }]
+            });
+
+        Assert.Equal(typeof(Spread<VideoRef>), type);
+        Assert.Empty(Assert.IsType<Spread<VideoRef>>(defaultValue));
     }
 }

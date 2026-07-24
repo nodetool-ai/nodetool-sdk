@@ -13,6 +13,7 @@ using VL.Core.CompilerServices;
 using VL.Core.Diagnostics;
 using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.Execution;
+using Nodetool.SDK.Types.Assets;
 using Nodetool.SDK.Values;
 using Nodetool.SDK.VL.Services;
 using Nodetool.SDK.VL.Utilities;
@@ -955,6 +956,12 @@ namespace Nodetool.SDK.VL.Nodes
                         expectedType,
                         elementType,
                         convertedItems);
+                }
+                else if (typeof(AssetRef).IsAssignableFrom(expectedType))
+                {
+                    return VlValueConversion.ConvertNodeToolValueToAssetRef(
+                        value,
+                        expectedType);
                 }
                 else if (expectedType == typeof(object))
                 {

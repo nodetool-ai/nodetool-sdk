@@ -1,4 +1,5 @@
 using Nodetool.SDK.Api.Models;
+using Nodetool.SDK.Types.Assets;
 using VL.Lib.Collections;
 
 namespace Nodetool.SDK.VL.Utilities;
@@ -9,6 +10,9 @@ internal static class VlTypeMapping
     {
         if (nodeType == null || string.IsNullOrWhiteSpace(nodeType.Type))
             return (typeof(string), "");
+
+        if (TryMapAssetReference(nodeType) is { } assetReference)
+            return assetReference;
 
         var t = nodeType.Type.Trim().ToLowerInvariant();
 
@@ -35,15 +39,54 @@ internal static class VlTypeMapping
             "bytes" => (typeof(byte[]), Array.Empty<byte>()),
             "list" or "array" or "tuple" => MapCollection(nodeType),
             "dict" or "object" or "json" or "record_type" => (typeof(object), null),
-            // Node-level image/audio/video nodes currently use path-or-ref strings in VL.
-            "image" => (typeof(string), ""),
-            "audio" => (typeof(string), ""),
-            "video" => (typeof(string), ""),
-            "document" or "file" or "file_path" or "folder" => (typeof(string), ""),
+            "file" or "file_path" => (typeof(string), ""),
             // Preserve an unsupported structured value as an object/JSON value.
             // Treating it as text makes the pin look more specific than the
             // server metadata warrants and loses list/map structure.
             _ => (typeof(object), null)
+        };
+    }
+
+    private static (Type, object)? TryMapAssetReference(NodeTypeDefinition nodeType)
+    {
+        var type = nodeType.Type?.Trim().ToLowerInvariant();
+        if (type is "list" or "array" or "tuple")
+            return null;
+
+        if (MapAssetToken(nodeType.TypeName, includeTextReference: true) is { } named)
+            return named;
+
+        return MapAssetToken(nodeType.Type, includeTextReference: false);
+    }
+
+    private static (Type, object)? MapAssetToken(
+        string? value,
+        bool includeTextReference)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        var qualifiedToken = value
+            .Trim()
+            .Split(new[] { '.', '+', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
+            .LastOrDefault() ?? value;
+        var token = new string(qualifiedToken
+            .ToLowerInvariant()
+            .Where(char.IsLetterOrDigit)
+            .ToArray());
+        return token switch
+        {
+            "image" or "imageref" => (typeof(ImageRef), new ImageRef()),
+            "audio" or "audioref" => (typeof(AudioRef), new AudioRef()),
+            "video" or "videoref" => (typeof(VideoRef), new VideoRef()),
+            "document" or "documentref" => (typeof(DocumentRef), new DocumentRef()),
+            "asset" or "assetref" => (typeof(GenericAssetRef), new GenericAssetRef()),
+            "folder" or "folderref" => (typeof(FolderRef), new FolderRef()),
+            "modelref" => (typeof(ModelRef), new ModelRef()),
+            "model3d" or "model3dref" => (typeof(Model3DRef), new Model3DRef()),
+            "font" or "fontref" => (typeof(FontRef), new FontRef()),
+            "textref" when includeTextReference => (typeof(TextRef), new TextRef()),
+            _ => null
         };
     }
 

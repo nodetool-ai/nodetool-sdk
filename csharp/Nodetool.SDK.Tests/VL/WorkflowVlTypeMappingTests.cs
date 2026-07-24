@@ -1,5 +1,6 @@
 using Nodetool.SDK.Types;
 using Nodetool.SDK.Execution;
+using Nodetool.SDK.Types.Assets;
 using Nodetool.SDK.Values;
 using Nodetool.SDK.VL.Factories;
 using Nodetool.SDK.VL.Nodes;
@@ -8,6 +9,9 @@ using Nodetool.Types.Core;
 using System.Text;
 using VL.Core;
 using VL.Lib.Collections;
+using AssetAudioRef = Nodetool.SDK.Types.Assets.AudioRef;
+using AssetDocumentRef = Nodetool.SDK.Types.Assets.DocumentRef;
+using AssetVideoRef = Nodetool.SDK.Types.Assets.VideoRef;
 
 namespace Nodetool.SDK.Tests.VL;
 
@@ -155,6 +159,97 @@ public class WorkflowVlTypeMappingTests
 
         Assert.Equal(typeof(Spread<int>), type);
         Assert.Empty(Assert.IsType<Spread<int>>(defaultValue));
+    }
+
+    [Fact]
+    public void AudioOutput_PreservesReferenceMetadata()
+    {
+        var value = NodeToolValue.From(new Dictionary<string, object?>
+        {
+            ["type"] = "audio",
+            ["uri"] = "asset://track.wav",
+            ["asset_id"] = "audio-1",
+            ["temp_id"] = "upload-1",
+            ["duration"] = 2.5,
+            ["metadata"] = new Dictionary<string, object?>
+            {
+                ["content_type"] = "audio/wav",
+                ["sample_rate"] = 48000
+            }
+        });
+
+        var converted = WorkflowNodeBase.ConvertNodeToolValueToExpectedType(
+            value,
+            typeof(AssetAudioRef));
+        var audio = Assert.IsType<AssetAudioRef>(converted);
+
+        Assert.Equal("asset://track.wav", audio.Uri);
+        Assert.Equal("audio-1", audio.AssetId);
+        Assert.Equal("upload-1", audio.TempId);
+        Assert.Equal(2.5f, audio.Duration);
+        Assert.Equal("audio/wav", audio.Metadata?["content_type"]);
+        Assert.Equal(48000, audio.Metadata?["sample_rate"]);
+    }
+
+    [Fact]
+    public void VideoOutput_ConvertsByteListsAndSpecificFields()
+    {
+        var value = NodeToolValue.From(new Dictionary<string, object?>
+        {
+            ["type"] = "video",
+            ["uri"] = "",
+            ["data"] = new[] { 1, 2, 255 },
+            ["duration"] = 3.25,
+            ["format"] = "mp4"
+        });
+
+        var converted = WorkflowNodeBase.ConvertNodeToolValueToExpectedType(
+            value,
+            typeof(AssetVideoRef));
+        var video = Assert.IsType<AssetVideoRef>(converted);
+
+        Assert.Equal(new byte[] { 1, 2, 255 }, Assert.IsType<byte[]>(video.Data));
+        Assert.Equal(3.25f, video.Duration);
+        Assert.Equal("mp4", video.Format);
+    }
+
+    [Fact]
+    public void TypedAssetInput_NormalizesToCurrentTransportShape()
+    {
+        var video = new AssetVideoRef
+        {
+            Uri = "asset://clip.mp4",
+            AssetId = "video-1",
+            TempId = "upload-2",
+            Data = new byte[] { 7, 8 },
+            Duration = 1.5f,
+            Format = "mp4",
+            Metadata = new Dictionary<string, object?>
+            {
+                ["content_type"] = "video/mp4"
+            }
+        };
+
+        var transport = Assert.IsType<Dictionary<string, object>>(
+            VlValueConversion.NormalizeForTransport(video));
+
+        Assert.Equal("video", transport["type"]);
+        Assert.Equal("asset://clip.mp4", transport["uri"]);
+        Assert.Equal("video-1", transport["asset_id"]);
+        Assert.Equal("upload-2", transport["temp_id"]);
+        Assert.Equal(new byte[] { 7, 8 }, transport["data"]);
+        Assert.Equal(1.5f, transport["duration"]);
+        Assert.Equal("mp4", transport["format"]);
+    }
+
+    [Fact]
+    public void TemporaryAssetId_IsAUsableReferenceAndDocumentIdFallback()
+    {
+        var document = new AssetDocumentRef { TempId = "pending-upload" };
+
+        Assert.False(document.IsEmpty());
+        Assert.Equal("pending-upload", document.DocumentId);
+        Assert.Equal("pending-upload", document.ToDict()["temp_id"]);
     }
 
     [Fact]

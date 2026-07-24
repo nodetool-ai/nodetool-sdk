@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Collections;
 using System.Reflection;
 using System.Text.Json;
+using Nodetool.SDK.Types.Assets;
 using Nodetool.SDK.Values;
 using VL.Lib.Collections;
 
@@ -60,12 +61,20 @@ internal static class VlValueConversion
 
     public static object NormalizeForTransport(object value)
     {
+        if (value is AssetRef assetReference)
+            return assetReference.ToDict();
+
         if (!IsSpreadType(value.GetType()) || value is not IEnumerable enumerable)
             return value;
 
         var elementType = value.GetType().GetGenericArguments()[0];
-        var items = enumerable.Cast<object?>().ToArray();
-        return CreateCollection(elementType.MakeArrayType(), elementType, items);
+        var items = enumerable
+            .Cast<object?>()
+            .Select(item => item == null ? null : NormalizeForTransport(item))
+            .ToArray();
+        return items.All(item => item == null || elementType.IsInstanceOfType(item))
+            ? CreateCollection(elementType.MakeArrayType(), elementType, items)
+            : items;
     }
 
     public static NodeToolValue UnwrapTerminalResultEnvelope(NodeToolValue value)
@@ -76,6 +85,130 @@ internal static class VlValueConversion
         var values = value.AsListOrEmpty();
         return values.Count == 1 ? values[0] : value;
     }
+
+    public static AssetRef ConvertNodeToolValueToAssetRef(
+        NodeToolValue value,
+        Type expectedType)
+    {
+        if (!typeof(AssetRef).IsAssignableFrom(expectedType))
+            throw new ArgumentException(
+                $"{expectedType.Name} is not an asset-reference type.",
+                nameof(expectedType));
+
+        if (value.Kind == NodeToolValueKind.List &&
+            value.AsListOrEmpty() is { Count: 1 } singleton)
+        {
+            value = singleton[0];
+        }
+
+        var result = (AssetRef)(Activator.CreateInstance(expectedType)
+            ?? throw new InvalidOperationException(
+                $"Cannot create asset reference type {expectedType.Name}."));
+
+        if (value.Kind == NodeToolValueKind.String)
+        {
+            result.Uri = value.AsString() ?? "";
+            return result;
+        }
+
+        if (value.Kind != NodeToolValueKind.Map)
+            return result;
+
+        var map = value.AsMapOrEmpty();
+        if (map.TryGetValue("uri", out var uri))
+            result.Uri = uri.AsString() ?? "";
+        if (string.IsNullOrWhiteSpace(result.Uri) &&
+            map.TryGetValue("get_url", out var getUrl))
+        {
+            result.Uri = getUrl.AsString() ?? "";
+        }
+        if (map.TryGetValue("asset_id", out var assetId))
+            result.AssetId = assetId.AsString();
+        if (map.TryGetValue("temp_id", out var tempId))
+            result.TempId = tempId.AsString();
+        if (map.TryGetValue("data", out var data))
+            result.Data = ConvertAssetData(data);
+        if (map.TryGetValue("metadata", out var metadata) &&
+            metadata.Kind == NodeToolValueKind.Map)
+        {
+            result.Metadata = metadata
+                .AsMapOrEmpty()
+                .ToDictionary(
+                    item => item.Key,
+                    item => ConvertNodeToolValueToPlainObject(item.Value),
+                    StringComparer.Ordinal);
+        }
+
+        if (result is ImageRef image)
+        {
+            if (map.TryGetValue("mimeType", out var mimeType) ||
+                map.TryGetValue("mime_type", out mimeType))
+            {
+                image.MimeType = mimeType.AsString();
+            }
+            if (map.TryGetValue("width", out var width) && width.TryGetLong(out var widthValue))
+                image.Width = checked((int)widthValue);
+            if (map.TryGetValue("height", out var height) && height.TryGetLong(out var heightValue))
+                image.Height = checked((int)heightValue);
+        }
+
+        if (result is AudioRef audio &&
+            map.TryGetValue("duration", out var audioDuration) &&
+            audioDuration.TryGetDouble(out var audioSeconds))
+        {
+            audio.Duration = (float)audioSeconds;
+        }
+
+        if (result is VideoRef video)
+        {
+            if (map.TryGetValue("duration", out var duration) &&
+                duration.TryGetDouble(out var seconds))
+            {
+                video.Duration = (float)seconds;
+            }
+            if (map.TryGetValue("format", out var format))
+                video.Format = format.AsString();
+        }
+
+        return result;
+    }
+
+    private static object? ConvertAssetData(NodeToolValue data)
+    {
+        if (data.TryGetBytes(out var bytes))
+            return bytes;
+
+        if (data.Kind == NodeToolValueKind.List)
+        {
+            var values = data.AsListOrEmpty();
+            var byteValues = new byte[values.Count];
+            for (var i = 0; i < values.Count; i++)
+            {
+                if (!values[i].TryGetLong(out var value) || value is < 0 or > 255)
+                    return ConvertNodeToolValueToPlainObject(data);
+                byteValues[i] = (byte)value;
+            }
+            return byteValues;
+        }
+
+        return ConvertNodeToolValueToPlainObject(data);
+    }
+
+    private static object? ConvertNodeToolValueToPlainObject(NodeToolValue value)
+        => value.Kind switch
+        {
+            NodeToolValueKind.Map => value
+                .AsMapOrEmpty()
+                .ToDictionary(
+                    item => item.Key,
+                    item => ConvertNodeToolValueToPlainObject(item.Value),
+                    StringComparer.Ordinal),
+            NodeToolValueKind.List => value
+                .AsListOrEmpty()
+                .Select(ConvertNodeToolValueToPlainObject)
+                .ToArray(),
+            _ => value.Raw
+        };
 
     private static object CreateSpread(Type elementType, IReadOnlyList<object?> items)
         => CreateCollection(typeof(Spread<>).MakeGenericType(elementType), elementType, items);

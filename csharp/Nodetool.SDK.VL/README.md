@@ -84,6 +84,7 @@ Media transport:
 - `InlineMediaLimitBytes` defaults to 4 MiB. Larger local media is uploaded through the asset API and represented by `asset_id` during execution.
 - Set the limit to `0` to upload all binary media, or raise it up to 64 MiB when inline transport is preferable.
 - Workflow audio, video, document, and generic asset pins use the typed SDK asset-reference classes (`AudioRef`, `VideoRef`, `DocumentRef`, and `GenericAssetRef`).
+- Individual NodeTool nodes also expose typed image, audio, video, document, text, folder, font, model, and generic asset-reference pins when the node metadata identifies those types. Namespaced `type_name` values and lists of asset references retain their native shape.
 - Image pins use `SKImage`. A workflow node owns images it produces and disposes them when replaced or when the node is disposed; downstream patches should treat output images as borrowed and must not dispose them. Input images remain owned by the caller.
 - NodeTool list metadata maps to immutable VL-native `Spread<T>` pins. Spreads are converted to transport arrays only while preparing execution parameters.
 - Image outputs accept inline bytes, data URIs, HTTP/storage URLs, and current `asset://<stored-file>` references. ID-only asset references are materialized through the connected asset RPC.
@@ -116,3 +117,24 @@ Category:
 
 - `Nodetool -> DecodeImageRef`
 - `Nodetool.Images -> DecodeImageRefToSKImage`
+
+### Asset file helper
+
+- `Nodetool.Assets -> AssetAsFile`
+
+`AssetAsFile` accepts a typed NodeTool asset reference and asynchronously
+produces a local file path. Existing local files pass through unchanged.
+Inline bytes and data URIs are written to a deterministic cache; HTTP,
+`/api/storage`, `asset://`, and ID-only references are resolved and downloaded.
+The node reports loading, ready, cache-hit, content-type, source-URI, and error
+state. Pulse `Refresh` to replace an existing cached copy.
+
+The default cache is:
+
+```text
+%LOCALAPPDATA%\Nodetool\SdkCache\assets
+```
+
+The helper is intended for file-backed image, audio, video, document, text,
+font, model, and generic assets. Folder references do not materialize as a
+single file.

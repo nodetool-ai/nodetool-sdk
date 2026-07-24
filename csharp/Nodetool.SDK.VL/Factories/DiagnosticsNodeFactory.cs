@@ -214,5 +214,11 @@ internal static class DiagnosticsNodeFactory
         {
             nodeDescriptions.Add(decodeImageRefNode);
         }
+
+        var assetAsFileNode = AssetNodeFactory.CreateAssetAsFileNode(vlSelfFactory);
+        if (assetAsFileNode != null)
+        {
+            nodeDescriptions.Add(assetAsFileNode);
+        }
     }
 }

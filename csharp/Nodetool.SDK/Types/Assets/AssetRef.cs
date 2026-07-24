@@ -20,15 +20,31 @@ public abstract class AssetRef : BaseType
     public string? AssetId { get; set; }
 
     /// <summary>
+    /// Optional temporary asset ID used while an upload is being materialized.
+    /// </summary>
+    [JsonPropertyName("temp_id")]
+    public string? TempId { get; set; }
+
+    /// <summary>
     /// Raw data for the asset (used for embedding data URIs)
     /// </summary>
     [JsonPropertyName("data")]
     public object? Data { get; set; }
 
     /// <summary>
+    /// Optional media metadata supplied by the runtime.
+    /// </summary>
+    [JsonPropertyName("metadata")]
+    public Dictionary<string, object?>? Metadata { get; set; }
+
+    /// <summary>
     /// Check if this asset reference is empty
     /// </summary>
-    public bool IsEmpty() => string.IsNullOrEmpty(Uri) && AssetId == null && Data == null;
+    public bool IsEmpty()
+        => string.IsNullOrEmpty(Uri) &&
+           string.IsNullOrEmpty(AssetId) &&
+           string.IsNullOrEmpty(TempId) &&
+           Data == null;
 
     /// <summary>
     /// Check if this asset reference is set
@@ -36,9 +52,9 @@ public abstract class AssetRef : BaseType
     public bool IsSet() => !IsEmpty();
 
     /// <summary>
-    /// Get the document ID (asset_id if available, otherwise uri)
+    /// Get the document ID (asset_id if available, then temp_id, otherwise uri)
     /// </summary>
-    public string DocumentId => AssetId ?? Uri;
+    public string DocumentId => AssetId ?? TempId ?? Uri;
 
     /// <summary>
     /// Convert this asset to a dictionary
@@ -47,15 +63,25 @@ public abstract class AssetRef : BaseType
     {
         var result = new Dictionary<string, object>
         {
+            ["type"] = Type,
             ["uri"] = Uri
         };
 
-        if (AssetId != null)
-        {
+        if (!string.IsNullOrWhiteSpace(AssetId))
             result["asset_id"] = AssetId;
-        }
+        if (!string.IsNullOrWhiteSpace(TempId))
+            result["temp_id"] = TempId;
+        if (Data != null)
+            result["data"] = Data;
+        if (Metadata != null)
+            result["metadata"] = Metadata;
 
+        AddTypeSpecificFields(result);
         return result;
+    }
+
+    protected virtual void AddTypeSpecificFields(Dictionary<string, object> result)
+    {
     }
 }
 
@@ -65,6 +91,25 @@ public abstract class AssetRef : BaseType
 public class ImageRef : AssetRef
 {
     public override string Type => "image";
+
+    [JsonPropertyName("mimeType")]
+    public string? MimeType { get; set; }
+
+    [JsonPropertyName("width")]
+    public int? Width { get; set; }
+
+    [JsonPropertyName("height")]
+    public int? Height { get; set; }
+
+    protected override void AddTypeSpecificFields(Dictionary<string, object> result)
+    {
+        if (!string.IsNullOrWhiteSpace(MimeType))
+            result["mimeType"] = MimeType;
+        if (Width.HasValue)
+            result["width"] = Width.Value;
+        if (Height.HasValue)
+            result["height"] = Height.Value;
+    }
 
     static ImageRef()
     {
@@ -92,6 +137,15 @@ public class AudioRef : AssetRef
 {
     public override string Type => "audio";
 
+    [JsonPropertyName("duration")]
+    public float? Duration { get; set; }
+
+    protected override void AddTypeSpecificFields(Dictionary<string, object> result)
+    {
+        if (Duration.HasValue)
+            result["duration"] = Duration.Value;
+    }
+
     static AudioRef()
     {
         RegisterType(typeof(AudioRef), "audio");
@@ -116,6 +170,14 @@ public class VideoRef : AssetRef
     /// </summary>
     [JsonPropertyName("format")]
     public string? Format { get; set; }
+
+    protected override void AddTypeSpecificFields(Dictionary<string, object> result)
+    {
+        if (Duration.HasValue)
+            result["duration"] = Duration.Value;
+        if (!string.IsNullOrWhiteSpace(Format))
+            result["format"] = Format;
+    }
 
     static VideoRef()
     {
@@ -172,5 +234,31 @@ public class ModelRef : AssetRef
     static ModelRef()
     {
         RegisterType(typeof(ModelRef), "model_ref");
+    }
+}
+
+/// <summary>
+/// Reference to a 3D model asset.
+/// </summary>
+public class Model3DRef : AssetRef
+{
+    public override string Type => "model_3d";
+
+    static Model3DRef()
+    {
+        RegisterType(typeof(Model3DRef), "model_3d");
+    }
+}
+
+/// <summary>
+/// Reference to a font asset.
+/// </summary>
+public class FontRef : AssetRef
+{
+    public override string Type => "font";
+
+    static FontRef()
+    {
+        RegisterType(typeof(FontRef), "font");
     }
 }

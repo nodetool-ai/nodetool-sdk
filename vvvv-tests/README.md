@@ -76,6 +76,8 @@ should exercise that behavior.
 - `SDK Test - Primitives`: string, integer, float, boolean, enum, and list pins.
 - `SDK Test - Streaming Text`: append and replace updates followed by a terminal result.
 - `SDK Test - Image Roundtrip`: image input and image output.
+- `SDK Test - Media References`: audio, video, document, and generic asset
+  inputs directly connected to matching workflow outputs.
 - `SDK Test - Cancellation`: a run long enough to cancel deterministically.
 - `SDK Test - Rename Refresh`: safe to rename and edit while vvvv remains open.
 - `SDK Test - Large Graph`: a large graph with representative inline image data.
@@ -106,13 +108,18 @@ identity changes from display-name changes.
    terminal output.
 4. Run `SDK Test - Image Roundtrip` with a small PNG and inspect the returned
    image.
-5. Start and cancel `SDK Test - Cancellation`; confirm that vvvv does not remain
+5. Run `SDK Test - Media References` with small local or uploaded fixtures.
+   Confirm that the workflow pins remain typed and that
+   `Nodetool.Assets -> AssetAsFile` produces usable local paths for the audio,
+   video, and document results. Run it twice and confirm the second
+   materialization reports `FromCache`.
+6. Start and cancel `SDK Test - Cancellation`; confirm that vvvv does not remain
    in a running state.
-6. Rename `SDK Test - Rename Refresh`, trigger refresh, and confirm that the node
+7. Rename `SDK Test - Rename Refresh`, trigger refresh, and confirm that the node
    updates without restarting vvvv.
-7. Stop and restart NodeTool while the patch remains open. The package must stay
+8. Stop and restart NodeTool while the patch remains open. The package must stay
    loadable offline and recover discovery after the server returns.
-8. Open `SDK Test - Large Graph` and confirm discovery remains compact and does
+9. Open `SDK Test - Large Graph` and confirm discovery remains compact and does
    not transfer inline image data as a pin default.
 
 When a check fails, save the vvvv patch, the NodeTool server log, and:

@@ -52,6 +52,21 @@ The preferred end state is:
 - Individual-node discovery now performs background stale-while-revalidate refresh, retains the last successful snapshot, retries transient startup failures, and has a five-second maximum initial grace period so existing `.vl` documents can resolve nodes from a fast local server without the previous 30-second offline stall.
 - The node-sdk mutation command is currently blocked before mutation by eight pre-existing Windows-only dry-run failures in metadata caching and pack path assertions. Focused registry/inventory tests pass; this blocker is separate from the existing Sharp typecheck failure.
 
+### Media extension — 2026-07-24
+
+- The focused SDK suite now passes 82 tests after adding typed asset-reference
+  coverage and local-file materialization tests.
+- Individual-node metadata now maps image, audio, video, document, text,
+  folder, font, model, and generic asset references to typed pins, including
+  namespaced type names and `Spread<T>` media lists.
+- Workflow and individual-node transport preserves the current asset fields:
+  `type`, `uri`, `asset_id`, `temp_id`, inline `data`, metadata, and
+  media-specific properties.
+- `Nodetool.Assets -> AssetAsFile` asynchronously passes through local files or
+  caches inline, data-URI, HTTP, storage, `asset://`, and ID-only assets as
+  local files. It exposes loading, ready, cache, source, content-type, and error
+  diagnostics.
+
 ## Current-client safety rules
 
 - [x] Do not change the existing default shape of `GET /api/workflows`, `GET /api/workflows/:id`, tRPC `workflows.list/get`, or WebSocket `list_workflows/get_workflow` during this work.
@@ -301,6 +316,8 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Bind structured NodeTool types through the C# type registry where a generated type exists.
 - [x] Map image inputs/outputs to `SKImage` and document ownership/disposal rules.
 - [x] Map audio, video, document, and generic asset pins to typed SDK asset references.
+- [x] Map typed asset references for individual NodeTool nodes, including namespaced metadata and media lists.
+- [x] Add an asynchronous VL asset-to-file helper with deterministic caching, refresh, and explicit state/error outputs.
 - [x] Use an explicit JSON/object fallback pin for unsupported types instead of silently pretending they are strings.
 - [x] Surface per-workflow diagnostics when a pin uses a fallback type.
 - [x] Read current native/Python node metadata flags and recursively preserve list element and binary types for individual NodeTool node pins; use an object fallback for unsupported structured node types.
@@ -332,6 +349,8 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Latch workflow outputs and reapply them on every VL update so scalar value-type outputs do not reset one frame after an execution event.
 - [x] Use the workflow interface type when encoding every input, including graph-derived image/audio/video/document inputs.
 - [x] Prefer asset/reference transport for large media; set and test explicit inline payload limits.
+- [x] Preserve current audio/video/document/generic asset fields in both input transport and output conversion.
+- [x] Materialize local, inline, data-URI, storage, HTTP, and ID-only asset references to cached local files for VL consumers.
 - [x] Make execution timeout configurable globally and per node.
 - [x] Support cancellation while server-queued; client-generated job IDs allow immediate, exactly-once cancellation of queued and running jobs.
 - [x] Add reconnect/replay behavior using `reconnect_job` for interrupted sockets.
