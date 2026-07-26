@@ -23,6 +23,8 @@ public sealed class NodeToolConnectionManager :
     private NodetoolClient? _apiClient;
     private NodeToolExecutionClient? _executionClient;
     private SdkCapabilitiesResponse? _capabilities;
+    private long _connectionGeneration;
+    private long _capabilitiesGeneration = -1;
     private string? _resolvedToken;
     private bool _disposed;
 
@@ -48,7 +50,10 @@ public sealed class NodeToolConnectionManager :
     public async Task<INodetoolClient> GetApiClientAsync(
         CancellationToken cancellationToken = default)
     {
+        var wasInitialized = _apiClient != null;
         await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
+        if (wasInitialized)
+            await RefreshHttpTokenAsync(cancellationToken).ConfigureAwait(false);
         return _apiClient!;
     }
 
@@ -56,22 +61,31 @@ public sealed class NodeToolConnectionManager :
         CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (_capabilities is { } cached)
+        if (TryGetCachedCapabilities(out var cached))
             return cached;
 
         await _capabilitiesLock.WaitAsync(cancellationToken)
             .ConfigureAwait(false);
         try
         {
-            if (_capabilities is { } resolved)
-                return resolved;
+            while (true)
+            {
+                if (TryGetCachedCapabilities(out var resolved))
+                    return resolved;
 
-            var client = await GetApiClientAsync(cancellationToken)
-                .ConfigureAwait(false);
-            _capabilities = await client
-                .GetSdkCapabilitiesAsync(cancellationToken)
-                .ConfigureAwait(false);
-            return _capabilities;
+                var generation = Volatile.Read(ref _connectionGeneration);
+                var client = await GetApiClientAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                var capabilities = await client
+                    .GetSdkCapabilitiesAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                if (generation != Volatile.Read(ref _connectionGeneration))
+                    continue;
+
+                Volatile.Write(ref _capabilities, capabilities);
+                Volatile.Write(ref _capabilitiesGeneration, generation);
+                return capabilities;
+            }
         }
         finally
         {
@@ -98,6 +112,7 @@ public sealed class NodeToolConnectionManager :
     {
         if (_executionClient != null)
             await _executionClient.DisconnectAsync().ConfigureAwait(false);
+        InvalidateCapabilities();
     }
 
     private async Task EnsureInitializedAsync(
@@ -130,6 +145,8 @@ public sealed class NodeToolConnectionManager :
                 _profile.ToClientOptions(),
                 _resolvedToken,
                 _loggerFactory.CreateLogger<NodeToolExecutionClient>());
+            _executionClient.ConnectionStatusChanged +=
+                OnExecutionConnectionStatusChanged;
         }
         finally
         {
@@ -140,11 +157,58 @@ public sealed class NodeToolConnectionManager :
     private static string? NormalizeToken(string? token)
         => string.IsNullOrWhiteSpace(token) ? null : token.Trim();
 
+    private async Task RefreshHttpTokenAsync(
+        CancellationToken cancellationToken)
+    {
+        if (_profile.TokenProvider == null)
+            return;
+
+        var token = NormalizeToken(
+            await _profile.TokenProvider
+                .GetTokenAsync(cancellationToken)
+                .ConfigureAwait(false));
+        _resolvedToken = token;
+        _apiClient?.SetAuthToken(token);
+    }
+
+    private void OnExecutionConnectionStatusChanged(string status)
+    {
+        if (!string.Equals(status, "connected", StringComparison.Ordinal))
+            return;
+
+        var token = _executionClient?.ResolvedAuthToken;
+        _resolvedToken = token;
+        _apiClient?.SetAuthToken(token);
+        InvalidateCapabilities();
+    }
+
+    private bool TryGetCachedCapabilities(
+        out SdkCapabilitiesResponse capabilities)
+    {
+        var generation = Volatile.Read(ref _connectionGeneration);
+        var cachedGeneration = Volatile.Read(ref _capabilitiesGeneration);
+        var cached = Volatile.Read(ref _capabilities);
+        if (cached != null && cachedGeneration == generation)
+        {
+            capabilities = cached;
+            return true;
+        }
+
+        capabilities = null!;
+        return false;
+    }
+
+    private void InvalidateCapabilities()
+        => Interlocked.Increment(ref _connectionGeneration);
+
     public void Dispose()
     {
         if (_disposed)
             return;
         _disposed = true;
+        if (_executionClient != null)
+            _executionClient.ConnectionStatusChanged -=
+                OnExecutionConnectionStatusChanged;
         _executionClient?.Dispose();
         _apiClient?.Dispose();
         _capabilitiesLock.Dispose();
@@ -157,6 +221,9 @@ public sealed class NodeToolConnectionManager :
         if (_disposed)
             return;
         _disposed = true;
+        if (_executionClient != null)
+            _executionClient.ConnectionStatusChanged -=
+                OnExecutionConnectionStatusChanged;
         if (_executionClient != null)
             await _executionClient.DisposeAsync().ConfigureAwait(false);
         _apiClient?.Dispose();

@@ -117,6 +117,23 @@ public class AssetMaterializerTests
         Assert.Equal("/api/storage/clip.webm", uri.AbsolutePath);
     }
 
+    [Theory]
+    [InlineData("https://example.test/nodetool")]
+    [InlineData("https://example.test/nodetool/")]
+    public void StoredAssetUri_PreservesDeploymentSubpath(
+        string apiBaseUrl)
+    {
+        var materializer = new AssetMaterializer(
+            apiBaseUrl: new Uri(apiBaseUrl));
+
+        var uri = materializer.ResolveStoredAssetUri("asset://clip.webm");
+
+        Assert.Equal(
+            new Uri(
+                "https://example.test/nodetool/api/storage/clip.webm"),
+            uri);
+    }
+
     [Fact]
     public async Task AssetId_UsesInjectedResolverAndAuthenticatesSameOriginDownload()
     {

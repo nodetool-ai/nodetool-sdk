@@ -133,9 +133,10 @@ references remain valid; use automatic asset persistence when outputs must be
 durable.
 
 Connection sessions cache the server capability document for their current
-profile, so repeated negotiated runs do not add one HTTP discovery request per
-execution. Replacing or resetting the profile creates a fresh capability
-scope.
+connection generation, so repeated negotiated runs do not add one HTTP
+discovery request per execution. A successful reconnect, profile replacement,
+or reset creates a fresh capability scope. Token providers are re-evaluated
+when the HTTP client is borrowed again and for every WebSocket connection.
 
 The execution client supports:
 
@@ -143,7 +144,8 @@ The execution client supports:
 - single-node and explicit-graph execution;
 - output, preview, node, progress, and completion events;
 - queued and running job cancellation;
-- reconnecting active sessions;
+- reconnecting the transport and asking the server to reattach active sessions;
+  interrupted runs fail explicitly when event replay is unavailable;
 - compact workflow-summary and authoritative workflow-interface discovery;
 - full node metadata and recursive node-type inventory discovery.
 

@@ -104,6 +104,23 @@ public sealed class NodeToolConnectionSessionTests
     }
 
     [Fact]
+    public async Task Disconnect_InvalidatesCachedCapabilities()
+    {
+        var handler = new RecordingHandler();
+        using var httpClient = new HttpClient(handler);
+        await using var session = new NodeToolConnectionSession(
+            Profile("http://localhost:7777"),
+            httpClient);
+
+        var first = await session.GetSdkCapabilitiesAsync();
+        await session.DisconnectAsync();
+        var refreshed = await session.GetSdkCapabilitiesAsync();
+
+        Assert.NotSame(first, refreshed);
+        Assert.Equal(2, handler.RequestUris.Count);
+    }
+
+    [Fact]
     public async Task Reset_DropsResolvedClientWithoutChangingProfile()
     {
         var handler = new RecordingHandler();

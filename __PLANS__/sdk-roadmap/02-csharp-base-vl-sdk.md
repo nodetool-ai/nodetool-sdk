@@ -369,7 +369,7 @@ Primary implementation anchors:
   until the server's follow-on lifecycle profile is implemented.
 
 The portable manager now owns one immutable profile and matching HTTP/WS
-clients. It derives endpoints, resolves injected tokens, applies bearer auth
+clients. It derives endpoints, refreshes injected tokens, applies bearer auth
 to the WebSocket upgrade, and gives side-effect-free HTTP SDK operations
 bounded retry/backoff with stable logical request IDs and `Retry-After`
 handling. Correlated WebSocket read RPCs now use the same bounded policy for
@@ -384,7 +384,7 @@ without a live server.
 status projection, reconnect/reset, and stale-connect rejection for mutable
 hosts. VL delegates this neutral lifecycle to the portable session. HTTP
 configuration is request-scoped, preserving caller-owned `HttpClient` state
-and reverse-proxy deployment subpaths.
+and reverse-proxy deployment subpaths, including storage asset URLs.
 
 ### Phase 5A - Portable execution options and timings
 
@@ -398,9 +398,10 @@ and reverse-proxy deployment subpaths.
       persistence.
 - [x] Negotiate non-default options through capabilities; never assume an
       older/current server supports them.
-- [x] Cache the capability document per portable connection profile so
+- [x] Cache the capability document per portable connection generation so
       negotiated low-overhead executions do not add a discovery request per
-      run; replacing the profile invalidates the cache.
+      run; reconnecting, replacing the profile, or resetting invalidates the
+      cache.
 - [x] Keep current behavior when options are absent; unsupported-option
       capability negotiation remains part of the preceding item.
 - [x] Add safe portable runtime timings for connection, input/media
@@ -553,7 +554,7 @@ asset/output inspection.
 - [x] NodeTool WebSocket TypeScript check: passed.
 - [x] Live HTTP capabilities, static preflight, and availability preflight:
       passed against the local development server.
-- [x] Portable `Nodetool.SDK` tests: 143 passed.
+- [x] Portable `Nodetool.SDK` tests: 147 passed.
 - [x] VL adapter unit tests: 85 passed (media/value policy tests moved to the
       portable suite rather than being dropped).
 - [x] Packaged node-surface guards verify exactly the three deliberate

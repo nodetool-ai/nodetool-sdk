@@ -201,7 +201,19 @@ public sealed class AssetMaterializer : IAssetMaterializer
 
         return _apiBaseUrl == null || string.IsNullOrEmpty(Path.GetExtension(key))
             ? null
-            : new Uri(_apiBaseUrl, $"/api/storage/{Uri.EscapeDataString(key)}");
+            : ResolveApiRelativeUri(
+                _apiBaseUrl,
+                $"api/storage/{Uri.EscapeDataString(key)}");
+    }
+
+    private static Uri ResolveApiRelativeUri(Uri apiBaseUrl, string path)
+    {
+        var directoryBase = apiBaseUrl.AbsoluteUri.EndsWith(
+            "/",
+            StringComparison.Ordinal)
+                ? apiBaseUrl
+                : new Uri($"{apiBaseUrl.AbsoluteUri}/");
+        return new Uri(directoryBase, path);
     }
 
     internal static string CreateIdentity(AssetRef asset, byte[] discriminator)

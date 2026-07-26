@@ -96,9 +96,10 @@ original plan assumed:
 - The runner already has in-memory global/per-workflow admission queues,
   persisted jobs, cancellation, reconnect, suspension/resume, heartbeats, and
   recovery-oriented job fields.
-- Active reconnect sends status and graph snapshots. Reconnect to a completed
-  persisted job currently returns `result.outputs = {}`, because final outputs
-  are not persisted with the job.
+- Active reconnect sends status and graph snapshots while the owning runner is
+  alive. Once that runner is lost, reconnect fails explicitly because final
+  outputs and ordered events are not persisted; it never fabricates an empty
+  successful result.
 - Assets already have Zod schemas, multipart REST upload, storage download,
   signed URL support, thumbnails, and job/workflow provenance fields. The
   public durability, checksum, retention, and result-manifest semantics remain
@@ -407,6 +408,8 @@ declare which relaxations the server honors.
       functionality.
 - [x] Keep SDK authentication, authorization, limits, persistence policy, and
       other deployment-wide controls exclusively server-owned.
+- [x] Ensure the SDK discovery exemption can never bypass an authenticated
+      server; the SDK auth flag may only tighten local-mode policy.
 
 Short path review (2026-07-25):
 

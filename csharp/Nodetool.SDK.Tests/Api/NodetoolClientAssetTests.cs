@@ -14,6 +14,11 @@ public class NodetoolClientAssetTests
             var multipart = Assert.IsType<MultipartFormDataContent>(request.Content);
             var file = Assert.Single(multipart);
             Assert.Equal("image/png", file.Headers.ContentType?.MediaType);
+            Assert.Equal("\"file\"", file.Headers.ContentDisposition?.Name);
+            Assert.Equal(
+                "\"sample.png\"",
+                file.Headers.ContentDisposition?.FileName);
+            Assert.Null(file.Headers.ContentDisposition?.FileNameStar);
             Assert.Equal("sample.png", file.Headers.ContentDisposition?.FileName?.Trim('"'));
 
             const string json = """

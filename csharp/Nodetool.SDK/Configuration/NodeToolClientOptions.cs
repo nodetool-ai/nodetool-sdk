@@ -47,7 +47,9 @@ public sealed class NodeToolClientOptions
     public bool ExplicitTypes { get; init; } = true;
 
     /// <summary>
-    /// Reconnect the socket after an unexpected disconnect and reattach active jobs.
+    /// Reconnect the socket after an unexpected disconnect and ask the server
+    /// to reattach active jobs. A server without event replay fails the
+    /// interrupted session instead of returning incomplete outputs.
     /// </summary>
     public bool AutoReconnect { get; init; } = true;
 

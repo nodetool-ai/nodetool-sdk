@@ -84,6 +84,13 @@ public class NodetoolClient : INodetoolClient
                 _baseAddress));
     }
 
+    internal void SetAuthToken(string? token)
+    {
+        _apiKey = string.IsNullOrWhiteSpace(token)
+            ? null
+            : token.Trim();
+    }
+
     public async Task<HealthResponse> GetHealthAsync(CancellationToken cancellationToken = default)
     {
         using var request = CreateConfiguredRequest(
@@ -611,6 +618,13 @@ public class NodetoolClient : INodetoolClient
         using var streamContent = new StreamContent(content);
         streamContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(contentType);
         form.Add(streamContent, "file", fileName);
+        // .NET emits simple Content-Disposition parameters without quotes.
+        // Node's Web API multipart parser requires the RFC form used by
+        // browsers/curl (`name="file"; filename="..."`).
+        var disposition = streamContent.Headers.ContentDisposition!;
+        disposition.Name = QuoteMultipartParameter("file");
+        disposition.FileName = QuoteMultipartParameter(fileName);
+        disposition.FileNameStar = null;
         
         using var request = CreateConfiguredRequest(
             HttpMethod.Post,
@@ -627,6 +641,9 @@ public class NodetoolClient : INodetoolClient
         _logger?.LogDebug("Asset uploaded: {AssetId}", asset?.Id);
         return asset ?? throw new InvalidOperationException("Failed to upload asset");
     }
+
+    private static string QuoteMultipartParameter(string value)
+        => $"\"{value.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
 
     public async Task<AssetResponse> GetAssetAsync(string assetId, CancellationToken cancellationToken = default)
     {

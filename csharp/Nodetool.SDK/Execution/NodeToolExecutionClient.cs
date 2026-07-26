@@ -52,6 +52,8 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     /// <inheritdoc/>
     public string? ExecutionTargetId { get; private set; }
 
+    internal string? ResolvedAuthToken => _resolvedAuthToken;
+
     public bool AutoReconnectEnabled
     {
         get => _autoReconnectEnabled;

@@ -73,6 +73,31 @@ public sealed class NodeToolConnectionTests
     }
 
     [Fact]
+    public async Task Manager_RefreshesHttpBearerTokenWhenClientIsBorrowedAgain()
+    {
+        var handler = new RecordingHandler();
+        using var httpClient = new HttpClient(handler);
+        var tokenProvider = new CountingTokenProvider();
+        await using var manager = new NodeToolConnectionManager(
+            new NodeToolConnectionProfile
+            {
+                ServerUrl = new Uri("https://cloud.example/nodetool"),
+                TokenProvider = tokenProvider
+            },
+            httpClient);
+
+        var first = await manager.GetApiClientAsync();
+        await first.GetSdkCapabilitiesAsync();
+        var second = await manager.GetApiClientAsync();
+        await second.GetSdkCapabilitiesAsync();
+
+        Assert.Same(first, second);
+        Assert.Equal(2, tokenProvider.Calls);
+        Assert.Equal("token-2", handler.AuthorizationParameter);
+        Assert.Equal("token-2", manager.AuthToken);
+    }
+
+    [Fact]
     public async Task Manager_RetriesReadOnlySdkRequestWithStableRequestId()
     {
         var handler = new RecordingHandler(failuresBeforeSuccess: 2);
@@ -164,6 +189,19 @@ public sealed class NodeToolConnectionTests
                     Encoding.UTF8,
                     "application/json")
             });
+        }
+    }
+
+    private sealed class CountingTokenProvider : INodeToolTokenProvider
+    {
+        public int Calls { get; private set; }
+
+        public ValueTask<string?> GetTokenAsync(
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Calls++;
+            return ValueTask.FromResult<string?>($"token-{Calls}");
         }
     }
 }
