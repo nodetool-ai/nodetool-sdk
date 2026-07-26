@@ -185,6 +185,53 @@ public class AssetMaterializerTests
     }
 
     [Fact]
+    public async Task TemporaryRootRelativeImage_IsDownloadedFromCurrentServer()
+    {
+        var cacheDirectory = CreateTemporaryDirectory();
+        HttpRequestMessage? capturedRequest = null;
+        try
+        {
+            var png = new byte[] { 137, 80, 78, 71 };
+            using var httpClient = new HttpClient(
+                new DelegateHttpMessageHandler(request =>
+                {
+                    capturedRequest = request;
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new ByteArrayContent(png)
+                        {
+                            Headers =
+                            {
+                                ContentType =
+                                    new MediaTypeHeaderValue("image/png")
+                            }
+                        }
+                    };
+                }));
+            var materializer = new AssetMaterializer(
+                apiBaseUrl: new Uri("http://127.0.0.1:7777"),
+                httpClient: httpClient,
+                cacheDirectory: cacheDirectory);
+
+            var result = await materializer.MaterializeAsync(
+                new ImageRef
+                {
+                    Uri = "/api/storage/temp/result.png"
+                });
+
+            Assert.Equal(
+                "http://127.0.0.1:7777/api/storage/temp/result.png",
+                capturedRequest?.RequestUri?.ToString());
+            Assert.Equal(png, await File.ReadAllBytesAsync(result.Path));
+            Assert.Equal("image/png", result.ContentType);
+        }
+        finally
+        {
+            Directory.Delete(cacheDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task CrossOriginDownload_DoesNotForwardConnectionToken()
     {
         var cacheDirectory = CreateTemporaryDirectory();

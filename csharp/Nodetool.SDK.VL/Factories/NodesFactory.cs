@@ -590,34 +590,34 @@ namespace Nodetool.SDK.VL.Factories
 
             if (VlLog.Verbose)
             {
-                Console.WriteLine("");
-                Console.WriteLine("=================== NODETOOL API ERROR ===================");
-                Console.WriteLine("🚨 NODES CANNOT BE CREATED - API UNREACHABLE");
-                Console.WriteLine("");
-                Console.WriteLine($"Error Category: {errorCategory}");
-                Console.WriteLine($"API Endpoint: {NodetoolConstants.Defaults.BaseUrl}{NodetoolConstants.Endpoints.NodesMetadata}");
-                Console.WriteLine($"Status: {_apiStatusMessage}");
-                Console.WriteLine("");
-                Console.WriteLine("📋 USER ACTION REQUIRED:");
-                Console.WriteLine(userGuidance);
-                Console.WriteLine("");
-                Console.WriteLine("🔧 Technical Details:");
-                Console.WriteLine($"   Error Type: {ex.GetType().Name}");
-                Console.WriteLine($"   Message: {VlLog.SafeError(ex)}");
+                VlLog.Debug("");
+                VlLog.Debug("=================== NODETOOL API ERROR ===================");
+                VlLog.Debug("🚨 NODES CANNOT BE CREATED - API UNREACHABLE");
+                VlLog.Debug("");
+                VlLog.Debug($"Error Category: {errorCategory}");
+                VlLog.Debug($"API Endpoint: {NodetoolConstants.Defaults.BaseUrl}{NodetoolConstants.Endpoints.NodesMetadata}");
+                VlLog.Debug($"Status: {_apiStatusMessage}");
+                VlLog.Debug("");
+                VlLog.Debug("📋 USER ACTION REQUIRED:");
+                VlLog.Debug(userGuidance);
+                VlLog.Debug("");
+                VlLog.Debug("🔧 Technical Details:");
+                VlLog.Debug($"   Error Type: {ex.GetType().Name}");
+                VlLog.Debug($"   Message: {VlLog.SafeError(ex)}");
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"   Inner Error: {ex.InnerException.GetType().Name}: {VlLog.SafeError(ex.InnerException)}");
+                    VlLog.Debug($"   Inner Error: {ex.InnerException.GetType().Name}: {VlLog.SafeError(ex.InnerException)}");
                 }
-                Console.WriteLine($"   Timeout Setting: {DiscoveryTimeout.TotalSeconds:0} seconds");
-                Console.WriteLine("");
-                Console.WriteLine("🔍 Troubleshooting Steps:");
-                Console.WriteLine("   1. Verify Nodetool server is running");
-                Console.WriteLine($"   2. Check API URL: {NodetoolConstants.Defaults.BaseUrl}");
-                Console.WriteLine($"   3. Test API manually: GET {NodetoolConstants.Defaults.BaseUrl}{NodetoolConstants.Endpoints.NodesMetadata}");
-                Console.WriteLine("   4. Check firewall/network settings");
-                Console.WriteLine("   5. Verify Nodetool server health");
-                Console.WriteLine("===========================================================");
-                Console.WriteLine("");
+                VlLog.Debug($"   Timeout Setting: {DiscoveryTimeout.TotalSeconds:0} seconds");
+                VlLog.Debug("");
+                VlLog.Debug("🔍 Troubleshooting Steps:");
+                VlLog.Debug("   1. Verify Nodetool server is running");
+                VlLog.Debug($"   2. Check API URL: {NodetoolConstants.Defaults.BaseUrl}");
+                VlLog.Debug($"   3. Test API manually: GET {NodetoolConstants.Defaults.BaseUrl}{NodetoolConstants.Endpoints.NodesMetadata}");
+                VlLog.Debug("   4. Check firewall/network settings");
+                VlLog.Debug("   5. Verify Nodetool server health");
+                VlLog.Debug("===========================================================");
+                VlLog.Debug("");
             }
             
         }

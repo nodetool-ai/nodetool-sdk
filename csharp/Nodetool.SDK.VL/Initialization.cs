@@ -44,6 +44,7 @@ namespace Nodetool.SDK.VL
         {
             ArgumentNullException.ThrowIfNull(appHost);
             var host = appHost;
+            VlLog.Configure(host.LoggerFactory);
             VlLog.Debug($"Configure() appHost={host.GetType().Name}");
             
             try
@@ -141,7 +142,7 @@ namespace Nodetool.SDK.VL
                     var location = "(dynamic)";
                     try { location = a.Location; } catch { /* ignored */ }
 
-                    Console.WriteLine($"- {name.Name}, Version={name.Version}, Location={location}");
+                    VlLog.Debug($"- {name.Name}, Version={name.Version}, Location={location}");
                 }
 
                 // Extra: explicitly show what 'Nodetool.SDK' the runtime resolved (if any)

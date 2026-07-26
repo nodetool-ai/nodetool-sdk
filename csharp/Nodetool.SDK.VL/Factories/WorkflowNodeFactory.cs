@@ -683,32 +683,32 @@ namespace Nodetool.SDK.VL.Factories
 
             if (VlLog.Verbose)
             {
-                Console.WriteLine("");
-                Console.WriteLine("================= NODETOOL WORKFLOW API ERROR =================");
-                Console.WriteLine("🚨 WORKFLOW NODES CANNOT BE CREATED - API UNREACHABLE");
-                Console.WriteLine("");
-                Console.WriteLine($"Error Category: {errorCategory}");
-                Console.WriteLine($"Status: {_apiStatusMessage}");
-                Console.WriteLine("");
-                Console.WriteLine("📋 USER ACTION REQUIRED:");
-                Console.WriteLine(userGuidance);
-                Console.WriteLine("");
-                Console.WriteLine("🔧 Technical Details:");
-                Console.WriteLine($"   Error Type: {ex.GetType().Name}");
-                Console.WriteLine($"   Message: {VlLog.SafeError(ex)}");
+                VlLog.Debug("");
+                VlLog.Debug("================= NODETOOL WORKFLOW API ERROR =================");
+                VlLog.Debug("🚨 WORKFLOW NODES CANNOT BE CREATED - API UNREACHABLE");
+                VlLog.Debug("");
+                VlLog.Debug($"Error Category: {errorCategory}");
+                VlLog.Debug($"Status: {_apiStatusMessage}");
+                VlLog.Debug("");
+                VlLog.Debug("📋 USER ACTION REQUIRED:");
+                VlLog.Debug(userGuidance);
+                VlLog.Debug("");
+                VlLog.Debug("🔧 Technical Details:");
+                VlLog.Debug($"   Error Type: {ex.GetType().Name}");
+                VlLog.Debug($"   Message: {VlLog.SafeError(ex)}");
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"   Inner Error: {ex.InnerException.GetType().Name}: {VlLog.SafeError(ex.InnerException)}");
+                    VlLog.Debug($"   Inner Error: {ex.InnerException.GetType().Name}: {VlLog.SafeError(ex.InnerException)}");
                 }
-                Console.WriteLine("");
-                Console.WriteLine("🔍 Troubleshooting Steps:");
-                Console.WriteLine("   1. Verify Nodetool server is running");
-                Console.WriteLine("   2. Check workflow API endpoint accessibility");
-                Console.WriteLine("   3. Verify workflow metadata service configuration");
-                Console.WriteLine("   4. Check firewall/network settings");
-                Console.WriteLine("   5. Verify Nodetool server health");
-                Console.WriteLine("=================================================================");
-                Console.WriteLine("");
+                VlLog.Debug("");
+                VlLog.Debug("🔍 Troubleshooting Steps:");
+                VlLog.Debug("   1. Verify Nodetool server is running");
+                VlLog.Debug("   2. Check workflow API endpoint accessibility");
+                VlLog.Debug("   3. Verify workflow metadata service configuration");
+                VlLog.Debug("   4. Check firewall/network settings");
+                VlLog.Debug("   5. Verify Nodetool server health");
+                VlLog.Debug("=================================================================");
+                VlLog.Debug("");
             }
         }
 

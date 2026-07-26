@@ -101,6 +101,7 @@ Media transport:
 
 - `InlineMediaLimitBytes` defaults to 4 MiB. Larger local media is uploaded through the asset API and represented by `asset_id` during execution.
 - Set the limit to `0` to upload all binary media, or raise it up to 64 MiB when inline transport is preferable.
+- `Terminal` suppresses intermediate node and output events; completed values, including temporary media references, arrive in the final result snapshot.
 - Workflow and individual-node inputs for file-backed audio, video, document, generic asset, folder, font, and model values use vvvv's native `Path` type (and `Spread<Path>` for lists). The SDK reads or uploads those files and constructs the NodeTool asset payload only while preparing execution.
 - Media outputs remain typed SDK asset references (`AudioRef`, `VideoRef`, `DocumentRef`, `GenericAssetRef`, and the other specialized reference types), preserving URI, IDs, inline data, metadata, and media-specific properties.
 - Individual NodeTool image and text-reference pins remain typed references where the node metadata identifies those types. Namespaced `type_name` values retain their native shape.
@@ -124,7 +125,7 @@ Discovery diagnostics:
 - Pulse `Refresh` to request another compact discovery pass. Unchanged interfaces are reused by workflow revision, node-registry revision, and interface etag.
 - If a refresh fails after a successful load, the existing workflow nodes stay available and `Status` reports that their metadata is stale.
 
-Console logging is intentionally restrained. A healthy AppHost emits one
+vvvv logging under the `VL.Nodetool` category is intentionally restrained. A healthy AppHost emits one
 summary after connection-backed discovery and both dynamic factories have
 resolved. Actionable errors remain visible and repeated identical discovery
 errors are suppressed until recovery or reset. Set
