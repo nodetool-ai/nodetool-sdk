@@ -126,7 +126,7 @@ namespace Nodetool.SDK.VL.Factories
                 }
                 catch (AggregateException ex)
                 {
-                    VlLog.Error($"NodesFactory: initial refresh failed: {ex.GetBaseException().Message}");
+                    VlLog.Error($"NodesFactory: initial refresh failed: {VlLog.SafeError(ex.GetBaseException())}");
                 }
             }
 
@@ -186,21 +186,23 @@ namespace Nodetool.SDK.VL.Factories
                                         "⚡ Execute node", 
                                         "Boolean input - set to true to execute the Nodetool node"));
 
-                                    inputPins.Add(bc.Pin("Cancel", typeof(bool), false,
+                                    inputPins.Add(new VlPinDescription("Cancel", typeof(bool), false,
                                         "🛑 Cancel execution",
                                         "Boolean input - set to true (rising edge) to cancel the current execution.\n\n"
                                         + "- If the node is not running, this does nothing.\n"
                                         + "- Cancellation is best-effort: the server may take a moment to stop.\n"
-                                        + "- The node's last outputs stay latched."));
+                                        + "- The node's last outputs stay latched.",
+                                        isVisible: ExecutionPinVisibility.IsInputVisible("Cancel")));
 
-                                    inputPins.Add(bc.Pin("AutoRun", typeof(bool), false,
+                                    inputPins.Add(new VlPinDescription("AutoRun", typeof(bool), false,
                                         "🔁 Execute on input change",
                                         "When enabled, this node automatically executes whenever any *data input* changes.\n\n"
                                         + "- This watches data pins, not execution-control pins.\n"
                                         + "- Useful for chaining nodes and building autorun patches.\n"
-                                        + "- If an input changes while a run is active, behavior depends on RestartOnChange."));
+                                        + "- If an input changes while a run is active, behavior depends on RestartOnChange.",
+                                        isVisible: ExecutionPinVisibility.IsInputVisible("AutoRun")));
 
-                                    inputPins.Add(bc.Pin("RestartOnChange", typeof(bool), false,
+                                    inputPins.Add(new VlPinDescription("RestartOnChange", typeof(bool), false,
                                         "♻️ Restart on input change",
                                         "Only relevant when AutoRun is enabled.\n\n"
                                         + "If true and inputs change while the node is already running:\n"
@@ -208,11 +210,13 @@ namespace Nodetool.SDK.VL.Factories
                                         + "- the node restarts immediately with the latest inputs.\n\n"
                                         + "If false:\n"
                                         + "- the node finishes the current run, then reruns once.\n\n"
-                                        + "Tip: enable this for interactive tweaking (sliders/knobs). Leave it off for expensive or non-cancellable nodes."));
+                                        + "Tip: enable this for interactive tweaking (sliders/knobs). Leave it off for expensive or non-cancellable nodes.",
+                                        isVisible: ExecutionPinVisibility.IsInputVisible("RestartOnChange")));
                                     
-                                    inputPins.Add(bc.Pin("ExecutionTimeoutSeconds", typeof(int), 0,
+                                    inputPins.Add(new VlPinDescription("ExecutionTimeoutSeconds", typeof(int), 0,
                                         "Execution timeout override",
-                                        "Maximum duration of this node run in seconds. Use 0 to inherit the default from the Nodetool Connect node."));
+                                        "Maximum duration of this node run in seconds. Use 0 to inherit the default from the Nodetool Connect node.",
+                                        isVisible: ExecutionPinVisibility.IsInputVisible("ExecutionTimeoutSeconds")));
 
                                     // Add input pins from node properties with documentation
                                     if (nodeMetadata.Properties != null)
@@ -254,9 +258,10 @@ namespace Nodetool.SDK.VL.Factories
                                         "Pulse: goes true briefly when the node run finishes (success/failed/cancelled).\n\n"
                                         + "This does not mean the values actually changed—only that the node executed.\n"
                                         + "Use it to trigger downstream logic."));
-                                    outputPins.Add(bc.Pin("Error", typeof(string), "",
+                                    outputPins.Add(new VlPinDescription("Error", typeof(string), "",
                                         "❌ Error message", 
-                                        "Contains error details if execution fails, empty string if successful"));
+                                        "Contains error details if execution fails, empty string if successful",
+                                        isVisible: ExecutionPinVisibility.IsOutputVisible("Error")));
                                     outputPins.Add(new VlPinDescription("Debug", typeof(string), "",
                                         summary: "🪵 Debug (last updates)",
                                         remarks: "Last few runner updates (progress/node_update/output_update). Useful when results are partial or missing",
@@ -289,18 +294,18 @@ namespace Nodetool.SDK.VL.Factories
                             catch (Exception ex)
                             {
                                 failedToProcessCount++;
-                                VlLog.Error($"NodesFactory: error creating VL node '{nodeMetadata.NodeType}': {ex.Message}");
+                                VlLog.Error($"NodesFactory: error creating VL node '{nodeMetadata.NodeType}': {VlLog.SafeError(ex)}");
                             }
                         }
                         catch (Exception ex)
                         {
                             failedToProcessCount++;
-                            VlLog.Error($"NodesFactory: error processing node '{nodeMetadata.NodeType}': {ex.Message}");
+                            VlLog.Error($"NodesFactory: error processing node '{nodeMetadata.NodeType}': {VlLog.SafeError(ex)}");
                         }
                     }
 
                     _processingSummary = $"Processed {successfullyProcessedCount} nodes successfully (Failed: {failedToProcessCount}) from {_fetchedNodes.Count} total definitions.";
-                    VlLog.Info(_processingSummary);
+                    VlLog.Debug(_processingSummary);
 
                     // Add diagnostic status node
                     try
@@ -341,19 +346,22 @@ namespace Nodetool.SDK.VL.Factories
                     }
                     catch (Exception ex)
                     {
-                        VlLog.Error($"NodesFactory: error creating NodesAPIStatus node: {ex.Message}");
+                        VlLog.Error($"NodesFactory: error creating NodesAPIStatus node: {VlLog.SafeError(ex)}");
                     }
 
                     // Note: diagnostics nodes (Connect/ConnectionStatus) are provided by DiagnosticsNodeFactory.
                     // Avoid duplicating them here to prevent duplicate node descriptions under the same category/name.
 
-                return NodeBuilding.NewFactoryImpl(
+                var factory = NodeBuilding.NewFactoryImpl(
                     ImmutableArray.CreateRange(allDescriptions),
                     FactoryInvalidated);
+                if (_hasSuccessfulSnapshot)
+                    VlReadinessLog.MarkNodeFactoryResolved();
+                return factory;
             }
             catch (Exception ex)
             {
-                VlLog.Error($"NodesFactory: factory build failed: {ex.GetType().Name}: {ex.Message}");
+                VlLog.Error($"NodesFactory: factory build failed: {ex.GetType().Name}: {VlLog.SafeError(ex)}");
 
                 return NodeBuilding.NewFactoryImpl(
                     ImmutableArray<IVLNodeDescription>.Empty,
@@ -409,11 +417,13 @@ namespace Nodetool.SDK.VL.Factories
                     {
                         var nodes = await FetchNodeMetadataAsync(cancellationToken)
                             .ConfigureAwait(false);
+                        var hadPublishedFactory = false;
                         lock (_lock)
                         {
                             if (generation != _resetGeneration)
                                 return;
 
+                            hadPublishedFactory = _factoryImpl is not null;
                             _fetchedNodes = nodes;
                             _apiStatusMessage =
                                 $"Successfully fetched {_fetchedNodes.Count} node definitions";
@@ -421,8 +431,10 @@ namespace Nodetool.SDK.VL.Factories
                             _factoryImpl = null;
                         }
 
+                        VlReadinessLog.MarkNodeDiscovery(nodes.Count);
                         VlLog.Debug($"NodesFactory: {_apiStatusMessage}");
-                        SignalFactoryInvalidated();
+                        if (hadPublishedFactory)
+                            SignalFactoryInvalidated();
                     }
                     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
@@ -481,11 +493,12 @@ namespace Nodetool.SDK.VL.Factories
                           ?? NodetoolConstants.Defaults.BaseUrl;
             VlLog.Debug($"NodesFactory: Target URL: {apiBase}{NodetoolConstants.Endpoints.NodesMetadata}");
 
-            using var client = new Nodetool.SDK.Api.NodetoolClient();
-            client.Configure(apiBase, NodeToolClientProvider.CurrentAuthToken);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(DiscoveryTimeout);
             VlLog.Debug("NodesFactory: fetching node metadata...");
+            var client = await NodeToolClientProvider
+                .GetApiClientAsync(timeout.Token)
+                .ConfigureAwait(false);
             var nodes = await client.GetNodeTypesAsync(timeout.Token).ConfigureAwait(false);
             return nodes?.ToImmutableList() ?? ImmutableList<NodeMetadataResponse>.Empty;
         }
@@ -500,7 +513,7 @@ namespace Nodetool.SDK.VL.Factories
                 }
                 catch (Exception ex)
                 {
-                    VlLog.Error($"NodesFactory: invalidation failed: {ex.Message}");
+                    VlLog.Error($"NodesFactory: invalidation failed: {VlLog.SafeError(ex)}");
                 }
             }
 
@@ -517,7 +530,7 @@ namespace Nodetool.SDK.VL.Factories
                 }
                 catch (Exception ex)
                 {
-                    VlLog.Error($"NodesFactory: failed to post invalidation: {ex.Message}");
+                    VlLog.Error($"NodesFactory: failed to post invalidation: {VlLog.SafeError(ex)}");
                 }
             }
 
@@ -556,13 +569,13 @@ namespace Nodetool.SDK.VL.Factories
                     
                 case System.Net.WebException webEx:
                     errorCategory = "Web Request Failed";
-                    _apiStatusMessage = $"🌐 Web Error: {webEx.Message}";
+                    _apiStatusMessage = $"🌐 Web Error: {VlLog.SafeError(webEx)}";
                     userGuidance = GetNetworkErrorGuidance();
                     break;
                     
                 default:
                     errorCategory = "API Error";
-                    _apiStatusMessage = $"❌ Unexpected Error: {ex.Message}";
+                    _apiStatusMessage = $"❌ Unexpected Error: {VlLog.SafeError(ex)}";
                     userGuidance = "Check the console output for detailed error information.";
                     break;
             }
@@ -571,7 +584,9 @@ namespace Nodetool.SDK.VL.Factories
                 _apiStatusMessage = $"Stale node descriptions retained. {_apiStatusMessage}";
 
             // Keep default startup logs concise; show full troubleshooting only in verbose mode.
-            VlLog.Error($"Nodes API error ({errorCategory}): {_apiStatusMessage}");
+            VlReadinessLog.ReportError(
+                "node discovery",
+                $"{errorCategory}: {_apiStatusMessage}");
 
             if (VlLog.Verbose)
             {
@@ -588,10 +603,10 @@ namespace Nodetool.SDK.VL.Factories
                 Console.WriteLine("");
                 Console.WriteLine("🔧 Technical Details:");
                 Console.WriteLine($"   Error Type: {ex.GetType().Name}");
-                Console.WriteLine($"   Message: {ex.Message}");
+                Console.WriteLine($"   Message: {VlLog.SafeError(ex)}");
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"   Inner Error: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                    Console.WriteLine($"   Inner Error: {ex.InnerException.GetType().Name}: {VlLog.SafeError(ex.InnerException)}");
                 }
                 Console.WriteLine($"   Timeout Setting: {DiscoveryTimeout.TotalSeconds:0} seconds");
                 Console.WriteLine("");

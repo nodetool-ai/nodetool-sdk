@@ -5,7 +5,9 @@ using System.Reflection;
 using VL.Core;
 using VL.Core.CompilerServices;
 using Nodetool.SDK.VL.Factories;
+using Nodetool.SDK.VL.Services;
 using Nodetool.SDK.VL.Utilities;
+using Nodetool.SDK.Connection;
 
 namespace Nodetool.SDK.VL
 {
@@ -26,7 +28,7 @@ namespace Nodetool.SDK.VL
                     : "unknown";
 
                 // Keep startup log concise; full dumps are behind NODETOOL_VL_VERBOSE=1.
-                VlLog.Info($"loaded v{ver} from '{loc}' (lastWriteUtc={lastWrite})");
+                VlLog.Debug($"loaded v{ver} from '{loc}' (lastWriteUtc={lastWrite})");
             }
             catch
             {
@@ -40,38 +42,74 @@ namespace Nodetool.SDK.VL
         /// </summary>
         public override void Configure(AppHost appHost)
         {
-            VlLog.Debug($"Configure() appHost={appHost?.GetType().Name ?? "null"}");
+            ArgumentNullException.ThrowIfNull(appHost);
+            var host = appHost;
+            VlLog.Debug($"Configure() appHost={host.GetType().Name}");
             
             try
             {
+                VlReadinessLog.Reset();
                 DumpLoadedAssemblies();
 
+                // The AppHost owns and disposes the connection scope. Static
+                // dynamic factories only retain a non-owning compatibility
+                // reference for the current host.
+                host.Services.RegisterService<VlNodeToolHostSettings>(
+                    _ => new VlNodeToolHostSettings());
+                var hostSettings =
+                    host.Services.GetService(
+                        typeof(VlNodeToolHostSettings))
+                    as VlNodeToolHostSettings
+                    ?? throw new InvalidOperationException(
+                        "Failed to resolve the NodeTool AppHost settings service.");
+                host.Services.RegisterService<NodeToolConnectionSession>(
+                    _ => NodeToolClientProvider.CreateHostSession(
+                        hostSettings));
+                var connectionSession =
+                    host.Services.GetService(
+                        typeof(NodeToolConnectionSession))
+                    as NodeToolConnectionSession
+                    ?? throw new InvalidOperationException(
+                        "Failed to resolve the NodeTool AppHost connection service.");
+                NodeToolClientProvider.UseHostSession(
+                    connectionSession,
+                    hostSettings);
+                host.Services.RegisterService<WorkflowMetadataService>(
+                    _ => new WorkflowMetadataService());
+                var workflowMetadataService =
+                    host.Services.GetService(
+                        typeof(WorkflowMetadataService))
+                    as WorkflowMetadataService
+                    ?? throw new InvalidOperationException(
+                        "Failed to resolve the NodeTool AppHost workflow catalog service.");
+
                 // Register diagnostics first so Connect is always available (even if API calls fail)
-                appHost?.RegisterNodeFactory("Nodetool",
+                host.RegisterNodeFactory("Nodetool",
                     vlSelfFactory => DiagnosticsNodeFactory.GetFactory(vlSelfFactory)
                 );
                 
                 // Register the workflow node factory
-                WorkflowNodeFactory.Configure(appHost?.SynchronizationContext);
-                appHost?.RegisterNodeFactory("Nodetool.Workflows", 
+                WorkflowNodeFactory.Configure(
+                    host.SynchronizationContext);
+                host.RegisterNodeFactory("Nodetool.Workflows",
                     vlSelfFactory => WorkflowNodeFactory.GetFactory(vlSelfFactory)
                 );
                 
                 // Register the individual nodes factory
-                NodesFactory.Configure(appHost?.SynchronizationContext);
-                appHost?.RegisterNodeFactory("Nodetool.Nodes", 
+                NodesFactory.Configure(host.SynchronizationContext);
+                host.RegisterNodeFactory("Nodetool.Nodes",
                     vlSelfFactory => NodesFactory.GetFactory(vlSelfFactory)
                 );
 
-                VlLog.Info("registered factories (Diagnostics, Workflows, Nodes)");
+                VlReadinessLog.MarkRegistered();
             }
             catch (Exception ex)
             {
-                VlLog.Error($"factory registration failed: {ex.GetType().Name}: {ex.Message}");
+                VlLog.Error($"factory registration failed: {ex.GetType().Name}: {VlLog.SafeError(ex)}");
                 
                 if (ex.InnerException != null)
                 {
-                    VlLog.Error($"inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                    VlLog.Error($"inner: {ex.InnerException.GetType().Name}: {VlLog.SafeError(ex.InnerException)}");
                 }
                 
                 throw;
@@ -117,7 +155,7 @@ namespace Nodetool.SDK.VL
             }
             catch (Exception ex)
             {
-                VlLog.Error($"Failed to dump loaded assemblies: {ex.GetType().Name}: {ex.Message}");
+                VlLog.Error($"Failed to dump loaded assemblies: {ex.GetType().Name}: {VlLog.SafeError(ex)}");
             }
         }
     }

@@ -5,12 +5,26 @@ namespace Nodetool.SDK.Api;
 /// <summary>
 /// Interface for the Nodetool API client
 /// </summary>
-public interface INodetoolClient : IDisposable
+public interface INodetoolClient : IDisposable, Workflows.IWorkflowDiscoveryClient
 {
     /// <summary>
     /// Get server version and uptime information.
     /// </summary>
     Task<HealthResponse> GetHealthAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get the feature-flagged SDK lifecycle capabilities and enforced limits.
+    /// </summary>
+    Task<SdkCapabilitiesResponse> GetSdkCapabilitiesAsync(
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Validate workflow inputs and optionally check current requirement availability
+    /// without starting an execution.
+    /// </summary>
+    Task<SdkPreflightResponse> PreflightWorkflowAsync(
+        SdkPreflightRequest request,
+        CancellationToken cancellationToken = default);
 
     #region Node Operations
     
@@ -27,18 +41,6 @@ public interface INodetoolClient : IDisposable
         int limit = 100,
         CancellationToken cancellationToken = default);
     
-    /// <summary>
-    /// Execute a single node
-    /// </summary>
-    /// <param name="nodeType">The node type to execute</param>
-    /// <param name="inputs">Input parameters for the node</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The execution result</returns>
-    Task<Dictionary<string, object>> ExecuteNodeAsync(
-        string nodeType, 
-        Dictionary<string, object> inputs, 
-        CancellationToken cancellationToken = default);
-    
     #endregion
 
     #region Workflow Operations
@@ -49,44 +51,12 @@ public interface INodetoolClient : IDisposable
     Task<List<WorkflowResponse>> GetWorkflowsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Get compact workflow summaries without downloading workflow graphs.
-    /// </summary>
-    Task<List<WorkflowSummaryResponse>> GetWorkflowSummariesAsync(
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Get the authoritative version 1 workflow pin contract.
-    /// </summary>
-    Task<WorkflowInterfaceResponse> GetWorkflowInterfaceAsync(
-        string workflowId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Get up to 100 authoritative workflow pin contracts in one request.
-    /// </summary>
-    Task<WorkflowInterfacesResponse> GetWorkflowInterfacesAsync(
-        IReadOnlyCollection<string> workflowIds,
-        CancellationToken cancellationToken = default);
-    
-    /// <summary>
     /// Get a specific workflow by ID
     /// </summary>
     /// <param name="workflowId">The workflow ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The workflow details</returns>
     Task<WorkflowResponse> GetWorkflowAsync(string workflowId, CancellationToken cancellationToken = default);
-    
-    /// <summary>
-    /// Execute a workflow
-    /// </summary>
-    /// <param name="workflowId">The workflow ID</param>
-    /// <param name="parameters">Input parameters for the workflow</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The execution result</returns>
-    Task<Dictionary<string, object>> ExecuteWorkflowAsync(
-        string workflowId, 
-        Dictionary<string, object> parameters, 
-        CancellationToken cancellationToken = default);
     
     #endregion
 

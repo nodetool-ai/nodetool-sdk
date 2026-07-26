@@ -148,4 +148,7 @@ internal sealed class ApiErrorResponse
 
     [JsonPropertyName("detail")]
     public string? Detail { get; set; }
+
+    [JsonPropertyName("retryable")]
+    public bool Retryable { get; set; }
 }

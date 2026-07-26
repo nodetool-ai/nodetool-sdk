@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using Nodetool.SDK.Api;
 using Nodetool.SDK.Api.Models;
+using Nodetool.SDK.Diagnostics;
 using Nodetool.SDK.Types.Assets;
 
 namespace Nodetool.SDK.Assets;
@@ -64,7 +65,10 @@ public class AssetManager : IAssetManager
         var cachedPath = GetCachedPath(uri);
         if (cachedPath != null && File.Exists(cachedPath))
         {
-            _logger.LogDebug("Asset cache hit: {Uri} -> {Path}", uri, cachedPath);
+            _logger.LogDebug(
+                "Asset cache hit: {Uri} -> {Path}",
+                SafeUri(uri),
+                cachedPath);
             return cachedPath;
         }
 
@@ -133,14 +137,51 @@ public class AssetManager : IAssetManager
 
         var fileName = Path.GetFileName(localPath);
         await using var stream = File.OpenRead(localPath);
-
-        var response = await _nodetoolClient.UploadAssetAsync(
+        return await UploadAssetAsync(
             fileName,
             stream,
             contentType,
             cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<AssetRef> UploadAssetAsync(
+        string fileName,
+        Stream content,
+        string contentType,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
+        ArgumentNullException.ThrowIfNull(content);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentType);
+        if (_nodetoolClient == null)
+        {
+            throw new InvalidOperationException("NodeTool client not configured for asset uploads");
+        }
+
+        using var nonDisposingContent = new NonDisposingStream(content);
+        var response = await _nodetoolClient.UploadAssetAsync(
+            fileName,
+            nonDisposingContent,
+            contentType,
+            cancellationToken);
 
         return CreateAssetReference(response, contentType);
+    }
+
+    /// <inheritdoc/>
+    public async Task<AssetRef> UploadAssetAsync(
+        string fileName,
+        ReadOnlyMemory<byte> content,
+        string contentType,
+        CancellationToken cancellationToken = default)
+    {
+        using var stream = new MemoryStream(content.ToArray(), writable: false);
+        return await UploadAssetAsync(
+            fileName,
+            stream,
+            contentType,
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -156,7 +197,10 @@ public class AssetManager : IAssetManager
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to delete cache file: {File}", file);
+                    _logger.LogWarning(
+                        "Failed to delete cache file {File}: {Error}",
+                        file,
+                        NodeToolDiagnosticRedactor.RedactText(ex.Message));
                 }
             }
         }
@@ -191,7 +235,10 @@ public class AssetManager : IAssetManager
         var extension = GetExtensionFromUri(uri);
         var targetPath = localPath ?? Path.Combine(_cacheDirectory, $"{cacheKey}{extension}");
 
-        _logger.LogDebug("Downloading asset: {Uri} -> {Path}", uri, targetPath);
+        _logger.LogDebug(
+            "Downloading asset: {Uri} -> {Path}",
+            SafeUri(uri),
+            targetPath);
 
         var response = await _httpClient.GetAsync(uri, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -213,7 +260,11 @@ public class AssetManager : IAssetManager
         await using var fileStream = File.Create(targetPath);
         await response.Content.CopyToAsync(fileStream, cancellationToken);
 
-        _logger.LogDebug("Asset downloaded: {Uri} -> {Path} ({Size} bytes)", uri, targetPath, new FileInfo(targetPath).Length);
+        _logger.LogDebug(
+            "Asset downloaded: {Uri} -> {Path} ({Size} bytes)",
+            SafeUri(uri),
+            targetPath,
+            new FileInfo(targetPath).Length);
         return targetPath;
     }
 
@@ -336,9 +387,56 @@ public class AssetManager : IAssetManager
         return result;
     }
 
+    private static string SafeUri(string value)
+    {
+        if (value.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            return NodeToolDiagnosticRedactor.RedactText(value);
+        return Uri.TryCreate(value, UriKind.Absolute, out var uri)
+            ? NodeToolDiagnosticRedactor.RedactUri(uri).AbsoluteUri
+            : NodeToolDiagnosticRedactor.RedactText(value);
+    }
+
     private static string GetDefaultCacheDirectory()
     {
         var userHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         return Path.Combine(userHome, ".nodetool", "cache", "assets");
+    }
+
+    private sealed class NonDisposingStream(Stream inner) : Stream
+    {
+        public override bool CanRead => inner.CanRead;
+        public override bool CanSeek => inner.CanSeek;
+        public override bool CanWrite => inner.CanWrite;
+        public override long Length => inner.Length;
+        public override long Position
+        {
+            get => inner.Position;
+            set => inner.Position = value;
+        }
+
+        public override void Flush() => inner.Flush();
+        public override int Read(byte[] buffer, int offset, int count)
+            => inner.Read(buffer, offset, count);
+        public override long Seek(long offset, SeekOrigin origin)
+            => inner.Seek(offset, origin);
+        public override void SetLength(long value) => inner.SetLength(value);
+        public override void Write(byte[] buffer, int offset, int count)
+            => inner.Write(buffer, offset, count);
+        public override Task FlushAsync(CancellationToken cancellationToken)
+            => inner.FlushAsync(cancellationToken);
+        public override ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default)
+            => inner.ReadAsync(buffer, cancellationToken);
+        public override ValueTask WriteAsync(
+            ReadOnlyMemory<byte> buffer,
+            CancellationToken cancellationToken = default)
+            => inner.WriteAsync(buffer, cancellationToken);
+
+        protected override void Dispose(bool disposing)
+        {
+            // The caller owns the wrapped stream.
+            base.Dispose(disposing);
+        }
     }
 }

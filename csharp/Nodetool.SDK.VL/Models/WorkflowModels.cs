@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using System.Text.Json;
 using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.Types;
+using Nodetool.SDK.Workflows;
 
 namespace Nodetool.SDK.VL.Models;
 
@@ -188,6 +189,9 @@ public class WorkflowDetail
     [JsonIgnore]
     public long? RegistryRevision { get; set; }
 
+    [JsonIgnore]
+    public WorkflowDescriptor? Descriptor { get; set; }
+
     /// <summary>
     /// Get input properties as TypeMetadata for VL pin creation
     /// </summary>
@@ -239,11 +243,15 @@ public class WorkflowDetail
 
     private static TypeMetadata ConvertType(NodeTypeDefinition type, bool? optional = null)
     {
+        var values = type.Values;
         return new TypeMetadata
         {
-            Type = type.Type,
+            // SelectInput is represented on the wire as a string constrained by
+            // values. Promote that shape only in the VL projection so workflow
+            // pins regain dropdowns without changing the portable contract.
+            Type = values is { Count: > 0 } ? "enum" : type.Type,
             Optional = optional ?? type.Optional,
-            Values = type.Values,
+            Values = values,
             TypeName = type.TypeName,
             TypeArgs = type.TypeArgs?.Select(typeArg => ConvertType(typeArg)).ToList()
                 ?? new List<TypeMetadata>()

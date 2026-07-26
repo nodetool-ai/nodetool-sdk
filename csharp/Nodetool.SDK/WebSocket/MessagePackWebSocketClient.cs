@@ -5,6 +5,7 @@ using System.Text.Json;
 using MessagePack;
 using MessagePack.Resolvers;
 using Microsoft.Extensions.Logging;
+using Nodetool.SDK.Diagnostics;
 using Nodetool.SDK.Types;
 
 namespace Nodetool.SDK.WebSocket;
@@ -13,7 +14,7 @@ namespace Nodetool.SDK.WebSocket;
 /// WebSocket client with MessagePack support and JSON fallback for NodeTool communication.
 /// Integrates with the type registry system for automatic message deserialization.
 /// </summary>
-public class MessagePackWebSocketClient : IDisposable, IAsyncDisposable
+public class MessagePackWebSocketClient : INodeToolWebSocketTransport
 {
     private readonly ILogger _logger;
     private ClientWebSocket? _webSocket;
@@ -23,6 +24,7 @@ public class MessagePackWebSocketClient : IDisposable, IAsyncDisposable
     private bool _disposed = false;
     private readonly MessagePackSerializerOptions _options;
     private readonly ConcurrentDictionary<string, TaskCompletionSource<byte[]>> _pendingRequests = new();
+    private string? _bearerToken;
 
     /// <summary>
     /// Event fired when a message is received and deserialized.
@@ -65,6 +67,17 @@ public class MessagePackWebSocketClient : IDisposable, IAsyncDisposable
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if connection succeeded</returns>
     public async Task<bool> ConnectAsync(Uri uri, CancellationToken cancellationToken = default)
+        => await ConnectAsync(uri, bearerToken: null, cancellationToken)
+            .ConfigureAwait(false);
+
+    /// <summary>
+    /// Connect to a NodeTool WebSocket endpoint with an optional bearer token
+    /// applied to the HTTP upgrade request.
+    /// </summary>
+    public async Task<bool> ConnectAsync(
+        Uri uri,
+        string? bearerToken,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -76,9 +89,22 @@ public class MessagePackWebSocketClient : IDisposable, IAsyncDisposable
             _webSocket = new ClientWebSocket();
             // WebSocket-level keepalive frames (independent of NodeTool's application-level ping/pong).
             _webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+            _bearerToken = string.IsNullOrWhiteSpace(bearerToken)
+                ? null
+                : bearerToken.Trim();
+            if (_bearerToken != null)
+            {
+                _webSocket.Options.SetRequestHeader(
+                    "Authorization",
+                    $"Bearer {_bearerToken}");
+            }
             _cancellationTokenSource = new CancellationTokenSource();
 
-            _logger.LogInformation("Connecting to NodeTool WebSocket: {Uri}", uri);
+            var diagnosticUri =
+                NodeToolDiagnosticRedactor.RedactUri(uri);
+            _logger.LogInformation(
+                "Connecting to NodeTool WebSocket: {Uri}",
+                diagnosticUri);
 
             await _webSocket.ConnectAsync(uri, cancellationToken);
 
@@ -99,12 +125,18 @@ public class MessagePackWebSocketClient : IDisposable, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to connect to NodeTool WebSocket: {Uri}", uri);
+            _logger.LogError(
+                "Failed to connect to NodeTool WebSocket {Uri}: {Message}",
+                NodeToolDiagnosticRedactor.RedactUri(uri),
+                NodeToolDiagnosticRedactor.RedactText(
+                    ex.Message,
+                    _bearerToken));
             
             OnConnectionStatusChanged(new ConnectionStatusEventArgs 
             { 
                 Status = "error", 
-                Message = $"Connection failed: {ex.Message}" 
+                Message =
+                    $"Connection failed: {SafeError(ex)}"
             });
 
             return false;
@@ -149,7 +181,9 @@ public class MessagePackWebSocketClient : IDisposable, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error during WebSocket disconnect");
+            _logger.LogWarning(
+                "Error during WebSocket disconnect: {Error}",
+                SafeError(ex));
         }
         finally
         {
@@ -202,7 +236,9 @@ public class MessagePackWebSocketClient : IDisposable, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send WebSocket message");
+            _logger.LogError(
+                "Failed to send WebSocket message: {Error}",
+                SafeError(ex));
             return false;
         }
         finally
@@ -223,16 +259,20 @@ public class MessagePackWebSocketClient : IDisposable, IAsyncDisposable
     /// <returns>The raw response message as a string-keyed dictionary, or null on failure.</returns>
     public async Task<Dictionary<string, object?>?> SendRequestAsync(
         string command,
-        Dictionary<string, object?> data,
+        Dictionary<string, object?>? data = null,
         CancellationToken cancellationToken = default,
-        TimeSpan? timeout = null)
+        TimeSpan? timeout = null,
+        string? requestId = null)
     {
-        var requestId = Guid.NewGuid().ToString("N");
+        requestId ??= Guid.NewGuid().ToString("N");
 
         var tcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pendingRequests[requestId] = tcs;
 
-        var envelope = CreateRequestEnvelope(command, data, requestId);
+        var envelope = CreateRequestEnvelope(
+            command,
+            data ?? [],
+            requestId);
         if (!await SendMessageAsync(envelope, cancellationToken))
         {
             _pendingRequests.TryRemove(requestId, out _);
@@ -367,12 +407,16 @@ public class MessagePackWebSocketClient : IDisposable, IAsyncDisposable
             }
             catch (WebSocketException ex)
             {
-                _logger.LogError(ex, "WebSocket error in receive loop");
+                _logger.LogError(
+                    "WebSocket error in receive loop: {Error}",
+                    SafeError(ex));
                 break;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error in WebSocket receive loop");
+                _logger.LogError(
+                    "Unexpected error in WebSocket receive loop: {Error}",
+                    SafeError(ex));
                 break;
             }
         }
@@ -403,7 +447,9 @@ public class MessagePackWebSocketClient : IDisposable, IAsyncDisposable
             {
                 // We run MessagePack-only for workflow execution; text frames are unexpected.
                 var jsonText = Encoding.UTF8.GetString(data);
-                _logger.LogWarning("Received unexpected text WebSocket message: {Text}", jsonText);
+                _logger.LogWarning(
+                    "Received unexpected text WebSocket message ({Size} characters)",
+                    jsonText.Length);
                 message = new Dictionary<string, object?> { ["type"] = "text", ["text"] = jsonText };
             }
 
@@ -445,7 +491,9 @@ public class MessagePackWebSocketClient : IDisposable, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing WebSocket message");
+            _logger.LogError(
+                "Error processing WebSocket message: {Error}",
+                SafeError(ex));
         }
     }
 
@@ -507,10 +555,18 @@ public class MessagePackWebSocketClient : IDisposable, IAsyncDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to deserialize MessagePack data ({Size} bytes)", data.Length);
+            _logger.LogWarning(
+                "Failed to deserialize MessagePack data ({Size} bytes): {Error}",
+                data.Length,
+                SafeError(ex));
             return Task.FromResult<object?>(null);
         }
     }
+
+    private string SafeError(Exception exception)
+        => NodeToolDiagnosticRedactor.RedactText(
+            exception.Message,
+            _bearerToken);
 
     private static string? ExtractTypeName(object message)
     {

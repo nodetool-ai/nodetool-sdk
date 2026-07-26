@@ -4,6 +4,7 @@ using VL.Core.CompilerServices;
 using Nodetool.SDK.VL.Services;
 using Nodetool.SDK.VL.Utilities;
 using Nodetool.SDK.VL.Factories;
+using Nodetool.SDK.Execution;
 
 namespace Nodetool.SDK.VL.Factories;
 
@@ -18,8 +19,9 @@ internal static class DiagnosticsNodeFactory
     /// </summary>
     public static NodeBuilding.FactoryImpl GetFactory(IVLNodeDescriptionFactory vlSelfFactory)
     {
-        Console.WriteLine("=== DiagnosticsNodeFactory.GetFactory called ===");
-        Console.WriteLine($"DiagnosticsNodeFactory: vlSelfFactory type: {vlSelfFactory?.GetType().Name ?? "null"}");
+        VlLog.Debug(
+            $"DiagnosticsNodeFactory: resolving for " +
+            $"{vlSelfFactory?.GetType().Name ?? "null"}");
 
         if (vlSelfFactory == null)
             return NodeBuilding.NewFactoryImpl(ImmutableArray<IVLNodeDescription>.Empty);
@@ -27,7 +29,8 @@ internal static class DiagnosticsNodeFactory
         var nodeDescriptions = new List<IVLNodeDescription>();
         AddDiagnosticsNodes(vlSelfFactory, nodeDescriptions);
 
-        Console.WriteLine($"DiagnosticsNodeFactory: Creating factory with {nodeDescriptions.Count} node descriptions...");
+        VlLog.Debug(
+            $"DiagnosticsNodeFactory: resolved {nodeDescriptions.Count} descriptions");
         return NodeBuilding.NewFactoryImpl(ImmutableArray.CreateRange(nodeDescriptions));
     }
 
@@ -64,6 +67,27 @@ internal static class DiagnosticsNodeFactory
                 var useWebSocketDiscoveryPin = bc.Pin("UseWebSocketDiscovery", typeof(bool), false,
                     "WebSocket discovery",
                     "Use compact correlated WebSocket RPC for workflow discovery after the shared connection opens. HTTP remains the bootstrap transport.");
+                var persistencePin = new VlPinDescription(
+                    "Persistence",
+                    typeof(WorkflowPersistence),
+                    WorkflowPersistence.Job,
+                    "Execution persistence",
+                    "Job preserves normal history and reconnect behavior; Session requests lower-overhead session-only execution when advertised by the server.",
+                    isVisible: false);
+                var eventDetailPin = new VlPinDescription(
+                    "EventDetail",
+                    typeof(WorkflowEventDetail),
+                    WorkflowEventDetail.Full,
+                    "Execution event detail",
+                    "Select Full, Outputs, or Terminal events when advertised by the server.",
+                    isVisible: false);
+                var assetPersistencePin = new VlPinDescription(
+                    "AssetPersistence",
+                    typeof(WorkflowAssetPersistence),
+                    WorkflowAssetPersistence.Auto,
+                    "Asset persistence",
+                    "Auto preserves normal asset behavior; Temporary requests temporary output assets when advertised by the server.",
+                    isVisible: false);
 
                 // Output pins
                 var isConnectedPin = bc.Pin("IsConnected", typeof(bool), false,
@@ -74,7 +98,12 @@ internal static class DiagnosticsNodeFactory
                     "❌ Last Error", "Last error message if connection failed");
 
                 return bc.Node(
-                    inputs: new IVLPinDescription[] { baseUrlPin, apiKeyPin, autoReconnectPin, reconnectTriggerPin, executionTimeoutPin, inlineMediaLimitPin, useWebSocketDiscoveryPin },
+                    inputs: new IVLPinDescription[] {
+                        baseUrlPin, apiKeyPin, autoReconnectPin,
+                        reconnectTriggerPin, executionTimeoutPin,
+                        inlineMediaLimitPin, useWebSocketDiscoveryPin,
+                        persistencePin, eventDetailPin, assetPersistencePin
+                    },
                     outputs: new IVLPinDescription[] { isConnectedPin, statusPin, lastErrorPin },
                     newNode: ibc =>
                     {
@@ -129,7 +158,13 @@ internal static class DiagnosticsNodeFactory
                                 }),
                                 ibc.Input<int>(NodeToolClientProvider.SetExecutionTimeoutSeconds),
                                 ibc.Input<int>(NodeToolClientProvider.SetInlineMediaLimitBytes),
-                                ibc.Input<bool>(NodeToolClientProvider.SetUseWebSocketDiscovery)
+                                ibc.Input<bool>(NodeToolClientProvider.SetUseWebSocketDiscovery),
+                                ibc.Input<WorkflowPersistence>(
+                                    NodeToolClientProvider.SetWorkflowPersistence),
+                                ibc.Input<WorkflowEventDetail>(
+                                    NodeToolClientProvider.SetWorkflowEventDetail),
+                                ibc.Input<WorkflowAssetPersistence>(
+                                    NodeToolClientProvider.SetWorkflowAssetPersistence)
                             },
                             outputs: new IVLPin[]
                             {

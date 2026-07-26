@@ -300,6 +300,12 @@ public sealed class NodeToolValue
         }
     }
 
+    /// <summary>
+    /// Returns a host-neutral CLR tree made of primitives, byte arrays,
+    /// dictionaries, and read-only list values.
+    /// </summary>
+    public object? ToObject() => ToPlainObject();
+
     private object? ToPlainObject()
     {
         // Unwrap typed wrappers like {type:"string", value:"..."} or {type:"list", value:[...]}

@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <!-- One release-set version for Nodetool.SDK, Nodetool.Types,
+         Nodetool.SDK.VL, and the deployed VL.Nodetool package. -->
+    <NodetoolSdkVersion>0.1.6</NodetoolSdkVersion>
+    <Version Condition="'$(MSBuildProjectName)' == 'Nodetool.SDK'
+                     Or '$(MSBuildProjectName)' == 'Nodetool.Types'
+                     Or '$(MSBuildProjectName)' == 'Nodetool.SDK.VL'">$(NodetoolSdkVersion)</Version>
+  </PropertyGroup>
+</Project>

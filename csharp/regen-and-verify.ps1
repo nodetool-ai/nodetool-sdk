@@ -17,6 +17,7 @@ $csharpDir = $PSScriptRoot
 $typesDir = Join-Path $csharpDir "Nodetool.Types"
 $sdkDir = Join-Path $csharpDir "Nodetool.SDK"
 $testsDir = Join-Path $csharpDir "Nodetool.SDK.Tests"
+$vlUnitTestsDir = Join-Path $csharpDir "Nodetool.SDK.VL.UnitTests"
 $vlTestsDir = Join-Path $csharpDir "Nodetool.SDK.VL.Tests"
 $noRestoreArguments = if ($NoRestore) { @("--no-restore") } else { @() }
 
@@ -121,13 +122,12 @@ Invoke-DotNet (@("test", (Join-Path $testsDir "Nodetool.SDK.Tests.csproj"), "-c"
 
 if ($VerifySdkPackage) {
     Write-Host ""
-    Write-Host ">>> Creating and verifying base C# SDK packages..." -ForegroundColor Cyan
+    Write-Host ">>> Creating and verifying portable C# SDK package..." -ForegroundColor Cyan
     $packageDir = Join-Path $root "artifacts\sdk-package-verify"
     if (-not (Test-Path $packageDir)) {
         New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
     }
 
-    Invoke-DotNet @("pack", (Join-Path $typesDir "Nodetool.Types.csproj"), "-c", "Release", "--no-restore", "-o", $packageDir)
     Invoke-DotNet @("pack", (Join-Path $sdkDir "Nodetool.SDK.csproj"), "-c", "Release", "--no-restore", "-o", $packageDir)
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -154,8 +154,11 @@ if ($VerifySdkPackage) {
         } finally {
             $reader.Dispose()
         }
-        if ($nuspec -notmatch '<dependency id="Nodetool\.Types"') {
-            throw "Nodetool.SDK package does not declare its required Nodetool.Types dependency."
+        if ($nuspec -match '<dependency id="Nodetool\.Types"') {
+            throw "Portable Nodetool.SDK package unexpectedly depends on Nodetool.Types."
+        }
+        if ($archive.Entries.FullName -contains "lib/net8.0/Nodetool.Types.dll") {
+            throw "Portable Nodetool.SDK package unexpectedly contains Nodetool.Types.dll."
         }
     } finally {
         $archive.Dispose()
@@ -164,15 +167,10 @@ if ($VerifySdkPackage) {
 
 if ($IncludeVL) {
     Write-Host ""
-    Write-Host ">>> Building VL project..." -ForegroundColor Cyan
+    Write-Host ">>> Building and unit-testing VL adapter..." -ForegroundColor Cyan
     $vlDir = Join-Path $csharpDir "Nodetool.SDK.VL"
     Invoke-DotNet (@("build", (Join-Path $vlDir "Nodetool.SDK.VL.csproj"), "-c", "Release", "-o", $resolvedOutputDir) + $noRestoreArguments)
-}
-
-if ($IncludeVLTests) {
-    Write-Host ""
-    Write-Host ">>> Running headless VL document tests..." -ForegroundColor Cyan
-    Invoke-DotNet (@("test", (Join-Path $vlTestsDir "Nodetool.SDK.VL.Tests.csproj"), "-c", "Release") + $noRestoreArguments)
+    Invoke-DotNet (@("test", (Join-Path $vlUnitTestsDir "Nodetool.SDK.VL.UnitTests.csproj"), "-c", "Release") + $noRestoreArguments)
 }
 
 if ($VerifyVLPackage) {
@@ -180,6 +178,12 @@ if ($VerifyVLPackage) {
     Write-Host ">>> Creating and verifying VL.Nodetool package..." -ForegroundColor Cyan
     $packageScript = Join-Path $root "vvvv\deployment\pack-and-verify.ps1"
     & $packageScript
+}
+
+if ($IncludeVLTests) {
+    Write-Host ""
+    Write-Host ">>> Running source and isolated-package VL document tests..." -ForegroundColor Cyan
+    Invoke-DotNet (@("test", (Join-Path $vlTestsDir "Nodetool.SDK.VL.Tests.csproj"), "-c", "Release") + $noRestoreArguments)
 }
 
 Write-Host ""

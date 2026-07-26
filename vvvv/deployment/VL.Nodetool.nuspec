@@ -2,13 +2,13 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/10/nuspec.xsd">
   <metadata>
     <id>VL.Nodetool</id>
-    <version>0.1.5</version>
+    <version>$version$</version>
     <title>VL.Nodetool</title>
     <authors>Nodetool Contributors</authors>
-    <projectUrl>https://github.com/nodetool-ai/nodetool</projectUrl>
+    <projectUrl>https://github.com/nodetool-ai/nodetool-sdk</projectUrl>
     <repository type="git" url="https://github.com/nodetool-ai/nodetool-sdk.git" />
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>Nodetool integration for vvvv — run AI workflows from VL via WebSocket. Supports streaming text, images, and arbitrary node outputs.</description>
+    <description>NodeTool integration for vvvv: run AI workflows and nodes from VL through the portable C# SDK.</description>
     <tags>VL AI workflow nodetool</tags>
     <license type="expression">AGPL-3.0-only</license>
     <readme>docs\README.md</readme>
@@ -18,6 +18,7 @@
         <dependency id="VL.Core" version="2025.7.1" />
         <dependency id="MessagePack" version="3.1.8" />
         <dependency id="Microsoft.Extensions.Logging" version="8.0.1" />
+        <dependency id="Microsoft.Extensions.DependencyInjection" version="8.0.1" />
         <dependency id="SkiaSharp" version="2.88.8" />
       </group>
 
@@ -28,7 +29,7 @@
     <file src="..\help\**" target="help\" />
 
     <!-- VL document -->
-    <file src="..\VL.Nodetool.vl" target="" />
+    <file src=".pack\VL.Nodetool.vl" target="" />
 
     <!-- Managed DLLs -->
     <file src="..\..\csharp\Nodetool.SDK.VL\bin\Release\net8.0\Nodetool.SDK.VL.dll" target="lib\net8.0\" />

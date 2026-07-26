@@ -19,8 +19,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Nodetool.SDK\Nodetool.SDK.csproj" />
-    <ProjectReference Include="..\Nodetool.SDK.VL\Nodetool.SDK.VL.csproj" />
-    <ProjectReference Include="..\Nodetool.Types\Nodetool.Types.csproj" />
   </ItemGroup>
 
   <ItemGroup>

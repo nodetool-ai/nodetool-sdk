@@ -1,5 +1,6 @@
 using MessagePack;
 using Microsoft.Extensions.Logging;
+using Nodetool.SDK.Diagnostics;
 
 namespace Nodetool.SDK.Types;
 
@@ -57,7 +58,10 @@ public class TypeLookupService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to deserialize data for type {TypeName}", typeName);
+            _logger.LogError(
+                "Failed to deserialize data for type {TypeName}: {Error}",
+                typeName,
+                NodeToolDiagnosticRedactor.RedactText(ex.Message));
             return null;
         }
     }
@@ -76,7 +80,10 @@ public class TypeLookupService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to deserialize data for type {Type}", typeof(T).Name);
+            _logger.LogError(
+                "Failed to deserialize data for type {Type}: {Error}",
+                typeof(T).Name,
+                NodeToolDiagnosticRedactor.RedactText(ex.Message));
             return default;
         }
     }
@@ -94,7 +101,10 @@ public class TypeLookupService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to serialize object of type {Type}", value.GetType().Name);
+            _logger.LogError(
+                "Failed to serialize object of type {Type}: {Error}",
+                value.GetType().Name,
+                NodeToolDiagnosticRedactor.RedactText(ex.Message));
             return Array.Empty<byte>();
         }
     }
@@ -192,7 +202,10 @@ public class TypeLookupService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to deserialize WebSocket message of type {Type}", typeof(T).Name);
+            _logger.LogError(
+                "Failed to deserialize WebSocket message of type {Type}: {Error}",
+                typeof(T).Name,
+                NodeToolDiagnosticRedactor.RedactText(ex.Message));
             return default;
         }
     }
@@ -219,8 +232,11 @@ public class TypeLookupService
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to convert {SourceType} to {TargetType}", 
-                value.GetType().Name, typeof(T).Name);
+            _logger.LogDebug(
+                "Failed to convert {SourceType} to {TargetType}: {Error}",
+                value.GetType().Name,
+                typeof(T).Name,
+                NodeToolDiagnosticRedactor.RedactText(ex.Message));
             return default;
         }
     }
@@ -280,4 +296,4 @@ public class TypeLookupService
         public IReadOnlyDictionary<string, List<string>> TypesByCategory { get; init; } = new Dictionary<string, List<string>>();
         public IReadOnlyDictionary<string, List<EnumRegistry.EnumInfo>> EnumsByCategory { get; init; } = new Dictionary<string, List<EnumRegistry.EnumInfo>>();
     }
-} 
+}

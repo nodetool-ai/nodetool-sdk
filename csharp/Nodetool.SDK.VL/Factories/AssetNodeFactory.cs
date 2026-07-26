@@ -1,5 +1,6 @@
 using Nodetool.SDK.Types.Assets;
 using Nodetool.SDK.VL.Services;
+using Nodetool.SDK.VL.Utilities;
 using VL.Core;
 using VL.Core.CompilerServices;
 using VlPath = VL.Lib.IO.Path;
@@ -167,7 +168,7 @@ internal static class AssetNodeFactory
                                         fromCache = false;
                                         isReady = false;
                                         isLoading = false;
-                                        error = ex.Message;
+                                        error = VlLog.SafeError(ex);
                                     }
                                 }
                             });

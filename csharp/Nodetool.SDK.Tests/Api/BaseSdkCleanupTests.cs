@@ -10,13 +10,30 @@ namespace Nodetool.SDK.Tests.Api;
 public class BaseSdkCleanupTests
 {
     [Fact]
-    public void TypeRegistry_DiscoversGeneratedTypesFromTheBaseSdk()
+    public void BaseSdk_DoesNotReferenceGeneratedNodeCatalog()
     {
-        var registry = new NodeToolTypeRegistry();
+        var references = typeof(NodeToolTypeRegistry).Assembly
+            .GetReferencedAssemblies()
+            .Select(reference => reference.Name);
 
-        registry.RegisterAllTypes();
+        Assert.DoesNotContain("Nodetool.Types", references);
+    }
 
-        Assert.Equal("Nodetool.Types.Core.ImageRef", registry.GetType("image")?.FullName);
+    [Fact]
+    public void HttpApiSurface_DoesNotAdvertiseNonexistentExecutionRoutes()
+    {
+        var interfaceMethods = typeof(INodetoolClient)
+            .GetMethods()
+            .Select(method => method.Name);
+        var clientMethods = typeof(NodetoolClient)
+            .GetMethods()
+            .Where(method => method.DeclaringType == typeof(NodetoolClient))
+            .Select(method => method.Name);
+
+        Assert.DoesNotContain("ExecuteNodeAsync", interfaceMethods);
+        Assert.DoesNotContain("ExecuteWorkflowAsync", interfaceMethods);
+        Assert.DoesNotContain("ExecuteNodeAsync", clientMethods);
+        Assert.DoesNotContain("ExecuteWorkflowAsync", clientMethods);
     }
 
     [Fact]
@@ -107,6 +124,66 @@ public class BaseSdkCleanupTests
         finally
         {
             Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task AssetManagerUpload_StreamIsReusableAndBytesUseSameTypedContract()
+    {
+        var uploads = 0;
+        var handler = new TrackingHandler(request =>
+        {
+            uploads++;
+            var multipart = Assert.IsType<MultipartFormDataContent>(request.Content);
+            var file = Assert.Single(multipart);
+            Assert.Equal("image/png", file.Headers.ContentType?.MediaType);
+            var json = $$"""
+                {
+                  "id": "image-{{uploads}}",
+                  "name": "sample.png",
+                  "content_type": "image/png",
+                  "size": 4,
+                  "get_url": "http://localhost/assets/image-{{uploads}}.png",
+                  "created_at": "2026-07-24T00:00:00Z"
+                }
+                """;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+        });
+        using var httpClient = new HttpClient(handler);
+        using var apiClient = new NodetoolClient(httpClient);
+        apiClient.Configure("http://localhost:7777");
+        var cacheDirectory = Path.Combine(
+            Path.GetTempPath(),
+            $"nodetool-sdk-assets-{Guid.NewGuid():N}");
+        try
+        {
+            using var manager = new AssetManager(
+                cacheDirectory: cacheDirectory,
+                nodetoolClient: apiClient);
+            using var stream = new MemoryStream(new byte[] { 1, 2, 3, 4 });
+
+            var streamed = await manager.UploadAssetAsync(
+                "sample.png",
+                stream,
+                "image/png");
+            var buffered = await manager.UploadAssetAsync(
+                "sample.png",
+                new byte[] { 5, 6, 7, 8 },
+                "image/png");
+
+            Assert.True(stream.CanRead);
+            Assert.IsType<ImageRef>(streamed);
+            Assert.IsType<ImageRef>(buffered);
+            Assert.Equal("image-1", streamed.AssetId);
+            Assert.Equal("image-2", buffered.AssetId);
+        }
+        finally
+        {
+            if (Directory.Exists(cacheDirectory))
+                Directory.Delete(cacheDirectory, recursive: true);
         }
     }
 

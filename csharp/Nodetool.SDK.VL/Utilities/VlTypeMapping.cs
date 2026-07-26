@@ -27,6 +27,9 @@ internal static class VlTypeMapping
         if (nodeType == null || string.IsNullOrWhiteSpace(nodeType.Type))
             return (typeof(string), "");
 
+        if (nodeType.Values is { Count: > 0 })
+            return MapEnum(nodeType);
+
         if (TryMapAssetReference(nodeType) is { } assetReference)
             return assetReference;
 
@@ -48,7 +51,8 @@ internal static class VlTypeMapping
 
         return t switch
         {
-            "str" or "string" or "text" or "chunk" or "enum" => (typeof(string), ""),
+            "str" or "string" or "text" or "chunk" => (typeof(string), ""),
+            "enum" => MapEnum(nodeType),
             "int" or "integer" => (typeof(int), 0),
             "float" or "number" => (typeof(float), 0.0f),
             "bool" or "boolean" => (typeof(bool), false),
@@ -61,6 +65,16 @@ internal static class VlTypeMapping
             // server metadata warrants and loses list/map structure.
             _ => (typeof(object), null)
         };
+    }
+
+    private static (Type, object?) MapEnum(NodeTypeDefinition nodeType)
+    {
+        var enumType = DynamicWorkflowEnumFactory.GetOrCreate(
+            nodeType.TypeName,
+            nodeType.Values);
+        return enumType is null
+            ? (typeof(string), "")
+            : (enumType, DynamicWorkflowEnumFactory.GetDefaultValue(enumType));
     }
 
     private static (Type, object)? TryMapAssetReference(NodeTypeDefinition nodeType)

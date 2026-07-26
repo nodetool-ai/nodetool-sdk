@@ -3,11 +3,17 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <Nullable>enable</Nullable>
+    <!--
+      This assembly is entirely generated from NodeTool metadata, whose
+      optionality is not yet represented as C# nullable annotations. Keep
+      nullable analysis enabled in the hand-written SDK projects and isolate
+      that generator debt here until the generator emits accurate contracts.
+    -->
+    <Nullable>disable</Nullable>
+    <NoWarn>$(NoWarn);CS8632</NoWarn>
     <ImplicitUsings>enable</ImplicitUsings>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <PackageId>Nodetool.Types</PackageId>
-    <Version>0.1.1</Version>
     <Description>Clean C# types for NodeTool data structures with MessagePack support</Description>
     <Authors>NodeTool Contributors</Authors>
   </PropertyGroup>

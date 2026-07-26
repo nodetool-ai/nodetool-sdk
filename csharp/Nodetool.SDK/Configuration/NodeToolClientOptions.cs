@@ -21,6 +21,12 @@ public sealed class NodeToolClientOptions
     public string? AuthToken { get; init; }
 
     /// <summary>
+    /// Optional provider evaluated for every WebSocket connection attempt.
+    /// Takes precedence over <see cref="AuthToken"/>.
+    /// </summary>
+    public Connection.INodeToolTokenProvider? TokenProvider { get; init; }
+
+    /// <summary>
     /// Optional user id forwarded to the worker (depends on server config).
     /// </summary>
     public string? UserId { get; init; }
@@ -44,6 +50,13 @@ public sealed class NodeToolClientOptions
     /// Reconnect the socket after an unexpected disconnect and reattach active jobs.
     /// </summary>
     public bool AutoReconnect { get; init; } = true;
+
+    /// <summary>
+    /// Retry policy for correlated, side-effect-free WebSocket read RPCs.
+    /// Workflow submission and cancellation never use this policy.
+    /// </summary>
+    public Connection.NodeToolReadRetryPolicy ReadRetryPolicy { get; init; } =
+        Connection.NodeToolReadRetryPolicy.None;
 
     public Uri GetNormalizedWorkerWebSocketUrl()
     {

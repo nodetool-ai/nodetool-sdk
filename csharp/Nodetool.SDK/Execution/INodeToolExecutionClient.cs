@@ -6,7 +6,10 @@ namespace Nodetool.SDK.Execution;
 /// Client interface for executing NodeTool workflows and nodes.
 /// This is the main entry point for SDK users.
 /// </summary>
-public interface INodeToolExecutionClient : IDisposable, IAsyncDisposable
+public interface INodeToolExecutionClient :
+    IDisposable,
+    IAsyncDisposable,
+    Workflows.IWorkflowDiscoveryClient
 {
     /// <summary>
     /// Whether the client is connected to the NodeTool server.
@@ -22,6 +25,12 @@ public interface INodeToolExecutionClient : IDisposable, IAsyncDisposable
     /// Last error message from connection attempt.
     /// </summary>
     string? LastError { get; }
+
+    /// <summary>
+    /// Identity issued by the connected server for capacity-aware execution
+    /// preflight. Null until a supporting server announces it.
+    /// </summary>
+    string? ExecutionTargetId => null;
 
     /// <summary>
     /// Connect to the NodeTool server.
@@ -46,6 +55,16 @@ public interface INodeToolExecutionClient : IDisposable, IAsyncDisposable
         string workflowId,
         Dictionary<string, object>? inputs = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Execute a workflow with additive run-level persistence and event controls.
+    /// </summary>
+    Task<IExecutionSession> ExecuteWorkflowAsync(
+        string workflowId,
+        Dictionary<string, object>? inputs,
+        WorkflowExecutionOptions? executionOptions,
+        CancellationToken cancellationToken = default)
+        => ExecuteWorkflowAsync(workflowId, inputs, cancellationToken);
 
     /// <summary>
     /// Execute a workflow by name (WebSocket discovery + execution).
@@ -105,26 +124,6 @@ public interface INodeToolExecutionClient : IDisposable, IAsyncDisposable
     Task<WorkflowResponse?> GetWorkflowAsync(string workflowId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Fetch compact workflow summaries without graph payloads.
-    /// </summary>
-    Task<List<WorkflowSummaryResponse>> GetWorkflowSummariesAsync(
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Fetch the authoritative graph-derived interface for one workflow.
-    /// </summary>
-    Task<WorkflowInterfaceResponse> GetWorkflowInterfaceAsync(
-        string workflowId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Fetch authoritative graph-derived interfaces for up to 100 workflows.
-    /// </summary>
-    Task<WorkflowInterfacesResponse> GetWorkflowInterfacesAsync(
-        IReadOnlyCollection<string> workflowIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Fetch assets from the server via WebSocket (<c>list_assets</c>).
     /// </summary>
     Task<List<AssetResponse>> GetAssetsAsync(
@@ -161,6 +160,17 @@ public interface INodeToolExecutionClient : IDisposable, IAsyncDisposable
         string nodeType,
         Dictionary<string, object>? inputs = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Execute a single node with additive run-level persistence and event
+    /// controls.
+    /// </summary>
+    Task<IExecutionSession> ExecuteNodeAsync(
+        string nodeType,
+        Dictionary<string, object>? inputs,
+        WorkflowExecutionOptions? executionOptions,
+        CancellationToken cancellationToken = default)
+        => ExecuteNodeAsync(nodeType, inputs, cancellationToken);
 
     /// <summary>
     /// Event fired when connection status changes.

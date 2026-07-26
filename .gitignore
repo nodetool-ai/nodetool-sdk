@@ -14,8 +14,10 @@ csharp/Nodetool.SDK.VL/*.deps.json
 .vl/
 /lib/
 
-# Agent
-__PLANS__/
+# Agent scratch plans; keep the canonical SDK roadmap versioned.
+__PLANS__/*
+!__PLANS__/sdk-roadmap/
+!__PLANS__/sdk-roadmap/*.md
 .claude/
 __pycache__/
 
@@ -24,3 +26,4 @@ _vvvv_builds/
 nuget.exe
 *.nupkg
 *.snupkg
+vvvv/deployment/.pack/

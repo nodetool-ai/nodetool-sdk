@@ -1,3 +1,4 @@
+using System.Reflection;
 using Nodetool.SDK.Types;
 using Nodetool.SDK.Types.Assets;
 using SkiaSharp;
@@ -19,7 +20,9 @@ internal static class WorkflowVlTypeMapping
             "audio" or "video" or "document" or "asset" or "asset_ref" or
             "folder" or "model_ref" or "model_3d" or "font"
                 => (typeof(VlPath), new VlPath("")),
-            "list" or "array" => GetSpreadTypeAndDefault(metadata, forInput: true),
+            "file" or "file_path" => (typeof(VlPath), new VlPath("")),
+            "list" or "array" or "tuple" =>
+                GetSpreadTypeAndDefault(metadata, forInput: true),
             _ => GetTypeAndDefault(metadata)
         };
     }
@@ -29,11 +32,15 @@ internal static class WorkflowVlTypeMapping
         var type = metadata.Type?.Trim().ToLowerInvariant();
         return type switch
         {
-            "string" or "str" or "text" or "chunk" or "enum" => (typeof(string), ""),
+            "string" or "str" or "text" or "chunk" => (typeof(string), ""),
+            "enum" => GetEnumTypeAndDefault(metadata),
             "int" or "integer" => (typeof(int), 0),
             "float" or "number" => (typeof(float), 0.0f),
             "bool" or "boolean" => (typeof(bool), false),
-            "list" or "array" => GetSpreadTypeAndDefault(metadata, forInput: false),
+            "bytes" => (typeof(byte[]), Array.Empty<byte>()),
+            "list" or "array" or "tuple" =>
+                GetSpreadTypeAndDefault(metadata, forInput: false),
+            "file" or "file_path" => (typeof(string), ""),
             "image" => (typeof(SKImage), null),
             "audio" => (typeof(AudioRef), new AudioRef()),
             "video" => (typeof(VideoRef), new VideoRef()),
@@ -45,6 +52,17 @@ internal static class WorkflowVlTypeMapping
             "font" => (typeof(FontRef), new FontRef()),
             _ => GetStructuredTypeAndDefault(metadata)
         };
+    }
+
+    private static (Type Type, object? DefaultValue) GetEnumTypeAndDefault(
+        TypeMetadata metadata)
+    {
+        var enumType = DynamicWorkflowEnumFactory.GetOrCreate(
+            metadata.TypeName,
+            metadata.Values);
+        return enumType is null
+            ? (typeof(string), "")
+            : (enumType, DynamicWorkflowEnumFactory.GetDefaultValue(enumType));
     }
 
     public static bool UsesObjectFallback(TypeMetadata metadata)
@@ -85,7 +103,10 @@ internal static class WorkflowVlTypeMapping
     private static NodeToolTypeRegistry CreateTypeRegistry()
     {
         var registry = new NodeToolTypeRegistry();
-        registry.RegisterAllTypes();
+        // The generated catalog belongs to this adapter rather than the portable SDK.
+        // Loading it explicitly also makes discovery deterministic before a generated
+        // DTO has otherwise been touched by the CLR.
+        registry.RegisterAllTypes(Assembly.Load("Nodetool.Types"));
         return registry;
     }
 }

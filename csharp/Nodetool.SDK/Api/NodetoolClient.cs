@@ -1,8 +1,11 @@
 using System.Text;
 using System.Text.Json;
+using System.Net.Http.Headers;
 using Microsoft.Extensions.Logging;
 using Nodetool.SDK.Api.Models;
+using Nodetool.SDK.Connection;
 using Nodetool.SDK.Configuration;
+using Nodetool.SDK.Diagnostics;
 
 namespace Nodetool.SDK.Api;
 
@@ -15,12 +18,27 @@ public class NodetoolClient : INodetoolClient
     private readonly bool _ownsHttpClient;
     private readonly ILogger<NodetoolClient>? _logger;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly NodeToolReadRetryPolicy _readRetryPolicy;
+    private Uri _baseAddress = new(NodetoolConstants.Defaults.BaseUrl);
+    private string? _apiKey;
     
-    public NodetoolClient(HttpClient? httpClient = null, ILogger<NodetoolClient>? logger = null)
+    public NodetoolClient(
+        HttpClient? httpClient = null,
+        ILogger<NodetoolClient>? logger = null,
+        NodeToolReadRetryPolicy? readRetryPolicy = null)
     {
         _httpClient = httpClient ?? new HttpClient();
         _ownsHttpClient = httpClient == null;
+        if (_ownsHttpClient)
+        {
+            _httpClient.Timeout =
+                TimeSpan.FromSeconds(
+                    NodetoolConstants.Defaults.TimeoutSeconds);
+        }
         _logger = logger;
+        _readRetryPolicy =
+            readRetryPolicy ?? NodeToolReadRetryPolicy.None;
+        _readRetryPolicy.Validate();
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -39,8 +57,9 @@ public class NodetoolClient : INodetoolClient
         Uri baseAddress,
         string? apiKey = null,
         HttpClient? httpClient = null,
-        ILogger<NodetoolClient>? logger = null)
-        : this(httpClient, logger)
+        ILogger<NodetoolClient>? logger = null,
+        NodeToolReadRetryPolicy? readRetryPolicy = null)
+        : this(httpClient, logger, readRetryPolicy)
     {
         ArgumentNullException.ThrowIfNull(baseAddress);
         Configure(baseAddress.AbsoluteUri, apiKey);
@@ -49,29 +68,118 @@ public class NodetoolClient : INodetoolClient
     public void Configure(string baseUrl, string? apiKey = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(baseUrl);
-        _httpClient.BaseAddress = new Uri(baseUrl);
-        _httpClient.DefaultRequestHeaders.Clear();
-        
-        if (!string.IsNullOrEmpty(apiKey))
-        {
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-        }
-        
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", NodetoolConstants.Defaults.UserAgent);
-        _httpClient.Timeout = TimeSpan.FromSeconds(NodetoolConstants.Defaults.TimeoutSeconds);
-        
-        _logger?.LogDebug("Configured Nodetool client: {BaseUrl}", baseUrl);
+        var parsedBaseAddress = new Uri(baseUrl, UriKind.Absolute);
+        _baseAddress = parsedBaseAddress.AbsoluteUri.EndsWith(
+            "/",
+            StringComparison.Ordinal)
+            ? parsedBaseAddress
+            : new Uri($"{parsedBaseAddress.AbsoluteUri}/");
+        _apiKey = string.IsNullOrWhiteSpace(apiKey)
+            ? null
+            : apiKey.Trim();
+
+        _logger?.LogDebug(
+            "Configured Nodetool client: {BaseUrl}",
+            NodeToolDiagnosticRedactor.RedactUri(
+                _baseAddress));
     }
 
     public async Task<HealthResponse> GetHealthAsync(CancellationToken cancellationToken = default)
     {
-        using var response = await _httpClient.GetAsync(
-            NodetoolConstants.Endpoints.Health,
+        using var request = CreateConfiguredRequest(
+            HttpMethod.Get,
+            NodetoolConstants.Endpoints.Health);
+        using var response = await _httpClient.SendAsync(
+            request,
             cancellationToken);
         response.EnsureSuccessStatusCode();
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
         return JsonSerializer.Deserialize<HealthResponse>(json, _jsonOptions)
             ?? throw new InvalidDataException("The NodeTool health response was empty or malformed.");
+    }
+
+    public async Task<SdkCapabilitiesResponse> GetSdkCapabilitiesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var result = await GetSdkResponseAsync<SdkCapabilitiesResponse>(
+            NodetoolConstants.Endpoints.SdkCapabilitiesV1,
+            cancellationToken);
+        if (!string.Equals(result.ProtocolVersion, "1", StringComparison.Ordinal))
+        {
+            throw new InvalidDataException(
+                $"Unsupported SDK protocol version '{result.ProtocolVersion}'.");
+        }
+        if (string.IsNullOrWhiteSpace(result.NodetoolVersion) ||
+            result.SupportedEncodings.Count == 0)
+        {
+            throw new InvalidDataException(
+                "The SDK capability response is incomplete.");
+        }
+        return result;
+    }
+
+    public async Task<SdkPreflightResponse> PreflightWorkflowAsync(
+        SdkPreflightRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.WorkflowId);
+        ArgumentNullException.ThrowIfNull(request.Inputs);
+        if (request.InterfaceVersion != 1)
+            throw new ArgumentOutOfRangeException(
+                nameof(request),
+                "Only workflow interface version 1 is supported.");
+        if (!SdkPreflightLevels.IsValid(request.Level))
+            throw new ArgumentException(
+                $"Unsupported preflight level '{request.Level}'.",
+                nameof(request));
+        if (request.ExecutionTarget is { } target)
+        {
+            if (target.Kind is not (
+                    SdkExecutionTargetKinds.Local or
+                    SdkExecutionTargetKinds.Worker or
+                    SdkExecutionTargetKinds.Runner))
+            {
+                throw new ArgumentException(
+                    $"Unsupported execution target kind '{target.Kind}'.",
+                    nameof(request));
+            }
+            if (target.Kind == SdkExecutionTargetKinds.Worker &&
+                string.IsNullOrWhiteSpace(target.WorkerId))
+            {
+                throw new ArgumentException(
+                    "A worker execution target requires a worker ID.",
+                    nameof(request));
+            }
+            if (target.Kind == SdkExecutionTargetKinds.Runner &&
+                string.IsNullOrWhiteSpace(target.RunnerId))
+            {
+                throw new ArgumentException(
+                    "A runner execution target requires a runner ID.",
+                    nameof(request));
+            }
+        }
+
+        using var message = new HttpRequestMessage(
+            HttpMethod.Post,
+            NodetoolConstants.Endpoints.SdkPreflightV1)
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(request, _jsonOptions),
+                Encoding.UTF8,
+                NodetoolConstants.ContentTypes.Json)
+        };
+        var result = await SendSdkResponseAsync<SdkPreflightResponse>(
+            message,
+            cancellationToken);
+        if (result.Version != 1 ||
+            !SdkPreflightLevels.IsValid(result.Level) ||
+            !string.Equals(result.WorkflowId, request.WorkflowId, StringComparison.Ordinal))
+        {
+            throw new InvalidDataException(
+                "The NodeTool preflight response does not match the requested v1 workflow.");
+        }
+        return result;
     }
 
     #region Node Operations
@@ -81,8 +189,11 @@ public class NodetoolClient : INodetoolClient
         _logger?.LogDebug("Fetching node types");
         
         // Server defaults to slim summaries without ?fields=full — VL and SDK clients need properties/outputs.
-        var response = await _httpClient.GetAsync(
-            $"{NodetoolConstants.Endpoints.NodesMetadata}?fields=full",
+        using var request = CreateConfiguredRequest(
+            HttpMethod.Get,
+            $"{NodetoolConstants.Endpoints.NodesMetadata}?fields=full");
+        using var response = await _httpClient.SendAsync(
+            request,
             cancellationToken);
         response.EnsureSuccessStatusCode();
         
@@ -114,34 +225,6 @@ public class NodetoolClient : INodetoolClient
         return result;
     }
 
-    public async Task<Dictionary<string, object>> ExecuteNodeAsync(
-        string nodeType, 
-        Dictionary<string, object> inputs, 
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(nodeType);
-        ArgumentNullException.ThrowIfNull(inputs);
-        _logger?.LogDebug("Executing node: {NodeType}", nodeType);
-        
-        var request = new NodeExecutionRequest
-        {
-            NodeType = nodeType,
-            Inputs = inputs
-        };
-        
-        var json = JsonSerializer.Serialize(request, _jsonOptions);
-        var content = new StringContent(json, Encoding.UTF8, NodetoolConstants.ContentTypes.Json);
-        
-        var response = await _httpClient.PostAsync(NodetoolConstants.Endpoints.NodeExecute, content, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        
-        var resultJson = await response.Content.ReadAsStringAsync(cancellationToken);
-        var result = JsonSerializer.Deserialize<Dictionary<string, object>>(resultJson, _jsonOptions);
-        
-        _logger?.LogDebug("Node execution completed with {OutputCount} outputs", result?.Count ?? 0);
-        return result ?? new Dictionary<string, object>();
-    }
-
     #endregion
 
     #region Workflow Operations
@@ -161,7 +244,12 @@ public class NodetoolClient : INodetoolClient
             if (cursor != null)
                 endpoint += $"&cursor={Uri.EscapeDataString(cursor)}";
 
-            var response = await _httpClient.GetAsync(endpoint, cancellationToken);
+            using var request = CreateConfiguredRequest(
+                HttpMethod.Get,
+                endpoint);
+            using var response = await _httpClient.SendAsync(
+                request,
+                cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -281,7 +369,58 @@ public class NodetoolClient : INodetoolClient
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        var requestId = Guid.NewGuid().ToString("N");
+        var template = await ReadRequestTemplateAsync(
+            request,
+            cancellationToken).ConfigureAwait(false);
+        HttpResponseMessage? response = null;
+        Exception? lastTransportError = null;
+
+        for (var attempt = 1;
+             attempt <= _readRetryPolicy.MaximumAttempts;
+             attempt++)
+        {
+            using var attemptRequest = CreateRequest(
+                template,
+                requestId);
+            try
+            {
+                response = await _httpClient.SendAsync(
+                    attemptRequest,
+                    cancellationToken).ConfigureAwait(false);
+                if (!_readRetryPolicy.ShouldRetry(
+                        response.StatusCode,
+                        attempt))
+                {
+                    break;
+                }
+
+                var delay = _readRetryPolicy.GetDelay(
+                    attempt,
+                    GetRetryAfter(response));
+                response.Dispose();
+                response = null;
+                await Task.Delay(delay, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception exception) when (
+                exception is HttpRequestException or IOException &&
+                attempt < _readRetryPolicy.MaximumAttempts)
+            {
+                lastTransportError = exception;
+                await Task.Delay(
+                        _readRetryPolicy.GetDelay(attempt),
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+        }
+
+        if (response == null)
+            throw lastTransportError ??
+                  new HttpRequestException(
+                      "NodeTool SDK request failed before receiving a response.");
+        using (response)
+        {
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
@@ -295,21 +434,135 @@ public class NodetoolClient : INodetoolClient
                 // Preserve the HTTP status when an older server returns a non-JSON error page.
             }
 
-            if (response.StatusCode is System.Net.HttpStatusCode.BadRequest
-                or System.Net.HttpStatusCode.NotFound
-                or System.Net.HttpStatusCode.ServiceUnavailable)
-            {
-                throw new WorkflowInterfaceUnavailableException(
-                    response.StatusCode,
-                    error?.Code,
-                    error?.Detail ?? $"NodeTool does not provide the required workflow-interface v1 API ({response.StatusCode}).");
-            }
-            response.EnsureSuccessStatusCode();
+            throw new SdkApiException(
+                response.StatusCode,
+                error?.Code,
+                error?.Retryable ?? false,
+                error?.Detail ??
+                $"NodeTool SDK request failed ({response.StatusCode}).");
         }
 
         return JsonSerializer.Deserialize<T>(json, _jsonOptions)
             ?? throw new InvalidDataException(
                 $"The SDK response from '{request.RequestUri}' was empty or malformed.");
+        }
+    }
+
+    private sealed record RequestTemplate(
+        HttpMethod Method,
+        Uri? RequestUri,
+        IReadOnlyList<KeyValuePair<string, IEnumerable<string>>> Headers,
+        byte[]? Content,
+        IReadOnlyList<KeyValuePair<string, IEnumerable<string>>> ContentHeaders);
+
+    private static async Task<RequestTemplate> ReadRequestTemplateAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        var content = request.Content == null
+            ? null
+            : await request.Content.ReadAsByteArrayAsync(cancellationToken)
+                .ConfigureAwait(false);
+        return new RequestTemplate(
+            request.Method,
+            request.RequestUri,
+            request.Headers
+                .Select(pair =>
+                    new KeyValuePair<string, IEnumerable<string>>(
+                        pair.Key,
+                        pair.Value.ToArray()))
+                .ToArray(),
+            content,
+            request.Content?.Headers
+                .Select(pair =>
+                    new KeyValuePair<string, IEnumerable<string>>(
+                        pair.Key,
+                        pair.Value.ToArray()))
+                .ToArray() ?? []);
+    }
+
+    private HttpRequestMessage CreateRequest(
+        RequestTemplate template,
+        string requestId)
+    {
+        var clone = new HttpRequestMessage(
+            template.Method,
+            ResolveEndpoint(template.RequestUri));
+        ApplyConfiguredHeaders(clone);
+        foreach (var header in template.Headers)
+            clone.Headers.TryAddWithoutValidation(
+                header.Key,
+                header.Value);
+        clone.Headers.TryAddWithoutValidation(
+            "X-NodeTool-Request-Id",
+            requestId);
+        if (template.Content != null)
+        {
+            clone.Content = new ByteArrayContent(template.Content);
+            foreach (var header in template.ContentHeaders)
+                clone.Content.Headers.TryAddWithoutValidation(
+                    header.Key,
+                    header.Value);
+        }
+        return clone;
+    }
+
+    private HttpRequestMessage CreateConfiguredRequest(
+        HttpMethod method,
+        string endpoint,
+        HttpContent? content = null)
+    {
+        var request = new HttpRequestMessage(
+            method,
+            ResolveEndpoint(endpoint))
+        {
+            Content = content
+        };
+        ApplyConfiguredHeaders(request);
+        return request;
+    }
+
+    private Uri ResolveEndpoint(string endpoint)
+        => ResolveEndpoint(new Uri(endpoint, UriKind.RelativeOrAbsolute));
+
+    private Uri ResolveEndpoint(Uri? endpoint)
+    {
+        if (endpoint is null)
+            throw new InvalidOperationException(
+                "The NodeTool request has no endpoint.");
+        if (endpoint.IsAbsoluteUri)
+            return endpoint;
+
+        // SDK endpoint constants begin with '/'. Treat them as relative to the
+        // configured NodeTool deployment root so reverse-proxy subpaths work.
+        return new Uri(
+            _baseAddress,
+            endpoint.OriginalString.TrimStart('/'));
+    }
+
+    private void ApplyConfiguredHeaders(HttpRequestMessage request)
+    {
+        request.Headers.UserAgent.TryParseAdd(
+            NodetoolConstants.Defaults.UserAgent);
+        if (_apiKey != null)
+        {
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", _apiKey);
+        }
+    }
+
+    private static TimeSpan? GetRetryAfter(
+        HttpResponseMessage response)
+    {
+        var retryAfter = response.Headers.RetryAfter;
+        if (retryAfter?.Delta is { } delta)
+            return delta;
+        if (retryAfter?.Date is { } date)
+        {
+            var duration = date - DateTimeOffset.UtcNow;
+            return duration > TimeSpan.Zero ? duration : TimeSpan.Zero;
+        }
+        return null;
     }
 
     public async Task<WorkflowResponse> GetWorkflowAsync(string workflowId, CancellationToken cancellationToken = default)
@@ -318,7 +571,12 @@ public class NodetoolClient : INodetoolClient
         _logger?.LogDebug("Fetching workflow: {WorkflowId}", workflowId);
         
         var endpoint = string.Format(NodetoolConstants.Endpoints.WorkflowById, workflowId);
-        var response = await _httpClient.GetAsync(endpoint, cancellationToken);
+        using var request = CreateConfiguredRequest(
+            HttpMethod.Get,
+            endpoint);
+        using var response = await _httpClient.SendAsync(
+            request,
+            cancellationToken);
         response.EnsureSuccessStatusCode();
         
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -326,34 +584,6 @@ public class NodetoolClient : INodetoolClient
         
         _logger?.LogDebug("Retrieved workflow: {Name}", workflow?.Name ?? "Unknown");
         return workflow ?? throw new InvalidOperationException($"Failed to deserialize workflow {workflowId}");
-    }
-
-    public async Task<Dictionary<string, object>> ExecuteWorkflowAsync(
-        string workflowId, 
-        Dictionary<string, object> parameters, 
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(workflowId);
-        ArgumentNullException.ThrowIfNull(parameters);
-        _logger?.LogDebug("Executing workflow: {WorkflowId}", workflowId);
-        
-        var request = new WorkflowExecutionRequest
-        {
-            Params = parameters
-        };
-        
-        var json = JsonSerializer.Serialize(request, _jsonOptions);
-        var content = new StringContent(json, Encoding.UTF8, NodetoolConstants.ContentTypes.Json);
-        
-        var endpoint = string.Format(NodetoolConstants.Endpoints.WorkflowRun, workflowId);
-        var response = await _httpClient.PostAsync(endpoint, content, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        
-        var resultJson = await response.Content.ReadAsStringAsync(cancellationToken);
-        var result = JsonSerializer.Deserialize<Dictionary<string, object>>(resultJson, _jsonOptions);
-        
-        _logger?.LogDebug("Workflow execution completed");
-        return result ?? new Dictionary<string, object>();
     }
 
     #endregion
@@ -382,7 +612,13 @@ public class NodetoolClient : INodetoolClient
         streamContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(contentType);
         form.Add(streamContent, "file", fileName);
         
-        var response = await _httpClient.PostAsync(NodetoolConstants.Endpoints.Assets, form, cancellationToken);
+        using var request = CreateConfiguredRequest(
+            HttpMethod.Post,
+            NodetoolConstants.Endpoints.Assets,
+            form);
+        using var response = await _httpClient.SendAsync(
+            request,
+            cancellationToken);
         response.EnsureSuccessStatusCode();
         
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -398,7 +634,12 @@ public class NodetoolClient : INodetoolClient
         _logger?.LogDebug("Fetching asset: {AssetId}", assetId);
         
         var endpoint = string.Format(NodetoolConstants.Endpoints.AssetById, assetId);
-        var response = await _httpClient.GetAsync(endpoint, cancellationToken);
+        using var request = CreateConfiguredRequest(
+            HttpMethod.Get,
+            endpoint);
+        using var response = await _httpClient.SendAsync(
+            request,
+            cancellationToken);
         response.EnsureSuccessStatusCode();
         
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -414,7 +655,25 @@ public class NodetoolClient : INodetoolClient
         _logger?.LogDebug("Downloading asset: {AssetId}", assetId);
         
         var endpoint = string.Format(NodetoolConstants.Endpoints.AssetDownload, assetId);
-        return await _httpClient.GetStreamAsync(endpoint, cancellationToken);
+        using var request = CreateConfiguredRequest(
+            HttpMethod.Get,
+            endpoint);
+        var response = await _httpClient.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+        try
+        {
+            response.EnsureSuccessStatusCode();
+            var stream = await response.Content.ReadAsStreamAsync(
+                cancellationToken);
+            return new ResponseOwnedStream(stream, response);
+        }
+        catch
+        {
+            response.Dispose();
+            throw;
+        }
     }
 
     #endregion
@@ -427,7 +686,12 @@ public class NodetoolClient : INodetoolClient
         _logger?.LogDebug("Fetching job: {JobId}", jobId);
         
         var endpoint = string.Format(NodetoolConstants.Endpoints.JobById, jobId);
-        var response = await _httpClient.GetAsync(endpoint, cancellationToken);
+        using var request = CreateConfiguredRequest(
+            HttpMethod.Get,
+            endpoint);
+        using var response = await _httpClient.SendAsync(
+            request,
+            cancellationToken);
         response.EnsureSuccessStatusCode();
         
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -443,13 +707,80 @@ public class NodetoolClient : INodetoolClient
         _logger?.LogDebug("Cancelling job: {JobId}", jobId);
         
         var endpoint = string.Format(NodetoolConstants.Endpoints.JobCancel, jobId);
-        var response = await _httpClient.PostAsync(endpoint, null, cancellationToken);
+        using var request = CreateConfiguredRequest(
+            HttpMethod.Post,
+            endpoint);
+        using var response = await _httpClient.SendAsync(
+            request,
+            cancellationToken);
         response.EnsureSuccessStatusCode();
         
         _logger?.LogDebug("Job cancelled: {JobId}", jobId);
     }
 
     #endregion
+
+    private sealed class ResponseOwnedStream(
+        Stream inner,
+        HttpResponseMessage response) : Stream
+    {
+        public override bool CanRead => inner.CanRead;
+        public override bool CanSeek => inner.CanSeek;
+        public override bool CanWrite => inner.CanWrite;
+        public override long Length => inner.Length;
+        public override long Position
+        {
+            get => inner.Position;
+            set => inner.Position = value;
+        }
+
+        public override void Flush() => inner.Flush();
+        public override Task FlushAsync(CancellationToken cancellationToken)
+            => inner.FlushAsync(cancellationToken);
+        public override int Read(
+            byte[] buffer,
+            int offset,
+            int count)
+            => inner.Read(buffer, offset, count);
+        public override int Read(Span<byte> buffer)
+            => inner.Read(buffer);
+        public override ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            CancellationToken cancellationToken = default)
+            => inner.ReadAsync(buffer, cancellationToken);
+        public override long Seek(long offset, SeekOrigin origin)
+            => inner.Seek(offset, origin);
+        public override void SetLength(long value)
+            => inner.SetLength(value);
+        public override void Write(
+            byte[] buffer,
+            int offset,
+            int count)
+            => inner.Write(buffer, offset, count);
+        public override void Write(ReadOnlySpan<byte> buffer)
+            => inner.Write(buffer);
+        public override ValueTask WriteAsync(
+            ReadOnlyMemory<byte> buffer,
+            CancellationToken cancellationToken = default)
+            => inner.WriteAsync(buffer, cancellationToken);
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                inner.Dispose();
+                response.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        public override async ValueTask DisposeAsync()
+        {
+            await inner.DisposeAsync().ConfigureAwait(false);
+            response.Dispose();
+            GC.SuppressFinalize(this);
+        }
+    }
 
     public void Dispose()
     {

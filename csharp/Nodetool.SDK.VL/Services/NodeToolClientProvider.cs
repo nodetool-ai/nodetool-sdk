@@ -1,8 +1,12 @@
+using Nodetool.SDK.Api;
 using Nodetool.SDK.Api.Models;
+using Nodetool.SDK.Assets;
+using Nodetool.SDK.Connection;
 using Nodetool.SDK.Configuration;
 using Nodetool.SDK.Execution;
 using Nodetool.SDK.VL.Factories;
 using Nodetool.SDK.VL.Utilities;
+using VL.Core;
 
 namespace Nodetool.SDK.VL.Services;
 
@@ -14,82 +18,197 @@ public static class NodeToolClientProvider
 {
     public const int DefaultExecutionTimeoutSeconds = 300;
     public const int MaximumExecutionTimeoutSeconds = 86400;
-    public const int DefaultInlineMediaLimitBytes = 4 * 1024 * 1024;
+    public const int DefaultInlineMediaLimitBytes =
+        MediaInputPreparer.DefaultInlineLimitBytes;
     public const int MaximumInlineMediaLimitBytes = 64 * 1024 * 1024;
 
-    private static NodeToolExecutionClient? _client;
     private static readonly object _lock = new();
-    private static string _currentUrl = "ws://localhost:7777";
-    private static string? _currentApiKey;
-    private static Uri? _currentApiBaseUrl = new(NodetoolConstants.Defaults.BaseUrl);
+    private static readonly VlNodeToolHostSettings _fallbackSettings = new();
+    private static readonly NodeToolConnectionSession _fallbackConnectionSession =
+        new(_fallbackSettings.CreateProfile());
     private static readonly INodeToolExecutionClient _nullClient = new NullNodeToolExecutionClient();
-    private static int _executionTimeoutSeconds = DefaultExecutionTimeoutSeconds;
-    private static int _inlineMediaLimitBytes = DefaultInlineMediaLimitBytes;
-    private static bool _autoReconnect = true;
-    private static volatile bool _useWebSocketDiscovery;
+
+    static NodeToolClientProvider()
+    {
+        _fallbackConnectionSession.StatusChanged +=
+            status => OnClientStatusChanged(
+                status,
+                _fallbackSettings);
+    }
+
+    private static NodeToolConnectionSession Session
+    {
+        get
+        {
+            try
+            {
+                var hostSession =
+                    AppHost.CurrentOrGlobal.Services.GetService(
+                        typeof(NodeToolConnectionSession))
+                    as NodeToolConnectionSession;
+                if (hostSession is { IsDisposed: false })
+                    return hostSession;
+            }
+            catch
+            {
+                // Unit tests and design-time factory calls may not have a
+                // current AppHost. They use the non-host-owned fallback.
+            }
+
+            return _fallbackConnectionSession;
+        }
+    }
+
+    private static VlNodeToolHostSettings Settings
+    {
+        get
+        {
+            try
+            {
+                var hostSettings =
+                    AppHost.CurrentOrGlobal.Services.GetService(
+                        typeof(VlNodeToolHostSettings))
+                    as VlNodeToolHostSettings;
+                if (hostSettings != null)
+                    return hostSettings;
+            }
+            catch
+            {
+                // Unit tests and design-time factory calls use the fallback.
+            }
+
+            return _fallbackSettings;
+        }
+    }
+
+    /// <summary>
+    /// Creates a connection session suitable for AppHost-managed ownership.
+    /// </summary>
+    internal static NodeToolConnectionSession CreateHostSession(
+        VlNodeToolHostSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        var session = new NodeToolConnectionSession(
+            settings.CreateProfile());
+        session.StatusChanged +=
+            status => OnClientStatusChanged(status, settings);
+        return session;
+    }
+
+    /// <summary>
+    /// Applies current Connect-node settings to an AppHost-owned session. The
+    /// facade resolves the service from the current AppHost and never owns it.
+    /// </summary>
+    internal static void UseHostSession(
+        NodeToolConnectionSession connectionSession,
+        VlNodeToolHostSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(connectionSession);
+        ArgumentNullException.ThrowIfNull(settings);
+        lock (_lock)
+        {
+            connectionSession.Configure(settings.CreateProfile());
+        }
+    }
 
     /// <summary>
     /// Current connection status.
     /// </summary>
-    public static string Status { get; private set; } = "disconnected";
+    public static string Status =>
+        Settings.ConfigurationError is null
+            ? Session.Status
+            : "error";
 
     /// <summary>
     /// Last error message if connection failed.
     /// </summary>
-    public static string? LastError { get; private set; }
+    public static string? LastError =>
+        Settings.ConfigurationError ??
+        Session.LastError ??
+        Session.CurrentClient?.LastError;
 
     /// <summary>
     /// Whether the client is currently connected.
     /// </summary>
-    public static bool IsConnected => _client?.IsConnected ?? false;
+    public static bool IsConnected => Session.IsConnected;
 
     /// <summary>
     /// Current worker URL as configured by the Connect node.
     /// </summary>
-    public static string CurrentWorkerUrl => _currentUrl;
+    public static string CurrentWorkerUrl => Settings.WorkerUrl;
 
     /// <summary>
     /// Current API base URL derived from the worker URL (ws/wss → http/https).
     /// Used for workflow/node metadata discovery.
     /// </summary>
-    public static Uri? CurrentApiBaseUrl => _currentApiBaseUrl;
+    public static Uri? CurrentApiBaseUrl => Settings.ApiBaseUrl;
 
     /// <summary>
     /// Current auth token / API key configured via the Connect node (if any).
     /// Used for HTTP requests (assets/workflow discovery) and WS payload auth token.
     /// </summary>
-    public static string? CurrentAuthToken => _currentApiKey;
+    public static string? CurrentAuthToken => Settings.ApiKey;
 
     /// <summary>
     /// Default timeout used by VL execution nodes. Individual nodes can override it.
     /// </summary>
-    public static int ExecutionTimeoutSeconds => _executionTimeoutSeconds;
+    public static int ExecutionTimeoutSeconds =>
+        Settings.ExecutionTimeoutSeconds;
 
     /// <summary>
     /// Maximum media payload embedded in a run_job frame. Larger values are uploaded first.
     /// </summary>
-    public static int InlineMediaLimitBytes => _inlineMediaLimitBytes;
+    public static int InlineMediaLimitBytes =>
+        Settings.InlineMediaLimitBytes;
 
     /// <summary>
     /// Whether workflow discovery should use the shared execution WebSocket when connected.
     /// HTTP remains the bootstrap transport while the socket is unavailable.
     /// </summary>
-    public static bool UseWebSocketDiscovery => _useWebSocketDiscovery;
+    public static bool UseWebSocketDiscovery =>
+        Settings.UseWebSocketDiscovery;
+
+    public static WorkflowExecutionOptions ExecutionOptions =>
+        Settings.ExecutionOptions;
 
     public static void SetAutoReconnect(bool enabled)
     {
-        _autoReconnect = enabled;
-        if (_client != null)
-            _client.AutoReconnectEnabled = enabled;
+        Settings.SetAutoReconnect(enabled);
+        Session.SetAutoReconnect(enabled);
     }
 
     public static void SetUseWebSocketDiscovery(bool enabled)
     {
-        if (_useWebSocketDiscovery == enabled)
+        if (!Settings.SetUseWebSocketDiscovery(enabled))
             return;
-
-        _useWebSocketDiscovery = enabled;
         WorkflowNodeFactory.RequestRefresh();
+    }
+
+    public static void SetWorkflowPersistence(WorkflowPersistence value)
+        => Settings.SetWorkflowPersistence(value);
+
+    public static void SetWorkflowEventDetail(WorkflowEventDetail value)
+        => Settings.SetWorkflowEventDetail(value);
+
+    public static void SetWorkflowAssetPersistence(
+        WorkflowAssetPersistence value)
+        => Settings.SetWorkflowAssetPersistence(value);
+
+    internal static async Task<WorkflowExecutionOptions?>
+        ResolveExecutionOptionsAsync(
+            CancellationToken cancellationToken = default)
+    {
+        var options = Settings.ExecutionOptions;
+        if (WorkflowExecutionOptionNegotiator.IsDefault(options))
+            return null;
+
+        var capabilities = await Session
+            .GetSdkCapabilitiesAsync(cancellationToken)
+            .ConfigureAwait(false);
+        WorkflowExecutionOptionNegotiator.EnsureSupported(
+            capabilities,
+            options);
+        return options;
     }
 
     /// <summary>
@@ -97,7 +216,7 @@ public static class NodeToolClientProvider
     /// </summary>
     public static void SetExecutionTimeoutSeconds(int timeoutSeconds)
     {
-        _executionTimeoutSeconds = Math.Clamp(timeoutSeconds, 1, MaximumExecutionTimeoutSeconds);
+        Settings.SetExecutionTimeoutSeconds(timeoutSeconds);
     }
 
     /// <summary>
@@ -106,11 +225,11 @@ public static class NodeToolClientProvider
     public static int ResolveExecutionTimeoutSeconds(int perNodeTimeoutSeconds)
         => perNodeTimeoutSeconds > 0
             ? Math.Clamp(perNodeTimeoutSeconds, 1, MaximumExecutionTimeoutSeconds)
-            : _executionTimeoutSeconds;
+            : Settings.ExecutionTimeoutSeconds;
 
     public static void SetInlineMediaLimitBytes(int limitBytes)
     {
-        _inlineMediaLimitBytes = Math.Clamp(limitBytes, 0, MaximumInlineMediaLimitBytes);
+        Settings.SetInlineMediaLimitBytes(limitBytes);
     }
 
     /// <summary>
@@ -128,17 +247,21 @@ public static class NodeToolClientProvider
     {
         lock (_lock)
         {
-            var url = NormalizeServerUrl(serverUrl ?? _currentUrl);
-            var key = NormalizeApiKey(apiKey ?? _currentApiKey);
+            var settings = Settings;
+            var url = NormalizeServerUrl(
+                serverUrl ?? settings.WorkerUrl);
+            var key = NormalizeApiKey(
+                apiKey ?? settings.ApiKey);
 
             // If settings changed, dispose current client but DO NOT eagerly create a new one here.
             // This is important for VL: default value injection should never fail node instantiation.
-            if (url != _currentUrl || key != _currentApiKey)
+            if (url != settings.WorkerUrl ||
+                key != settings.ApiKey)
             {
                 Configure(url, key, disposeExistingClient: true);
             }
 
-            return _client ?? _nullClient;
+            return Session.CurrentClient ?? _nullClient;
         }
     }
 
@@ -150,89 +273,46 @@ public static class NodeToolClientProvider
     {
         lock (_lock)
         {
+            var settings = Settings;
             var normalizedUrl = NormalizeServerUrl(serverUrl);
             var normalizedApiKey = NormalizeApiKey(apiKey);
             var configurationChanged =
-                !string.Equals(normalizedUrl, _currentUrl, StringComparison.Ordinal) ||
-                !string.Equals(normalizedApiKey, _currentApiKey, StringComparison.Ordinal);
+                !string.Equals(
+                    normalizedUrl,
+                    settings.WorkerUrl,
+                    StringComparison.Ordinal) ||
+                !string.Equals(
+                    normalizedApiKey,
+                    settings.ApiKey,
+                    StringComparison.Ordinal);
 
             if (!configurationChanged)
-                return;
-
-            if (disposeExistingClient && _client != null)
             {
-                try
-                {
-                    _client.ConnectionStatusChanged -= OnClientStatusChanged;
-                    _client.Dispose();
-                }
-                catch
-                {
-                    // ignore dispose errors
-                }
-                _client = null;
+                settings.Configure(
+                    normalizedUrl,
+                    normalizedApiKey);
+                return;
             }
-
-            _currentUrl = normalizedUrl;
-            _currentApiKey = normalizedApiKey;
 
             try
             {
-                var workerUri = new Uri(normalizedUrl);
-                _currentApiBaseUrl = TryDeriveApiBaseUrl(workerUri);
-                Status = "disconnected";
-                LastError = null;
+                settings.Configure(
+                    normalizedUrl,
+                    normalizedApiKey);
+                Session.Configure(settings.CreateProfile());
             }
             catch (Exception ex)
             {
-                Status = "error";
-                LastError = $"Invalid URL: {ex.Message}";
+                settings.SetConfigurationError(
+                    $"Invalid URL: {VlLog.SafeError(ex, normalizedApiKey)}");
             }
 
+            VlReadinessLog.Reset();
+            VlReadinessLog.MarkRegistered();
             WorkflowNodeFactory.Reset();
             NodesFactory.Reset();
 
             StatusChanged?.Invoke(Status);
-        }
-    }
-
-    private static INodeToolExecutionClient EnsureClientCreated()
-    {
-        lock (_lock)
-        {
-            if (_client != null)
-                return _client;
-
-            try
-            {
-                var workerUri = new Uri(_currentUrl);
-                var apiBaseUrl = TryDeriveApiBaseUrl(workerUri);
-                _currentApiBaseUrl = apiBaseUrl;
-
-                var options = new NodeToolClientOptions
-                {
-                    WorkerWebSocketUrl = workerUri,
-                    ApiBaseUrl = apiBaseUrl,
-                    AuthToken = _currentApiKey,
-                    AutoReconnect = _autoReconnect,
-                };
-
-                // Pass apiKey separately too (some deployments expect Bearer on HTTP; WS payload uses AuthToken).
-                _client = new NodeToolExecutionClient(options, apiKey: _currentApiKey);
-                _client.ConnectionStatusChanged += OnClientStatusChanged;
-
-                Status = "disconnected";
-                LastError = null;
-                StatusChanged?.Invoke(Status);
-                return _client;
-            }
-            catch (Exception ex)
-            {
-                Status = "error";
-                LastError = $"Failed to create client: {ex.Message}";
-                StatusChanged?.Invoke(Status);
-                return _nullClient;
-            }
         }
     }
 
@@ -242,36 +322,43 @@ public static class NodeToolClientProvider
     /// <returns>True if connected successfully.</returns>
     public static async Task<bool> ConnectAsync(CancellationToken cancellationToken = default)
     {
-        var client = EnsureClientCreated();
-        var result = await client.ConnectAsync(cancellationToken);
-        
-        if (result)
+        try
         {
-            Status = "connected";
-            LastError = null;
+            await Session.GetConnectedClientAsync(
+                cancellationToken);
+            StatusChanged?.Invoke(Status);
+            return true;
         }
-        else
+        catch (Exception ex)
         {
-            Status = "error";
-            LastError = _client?.LastError ?? "Connection failed";
-            VlLog.Error($"connect failed to '{_currentUrl}': {LastError}");
+            var safeError =
+                LastError ??
+                VlLog.SafeError(ex, CurrentAuthToken);
+            VlLog.Error(
+                $"connect failed to '{CurrentWorkerUrl}': {safeError}");
+            StatusChanged?.Invoke(Status);
+            return false;
         }
-        
-        StatusChanged?.Invoke(Status);
-        return result;
     }
+
+    /// <summary>
+    /// Borrows the HTTP API client owned by the current AppHost connection
+    /// session. Callers must not dispose the returned client.
+    /// </summary>
+    internal static Task<INodetoolClient> GetApiClientAsync(
+        CancellationToken cancellationToken = default)
+        => Session.GetApiClientAsync(cancellationToken);
+
+    internal static Task<SdkCapabilitiesResponse> GetSdkCapabilitiesAsync(
+        CancellationToken cancellationToken = default)
+        => Session.GetSdkCapabilitiesAsync(cancellationToken);
 
     /// <summary>
     /// Disconnect the shared client.
     /// </summary>
     public static async Task DisconnectAsync()
     {
-        var client = _client;
-        if (client == null)
-            return;
-
-        await client.DisconnectAsync();
-        Status = "disconnected";
+        await Session.DisconnectAsync();
         StatusChanged?.Invoke(Status);
     }
 
@@ -291,55 +378,25 @@ public static class NodeToolClientProvider
     {
         lock (_lock)
         {
-            if (_client != null)
-            {
-                _client.ConnectionStatusChanged -= OnClientStatusChanged;
-                _client.Dispose();
-                _client = null;
-            }
-            Status = "disconnected";
-            LastError = null;
+            Session.Reset();
+            VlReadinessLog.Reset();
+            VlReadinessLog.MarkRegistered();
             WorkflowNodeFactory.Reset();
             NodesFactory.Reset();
             StatusChanged?.Invoke(Status);
         }
     }
 
-    private static void OnClientStatusChanged(string status)
+    private static void OnClientStatusChanged(
+        string status,
+        VlNodeToolHostSettings settings)
     {
-        Status = status;
-        if (status == "error" && _client != null)
-        {
-            LastError = _client.LastError;
-        }
         if (status == "connected")
             NodesFactory.RequestRefresh();
-        if (status == "connected" && _useWebSocketDiscovery)
+        if (status == "connected" &&
+            settings.UseWebSocketDiscovery)
             WorkflowNodeFactory.RequestRefresh();
         StatusChanged?.Invoke(status);
-    }
-
-    private static Uri? TryDeriveApiBaseUrl(Uri workerUrl)
-    {
-        // Convert ws/wss to http/https and strip path/query/fragment.
-        var scheme = workerUrl.Scheme switch
-        {
-            "ws" => "http",
-            "wss" => "https",
-            "http" => "http",
-            "https" => "https",
-            _ => "http"
-        };
-
-        var builder = new UriBuilder(workerUrl)
-        {
-            Scheme = scheme,
-            Path = "",
-            Query = "",
-            Fragment = ""
-        };
-
-        return builder.Uri;
     }
 
     private static string NormalizeServerUrl(string serverUrl)

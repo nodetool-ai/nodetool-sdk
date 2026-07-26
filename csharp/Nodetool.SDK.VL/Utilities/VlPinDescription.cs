@@ -4,6 +4,23 @@ using VL.Core;
 
 namespace Nodetool.SDK.VL.Utilities;
 
+internal static class ExecutionPinVisibility
+{
+    public static bool IsInputVisible(string name)
+        => name is not (
+            "Cancel" or
+            "AutoRun" or
+            "RestartOnChange" or
+            "ExecutionTimeoutSeconds");
+
+    public static bool IsOutputVisible(string name)
+        => name is not (
+            "Error" or
+            "Debug" or
+            "InputSchemaJson" or
+            "OutputSchemaJson");
+}
+
 /// <summary>
 /// Pin description that can be marked as not visible by default (vvvv optional pins).
 /// VL will expose these pins via the node's Configure UI.

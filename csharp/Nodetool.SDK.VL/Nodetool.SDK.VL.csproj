@@ -5,9 +5,11 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <!-- This project builds the managed adapter assembly. VL.Nodetool is the
+         sole distributable vvvv package and is produced by deployment/nuspec. -->
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IsPackable>false</IsPackable>
     <PackageId>Nodetool.SDK.VL</PackageId>
-    <Version>0.1.1</Version>
     <Description>VL/vvvv integration for Nodetool SDK - workflow execution and node management</Description>
     <Authors>Nodetool Contributors</Authors>
     <RepositoryUrl>https://github.com/nodetool-ai/nodetool</RepositoryUrl>
@@ -23,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Nodetool.SDK\Nodetool.SDK.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Nodetool.Types\Nodetool.Types.csproj" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,5 +1,13 @@
 # vvvv SDK Current API and Improvement Plan
 
+> **Historical implementation record:** New work and check-off status belongs
+> in the canonical
+> [02 - Portable C# Base and VL SDK](sdk-roadmap/02-csharp-base-vl-sdk.md)
+> plan. This file preserves the completed SDK-repair audit and detailed
+> evidence. Its unchecked items are historical backlog and are not release
+> gates; current status and deferrals are reconciled in the canonical
+> three-plan roadmap.
+
 ## Goal
 
 Restore reliable NodeTool workflow discovery, VL node creation, and workflow execution in vvvv against the current NodeTool backend. The backend work must be additive and isolated so it does not alter the behavior of current REST, tRPC, WebSocket, web, Electron, or other clients.
@@ -10,6 +18,15 @@ The preferred end state is:
 2. The C# SDK consumes that interface as a required, versioned contract and does not independently infer workflow I/O from graphs.
 3. Existing workflow response shapes and execution commands continue to work unchanged.
 4. Contract drift is detected by automated tests before publishing a NodeTool or SDK release.
+
+The next architectural increment is tracked in
+[`shared-csharp-sdk-server-foundation.md`](shared-csharp-sdk-server-foundation.md).
+It moves host-neutral discovery, asset materialization, value conversion,
+execution reconciliation, scheduling, connection management, diagnostics, and
+test fixtures from `Nodetool.SDK.VL` into the portable C# SDK. The VL package
+remains responsible for dynamic factories, pins, `Spread<T>`, VL `Path`,
+Skia, AppHost invalidation, frame behavior, and help patches. Unity consumes
+the same shared foundation as a sibling adapter.
 
 ## Verified baseline
 
@@ -123,7 +140,8 @@ Add a new contract instead of changing existing workflow responses.
 - WebSocket RPC: `get_node_type_inventory` with bounded `cursor` and `limit`
 - WebSocket bulk RPC: `get_workflow_interfaces` with `data: { ids, version: 1 }` and a top-level `request_id`
 - WebSocket summaries RPC: `list_workflow_summaries` with `data: { limit, cursor }` and a top-level `request_id`
-- Server feature flag: `NODETOOL_ENABLE_SDK_WORKFLOW_INTERFACE_V1`
+- Default-on server profile with emergency kill switch:
+  `NODETOOL_DISABLE_SDK_WORKFLOW_INTERFACE_V1=1`
 
 The REST and WebSocket variants must call the same service function and return the same logical payload. Bulk requests are bounded to a documented maximum (initially 100 workflow IDs) and return per-workflow results/diagnostics so one invalid workflow does not discard the full page.
 
@@ -281,7 +299,9 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Add WebSocket `get_workflow_interface` as a thin RPC bridge to the same service.
 - [x] Add WebSocket `get_workflow_interfaces` as the bounded bulk RPC bridge.
 - [x] Add WebSocket `list_workflow_summaries` without graph or inline-media payloads.
-- [x] Guard every SDK workflow-interface entry point with `NODETOOL_ENABLE_SDK_WORKFLOW_INTERFACE_V1` for the initial rollout.
+- [x] Enable SDK workflow-interface entry points by default and retain
+      `NODETOOL_DISABLE_SDK_WORKFLOW_INTERFACE_V1=1` as an emergency
+      server-side kill switch.
 - [x] Return a stable feature-disabled/not-supported API error that the SDK can recognize.
 - [x] Do not populate or alter existing workflow `input_schema`/`output_schema` fields in this phase.
 - [x] Add authorization tests for owner, collaborator viewer, public workflow, unauthorized user, and missing workflow.
@@ -321,6 +341,9 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Add explicit `Refresh`, `Last Refresh`, `Server Version`, `Interface Source`, and `Last Error` diagnostics for vvvv.
 - [x] Reuse unchanged workflow node descriptions and replace only descriptions whose workflow revision, registry revision, interface etag, or generated name changed.
 - [x] Debounce rapid server/workflow changes so vvvv is not repeatedly rebuilding the factory.
+- [x] Suppress the redundant initial invalidation when discovery completes
+      inside the bounded first-snapshot grace period; the waiting caller builds
+      the first factory directly from that snapshot.
 - [x] Ensure changing the Connect node endpoint/auth resets both discovery and execution state exactly once.
 
 ### Phase 4 acceptance gate
@@ -341,7 +364,16 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Define deterministic duplicate-name handling using a short workflow-ID suffix.
 - [x] Generate input and output pins exclusively from the normalized workflow interface.
 - [x] Preserve defaults, min/max ranges, descriptions, required/optional state, enum values, and list element types in normalized metadata and VL pin diagnostics.
+- [x] Promote option-constrained workflow strings to adapter-local dynamic VL
+      enum pins and preserve their exact original wire literals.
+- [x] Promote option-constrained individual-node properties and outputs to the
+      same compiler-visible dynamic VL enum representation.
+- [x] Convert dynamic enum defaults, scalar outputs, and nested `Spread<T>`
+      values in both directions without confusing VL dynamic enums with CLR
+      `enum` value types.
 - [x] Map primitive NodeTool types to native VL types.
+- [x] Preserve tuple, byte-array, and native file-path pin shapes in the
+      workflow adapter; reject invalid byte values instead of wrapping them.
 - [x] Map list pins to immutable VL-native `Spread<T>` values for both workflow and individual-node factories, normalizing spreads to arrays only at the MessagePack transport boundary.
 - [x] Bind structured NodeTool types through the C# type registry where a generated type exists.
 - [x] Map image inputs/outputs to `SKImage` and document ownership/disposal rules.
@@ -469,4 +501,7 @@ Implement the algorithm as a clearly specified pure TypeScript operation. The C#
 - [x] Do not require existing workflows to save generated schemas.
 - [x] Do not make the new endpoint mandatory for non-SDK clients running workflows.
 - [x] Do not redesign the NodeTool execution kernel as part of the SDK repair.
-- [x] Do not generate arbitrary CLR record/enum assemblies at runtime until the stable type-binding layer and package policy are settled.
+- [x] Keep arbitrary CLR record generation deferred. Permit adapter-local
+      runtime enum types only for authoritative workflow option lists; cache
+      them by stable option identity and never expose them in the portable
+      contract.

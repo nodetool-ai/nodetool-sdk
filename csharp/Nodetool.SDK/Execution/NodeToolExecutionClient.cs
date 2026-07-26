@@ -1,10 +1,11 @@
 using System.Collections.Concurrent;
-using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Nodetool.SDK.Api;
 using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.Configuration;
+using Nodetool.SDK.Connection;
+using Nodetool.SDK.Diagnostics;
 using Nodetool.SDK.Types;
 using Nodetool.SDK.Values;
 using Nodetool.SDK.WebSocket;
@@ -17,7 +18,7 @@ namespace Nodetool.SDK.Execution;
 /// </summary>
 public class NodeToolExecutionClient : INodeToolExecutionClient
 {
-    private readonly MessagePackWebSocketClient _webSocketClient;
+    private readonly INodeToolWebSocketTransport _webSocketClient;
     private readonly ILogger<NodeToolExecutionClient> _logger;
     private readonly NodeToolClientOptions _options;
     private readonly ConcurrentDictionary<string, ExecutionSession> _sessions;
@@ -26,6 +27,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     private readonly SemaphoreSlim _connectionSemaphore = new(1, 1);
     private readonly Uri _serverUri;
     private readonly string? _apiKey;
+    private string? _resolvedAuthToken;
     private readonly CancellationTokenSource _lifetimeCts = new();
     private int _reconnectLoopActive;
     private volatile bool _disconnectRequested;
@@ -47,6 +49,9 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     /// <inheritdoc/>
     public string? LastError { get; private set; }
 
+    /// <inheritdoc/>
+    public string? ExecutionTargetId { get; private set; }
+
     public bool AutoReconnectEnabled
     {
         get => _autoReconnectEnabled;
@@ -65,9 +70,11 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     public NodeToolExecutionClient(
         NodeToolClientOptions options,
         string? apiKey = null,
-        ILogger<NodeToolExecutionClient>? logger = null)
+        ILogger<NodeToolExecutionClient>? logger = null,
+        INodeToolWebSocketTransport? webSocketTransport = null)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _options.ReadRetryPolicy.Validate();
 
         // We accept http/https schemes as a convenience (convert to ws/wss),
         // but callers must provide explicit host/port/path in options.
@@ -90,7 +97,9 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         _workflowIdsByName = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         // Create WebSocket client
-        _webSocketClient = new MessagePackWebSocketClient(_logger);
+        _webSocketClient =
+            webSocketTransport ??
+            new MessagePackWebSocketClient(_logger);
 
         // Subscribe to WebSocket events
         _webSocketClient.MessageReceived += OnMessageReceived;
@@ -115,6 +124,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     /// <inheritdoc/>
     public async Task<bool> ConnectAsync(CancellationToken cancellationToken = default)
     {
+        ExecutionTargetId = null;
         await _connectionSemaphore.WaitAsync(cancellationToken);
         try
         {
@@ -122,7 +132,16 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             ConnectionStatus = "connecting";
             ConnectionStatusChanged?.Invoke(ConnectionStatus);
 
-            var result = await _webSocketClient.ConnectAsync(_serverUri, cancellationToken);
+            _resolvedAuthToken = NormalizeToken(
+                _options.TokenProvider == null
+                    ? _options.AuthToken ?? _apiKey
+                    : await _options.TokenProvider
+                        .GetTokenAsync(cancellationToken)
+                        .ConfigureAwait(false));
+            var result = await _webSocketClient.ConnectAsync(
+                _serverUri,
+                _resolvedAuthToken,
+                cancellationToken);
 
             if (result)
             {
@@ -144,9 +163,15 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to connect to NodeTool server at {Uri}", _serverUri);
+            var safeError = NodeToolDiagnosticRedactor.RedactText(
+                ex.Message,
+                _resolvedAuthToken);
+            _logger.LogError(
+                "Failed to connect to NodeTool server at {Uri}: {Error}",
+                NodeToolDiagnosticRedactor.RedactUri(_serverUri),
+                safeError);
             ConnectionStatus = "error";
-            LastError = ex.Message;
+            LastError = safeError;
             ConnectionStatusChanged?.Invoke(ConnectionStatus);
             return false;
         }
@@ -174,9 +199,21 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     }
 
     /// <inheritdoc/>
-    public async Task<IExecutionSession> ExecuteWorkflowAsync(
+    public Task<IExecutionSession> ExecuteWorkflowAsync(
         string workflowId,
         Dictionary<string, object>? inputs = null,
+        CancellationToken cancellationToken = default)
+        => ExecuteWorkflowAsync(
+            workflowId,
+            inputs,
+            executionOptions: null,
+            cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task<IExecutionSession> ExecuteWorkflowAsync(
+        string workflowId,
+        Dictionary<string, object>? inputs,
+        WorkflowExecutionOptions? executionOptions,
         CancellationToken cancellationToken = default)
     {
         // Pre-bind the client-generated job ID before sending. The current worker protocol
@@ -197,8 +234,9 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
                 ExecutionStrategy = _options.ExecutionStrategy,
                 ApiUrl = _options.ApiUrl,
                 UserId = _options.UserId ?? "",
-                AuthToken = _options.AuthToken ?? "",
+                AuthToken = _resolvedAuthToken ?? "",
                 ExplicitTypes = _options.ExplicitTypes,
+                ExecutionOptions = CreateRunJobExecutionOptions(executionOptions),
             }
         };
 
@@ -277,7 +315,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
                 ExecutionStrategy = _options.ExecutionStrategy,
                 ApiUrl = _options.ApiUrl,
                 UserId = _options.UserId ?? "",
-                AuthToken = _options.AuthToken ?? "",
+                AuthToken = _resolvedAuthToken ?? "",
                 ExplicitTypes = _options.ExplicitTypes,
             }
         };
@@ -291,6 +329,18 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     public async Task<IExecutionSession> ExecuteNodeAsync(
         string nodeType,
         Dictionary<string, object>? inputs = null,
+        CancellationToken cancellationToken = default)
+        => await ExecuteNodeAsync(
+            nodeType,
+            inputs,
+            executionOptions: null,
+            cancellationToken).ConfigureAwait(false);
+
+    /// <inheritdoc/>
+    public async Task<IExecutionSession> ExecuteNodeAsync(
+        string nodeType,
+        Dictionary<string, object>? inputs,
+        WorkflowExecutionOptions? executionOptions,
         CancellationToken cancellationToken = default)
     {
         // Create a simple graph with just this node
@@ -324,8 +374,10 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
                 ExecutionStrategy = _options.ExecutionStrategy,
                 ApiUrl = _options.ApiUrl,
                 UserId = _options.UserId ?? "",
-                AuthToken = _options.AuthToken ?? "",
+                AuthToken = _resolvedAuthToken ?? "",
                 ExplicitTypes = _options.ExplicitTypes,
+                ExecutionOptions =
+                    CreateRunJobExecutionOptions(executionOptions),
             }
         };
 
@@ -409,6 +461,33 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         return session;
     }
 
+    internal static RunJobExecutionOptions? CreateRunJobExecutionOptions(
+        WorkflowExecutionOptions? options)
+    {
+        if (options is null)
+            return null;
+
+        return new RunJobExecutionOptions
+        {
+            Persistence = options.Persistence switch
+            {
+                WorkflowPersistence.Session => "session",
+                _ => "job"
+            },
+            EventDetail = options.EventDetail switch
+            {
+                WorkflowEventDetail.Outputs => "outputs",
+                WorkflowEventDetail.Terminal => "terminal",
+                _ => "full"
+            },
+            AssetPersistence = options.AssetPersistence switch
+            {
+                WorkflowAssetPersistence.Temporary => "temporary",
+                _ => "auto"
+            }
+        };
+    }
+
     private async Task SendExecutionRequestAsync(
         WebSocketCommand command,
         string jobId,
@@ -471,12 +550,80 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     public async Task<List<NodeMetadataResponse>> GetNodeTypesAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Fetching node types via WebSocket");
-        var raw = await _webSocketClient.SendRequestAsync(
+        var raw = await SendReadRequestAsync(
             "list_nodes",
             new Dictionary<string, object?> { ["fields"] = "full" },
             cancellationToken);
         return DeserializeListResult<NodeMetadataResponse>(raw, "list_nodes", "nodes");
     }
+
+    private static string? NormalizeToken(string? token)
+        => string.IsNullOrWhiteSpace(token) ? null : token.Trim();
+
+    private async Task<Dictionary<string, object?>?> SendReadRequestAsync(
+        string command,
+        Dictionary<string, object?>? data = null,
+        CancellationToken cancellationToken = default,
+        TimeSpan? timeout = null)
+    {
+        var requestId = Guid.NewGuid().ToString("N");
+        var policy = _options.ReadRetryPolicy;
+        for (var attempt = 1;
+             attempt <= policy.MaximumAttempts;
+             attempt++)
+        {
+            try
+            {
+                if (!_webSocketClient.IsConnected &&
+                    !await ConnectAsync(cancellationToken)
+                        .ConfigureAwait(false))
+                {
+                    throw new InvalidOperationException(
+                        LastError ??
+                        "Failed to connect before WebSocket read RPC.");
+                }
+
+                return await _webSocketClient.SendRequestAsync(
+                    command,
+                    data,
+                    cancellationToken,
+                    timeout,
+                    requestId).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (
+                cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex) when (
+                IsTransientReadFailure(ex) &&
+                attempt < policy.MaximumAttempts)
+            {
+                var delay = policy.GetDelay(attempt);
+                _logger.LogWarning(
+                    "WebSocket read RPC {Command} attempt {Attempt} failed; retrying after {DelayMs} ms: {Error}",
+                    command,
+                    attempt,
+                    delay.TotalMilliseconds,
+                    NodeToolDiagnosticRedactor.RedactText(
+                        ex.Message,
+                        _resolvedAuthToken,
+                        _apiKey));
+                await Task.Delay(delay, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"WebSocket read RPC '{command}' exhausted its retry policy.");
+    }
+
+    private static bool IsTransientReadFailure(Exception exception)
+        => exception is
+            InvalidOperationException or
+            OperationCanceledException or
+            IOException or
+            System.Net.WebSockets.WebSocketException;
 
     /// <inheritdoc/>
     public async Task<NodeTypeInventoryResponse> GetNodeTypeInventoryAsync(
@@ -489,7 +636,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         if (limit is < 1 or > 100)
             throw new ArgumentOutOfRangeException(nameof(limit));
 
-        var raw = await _webSocketClient.SendRequestAsync(
+        var raw = await SendReadRequestAsync(
             "get_node_type_inventory",
             new Dictionary<string, object?>
             {
@@ -510,7 +657,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     public async Task<NodeMetadataResponse?> GetNodeAsync(string nodeType, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Fetching node {NodeType} via WebSocket", nodeType);
-        var raw = await _webSocketClient.SendRequestAsync(
+        var raw = await SendReadRequestAsync(
             "get_node",
             new Dictionary<string, object?> { ["node_type"] = nodeType },
             cancellationToken);
@@ -521,7 +668,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     public async Task<List<WorkflowResponse>> GetWorkflowsAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Fetching workflows via WebSocket");
-        var raw = await _webSocketClient.SendRequestAsync(
+        var raw = await SendReadRequestAsync(
             "list_workflows",
             new Dictionary<string, object?>(),
             cancellationToken);
@@ -532,7 +679,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     public async Task<WorkflowResponse?> GetWorkflowAsync(string workflowId, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Fetching workflow {WorkflowId} via WebSocket", workflowId);
-        var raw = await _webSocketClient.SendRequestAsync(
+        var raw = await SendReadRequestAsync(
             "get_workflow",
             new Dictionary<string, object?> { ["id"] = workflowId },
             cancellationToken);
@@ -553,7 +700,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             var data = new Dictionary<string, object?> { ["limit"] = pageSize };
             if (cursor != null)
                 data["cursor"] = cursor;
-            var raw = await _webSocketClient.SendRequestAsync(
+            var raw = await SendReadRequestAsync(
                 "list_workflow_summaries",
                 data,
                 cancellationToken);
@@ -577,7 +724,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workflowId);
-        var raw = await _webSocketClient.SendRequestAsync(
+        var raw = await SendReadRequestAsync(
             "get_workflow_interface",
             new Dictionary<string, object?>
             {
@@ -599,7 +746,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     {
         ValidateWorkflowIds(workflowIds);
         var ids = workflowIds.ToArray();
-        var raw = await _webSocketClient.SendRequestAsync(
+        var raw = await SendReadRequestAsync(
             "get_workflow_interfaces",
             new Dictionary<string, object?>
             {
@@ -632,7 +779,10 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         var data = new Dictionary<string, object?> { ["page_size"] = pageSize };
         if (contentType != null) data["content_type"] = contentType;
         if (parentId != null) data["parent_id"] = parentId;
-        var raw = await _webSocketClient.SendRequestAsync("list_assets", data, cancellationToken);
+        var raw = await SendReadRequestAsync(
+            "list_assets",
+            data,
+            cancellationToken);
         return DeserializeListResult<AssetResponse>(raw, "list_assets", "assets");
     }
 
@@ -640,7 +790,7 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     public async Task<AssetResponse?> GetAssetAsync(string assetId, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Fetching asset {AssetId} via WebSocket", assetId);
-        var raw = await _webSocketClient.SendRequestAsync(
+        var raw = await SendReadRequestAsync(
             "get_asset",
             new Dictionary<string, object?> { ["id"] = assetId },
             cancellationToken);
@@ -657,14 +807,14 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             var code = errorMap.GetValueOrDefault("code")?.AsString() ?? "UNKNOWN";
             var msg = errorMap.GetValueOrDefault("message")?.AsString() ?? err.ToString()!;
             var apiCode = errorMap.GetValueOrDefault("apiCode")?.AsString();
-            if (string.Equals(apiCode, "SERVICE_UNAVAILABLE", StringComparison.Ordinal))
-            {
-                throw new WorkflowInterfaceUnavailableException(
-                    HttpStatusCode.ServiceUnavailable,
+            throw new SdkApiException(
+                SdkApiTransport.WebSocket,
+                apiCode ?? code,
+                string.Equals(
                     apiCode,
-                    msg);
-            }
-            throw new InvalidOperationException($"[{code}] {msg}");
+                    "SERVICE_UNAVAILABLE",
+                    StringComparison.Ordinal),
+                $"[{code}] {msg}");
         }
     }
 
@@ -739,12 +889,30 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing WebSocket message");
+            _logger.LogError(
+                "Error processing WebSocket message: {Error}",
+                NodeToolDiagnosticRedactor.RedactText(
+                    ex.Message,
+                    _resolvedAuthToken));
         }
     }
 
     internal void RouteExecutionMessage(object message)
     {
+        if (message is Dictionary<string, object?> envelope &&
+            envelope.TryGetValue("type", out var type) &&
+            string.Equals(
+                type as string,
+                "sdk_execution_target",
+                StringComparison.Ordinal) &&
+            envelope.TryGetValue("runner_id", out var runnerId) &&
+            runnerId is string id &&
+            !string.IsNullOrWhiteSpace(id))
+        {
+            ExecutionTargetId = id;
+            return;
+        }
+
         switch (message)
         {
             case JobUpdate jobUpdate:
@@ -869,7 +1037,12 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Reconnect attempt {Attempt} failed", attempt);
+                    _logger.LogWarning(
+                        "Reconnect attempt {Attempt} failed: {Error}",
+                        attempt,
+                        NodeToolDiagnosticRedactor.RedactText(
+                            ex.Message,
+                            _resolvedAuthToken));
                 }
                 delay = TimeSpan.FromMilliseconds(Math.Min(delay.TotalMilliseconds * 2, 8000));
             }

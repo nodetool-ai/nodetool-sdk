@@ -3,6 +3,7 @@ using System.Text.Json;
 using SkiaSharp;
 using VL.Core;
 using VL.Core.CompilerServices;
+using Nodetool.SDK.VL.Utilities;
 
 namespace Nodetool.SDK.VL.Factories;
 
@@ -120,7 +121,7 @@ internal static class ImageNodeFactory
                             }
                             catch (Exception ex)
                             {
-                                error = ex.Message;
+                                error = VlLog.SafeError(ex);
                             }
                         }
 
@@ -226,7 +227,7 @@ internal static class ImageNodeFactory
                             {
                                 image?.Dispose();
                                 image = null;
-                                error = ex.Message;
+                                error = VlLog.SafeError(ex);
                                 ok = false;
                             }
                         }
@@ -341,7 +342,7 @@ internal static class ImageNodeFactory
         }
         catch (Exception ex)
         {
-            error = $"Failed to parse JSON: {ex.Message}";
+            error = $"Failed to parse JSON: {VlLog.SafeError(ex)}";
             return false;
         }
     }

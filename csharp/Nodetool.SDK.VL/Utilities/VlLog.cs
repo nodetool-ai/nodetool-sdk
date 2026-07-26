@@ -1,4 +1,5 @@
 using System;
+using Nodetool.SDK.Diagnostics;
 
 namespace Nodetool.SDK.VL.Utilities;
 
@@ -21,6 +22,13 @@ internal static class VlLog
 
     public static void Error(string message)
         => Console.WriteLine($"{Prefix} ERROR: {message}");
+
+    public static string SafeError(
+        Exception exception,
+        params string?[] knownSecrets)
+        => NodeToolDiagnosticRedactor.RedactText(
+            exception.Message,
+            knownSecrets);
 }
 
 

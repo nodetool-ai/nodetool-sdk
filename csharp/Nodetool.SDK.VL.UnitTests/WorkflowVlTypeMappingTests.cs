@@ -1,23 +1,171 @@
 using Nodetool.SDK.Types;
-using Nodetool.SDK.Execution;
+using Nodetool.SDK.Assets;
 using Nodetool.SDK.Types.Assets;
 using Nodetool.SDK.Values;
 using Nodetool.SDK.VL.Factories;
 using Nodetool.SDK.VL.Nodes;
 using Nodetool.SDK.VL.Utilities;
+using Nodetool.SDK.VL.Models;
+using Nodetool.SDK.Api.Models;
+using Nodetool.SDK.VL.Services;
 using Nodetool.Types.Core;
-using System.Text;
+using SkiaSharp;
+using System.Text.Json;
 using VL.Core;
 using VL.Lib.Collections;
+using Xunit;
 using AssetAudioRef = Nodetool.SDK.Types.Assets.AudioRef;
 using AssetDocumentRef = Nodetool.SDK.Types.Assets.DocumentRef;
 using AssetVideoRef = Nodetool.SDK.Types.Assets.VideoRef;
 using VlPath = VL.Lib.IO.Path;
 
-namespace Nodetool.SDK.Tests.VL;
+namespace Nodetool.SDK.VL.UnitTests;
 
 public class WorkflowVlTypeMappingTests
 {
+    [Fact]
+    public void OptionConstrainedWorkflowString_UsesDynamicVlEnum()
+    {
+        using var defaultDocument = JsonDocument.Parse("\"words\"");
+        var workflow = new WorkflowDetail
+        {
+            Interface = new WorkflowInterfaceResponse
+            {
+                Inputs =
+                [
+                    new WorkflowInterfaceInput
+                    {
+                        Name = "measure",
+                        Required = true,
+                        Default = defaultDocument.RootElement.Clone(),
+                        Type = new NodeTypeDefinition
+                        {
+                            Type = "str",
+                            Values = ["characters", "words", "lines"]
+                        }
+                    }
+                ]
+            }
+        };
+
+        var input = Assert.Single(workflow.GetInputProperties());
+        Assert.Equal("enum", input.Type.Type);
+
+        var (type, _) =
+            WorkflowVlTypeMapping.GetInputTypeAndDefault(input.Type);
+        Assert.True(typeof(global::VL.Lib.Collections.IDynamicEnum).IsAssignableFrom(type));
+    }
+
+    [Fact]
+    public void DynamicWorkflowEnum_PreservesNonIdentifierWireLiteral()
+    {
+        var metadata = new TypeMetadata
+        {
+            Type = "enum",
+            Values = ["1:1", "16:9", "16-9"]
+        };
+
+        var (type, _) = WorkflowVlTypeMapping.GetInputTypeAndDefault(metadata);
+        Assert.True(typeof(global::VL.Lib.Collections.IDynamicEnum).IsAssignableFrom(type));
+    }
+
+    [Fact]
+    public void DynamicWorkflowEnum_OutputRestoresWireSelection()
+    {
+        var metadata = new TypeMetadata
+        {
+            Type = "enum",
+            TypeName = "AspectRatio",
+            Values = ["1:1", "16:9"]
+        };
+        var (type, _) = WorkflowVlTypeMapping.GetTypeAndDefault(metadata);
+
+        var converted = WorkflowNodeBase.ConvertNodeToolValueToExpectedType(
+            NodeToolValue.From("16:9"),
+            type);
+        var dynamicEnum = Assert.IsAssignableFrom<IDynamicEnum>(converted);
+
+        Assert.Equal("16:9", dynamicEnum.Value);
+        Assert.Equal("16:9", VlValueConversion.NormalizeForTransport(converted));
+    }
+
+    [Fact]
+    public void DynamicWorkflowEnum_JsonDefaultRestoresWireSelection()
+    {
+        var metadata = new TypeMetadata
+        {
+            Type = "enum",
+            TypeName = "Measure",
+            Values = ["characters", "words", "lines"]
+        };
+        var (type, fallback) =
+            WorkflowVlTypeMapping.GetInputTypeAndDefault(metadata);
+        using var document = JsonDocument.Parse("\"words\"");
+
+        var converted = VlValueConversion.ConvertOrFallback(
+            document.RootElement.Clone(),
+            type,
+            fallback);
+
+        Assert.Equal(
+            "words",
+            Assert.IsAssignableFrom<IDynamicEnum>(converted).Value);
+    }
+
+    [Fact]
+    public void WorkflowTupleAndBytes_UseNativeVlTypes()
+    {
+        var tuple = new TypeMetadata
+        {
+            Type = "tuple",
+            TypeArgs = [new TypeMetadata { Type = "int" }]
+        };
+
+        Assert.Equal(
+            typeof(Spread<int>),
+            WorkflowVlTypeMapping.GetTypeAndDefault(tuple).Type);
+        Assert.Equal(
+            typeof(byte[]),
+            WorkflowVlTypeMapping.GetTypeAndDefault(
+                new TypeMetadata { Type = "bytes" }).Type);
+    }
+
+    [Theory]
+    [InlineData("file")]
+    [InlineData("file_path")]
+    public void WorkflowFileInput_UsesNativeVlPath(string typeName)
+    {
+        var (type, defaultValue) =
+            WorkflowVlTypeMapping.GetInputTypeAndDefault(
+                new TypeMetadata { Type = typeName });
+
+        Assert.Equal(typeof(VlPath), type);
+        Assert.IsType<VlPath>(defaultValue);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task RepeatedSkImageAdaptation_ReusesEncodedBytes()
+    {
+        using var bitmap = new SKBitmap(4, 4);
+        using var image = SKImage.FromBitmap(bitmap);
+
+        var first = Assert.IsType<byte[]>(
+            await VlMediaInputAdapter.AdaptValueAsync(
+                "image",
+                "image",
+                image,
+                CancellationToken.None));
+        var second = Assert.IsType<byte[]>(
+            await VlMediaInputAdapter.AdaptValueAsync(
+                "image",
+                "image",
+                image,
+                CancellationToken.None));
+
+        Assert.Same(first, second);
+        Assert.NotEmpty(first);
+    }
+
     [Fact]
     public void StructuredTypeName_ResolvesGeneratedClrType()
     {
@@ -60,28 +208,6 @@ public class WorkflowVlTypeMappingTests
 
         Assert.Equal("call-1", result.id);
         Assert.Equal("tool_result", result.type?.ToString());
-    }
-
-    [Fact]
-    public void ChunkStream_AppliesAppendReplaceAndEmptyDoneSemantics()
-    {
-        var buffers = new Dictionary<string, StringBuilder>(StringComparer.Ordinal);
-
-        Assert.True(WorkflowNodeBase.TryAccumulateChunk(
-            buffers, "text", Chunk("hel", "append"), out var first));
-        Assert.Equal("hel", first);
-
-        Assert.True(WorkflowNodeBase.TryAccumulateChunk(
-            buffers, "text", Chunk("lo", "append"), out var appended));
-        Assert.Equal("hello", appended);
-
-        Assert.True(WorkflowNodeBase.TryAccumulateChunk(
-            buffers, "text", Chunk("world", "replace"), out var replaced));
-        Assert.Equal("world", replaced);
-
-        Assert.True(WorkflowNodeBase.TryAccumulateChunk(
-            buffers, "text", Chunk("", "append", done: true), out var completed));
-        Assert.Equal("world", completed);
     }
 
     [Theory]
@@ -220,7 +346,7 @@ public class WorkflowVlTypeMappingTests
 
         try
         {
-            var converted = await WorkflowNodeBase.ConvertMediaInputAsync(
+            var converted = await new MediaInputPreparer().PrepareAsync(
                 "audio",
                 "audio",
                 new VlPath(filePath),
@@ -329,88 +455,6 @@ public class WorkflowVlTypeMappingTests
     }
 
     [Fact]
-    public void ImagePayload_AcceptsImageRefBase64Data()
-    {
-        var value = NodeToolValue.From(new Dictionary<string, object?>
-        {
-            ["type"] = "ImageRef",
-            ["uri"] = "",
-            ["data"] = Convert.ToBase64String(new byte[] { 1, 2, 3, 4 })
-        });
-
-        Assert.True(WorkflowNodeBase.TryExtractImageBytes(value, out var bytes));
-        Assert.Equal(new byte[] { 1, 2, 3, 4 }, bytes);
-    }
-
-    [Fact]
-    public void ImagePayload_AcceptsDataUriInSingletonTerminalList()
-    {
-        var value = NodeToolValue.From(new object[]
-        {
-            new Dictionary<string, object?>
-            {
-                ["type"] = "image",
-                ["uri"] = "data:image/png;base64,iVBORw0KGgo=",
-                ["data"] = null
-            }
-        });
-
-        Assert.True(WorkflowNodeBase.TryExtractImageBytes(value, out var bytes));
-        Assert.Equal(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }, bytes);
-    }
-
-    [Fact]
-    public void ImagePayload_ExposesRelativeStorageUri()
-    {
-        var value = NodeToolValue.From(new object[]
-        {
-            new Dictionary<string, object?>
-            {
-                ["type"] = "ImageRef",
-                ["uri"] = "/api/storage/roundtrip.png",
-                ["data"] = null
-            }
-        });
-
-        Assert.True(WorkflowNodeBase.TryExtractImageUri(value, out var uri));
-        Assert.Equal("/api/storage/roundtrip.png", uri);
-    }
-
-    [Fact]
-    public void ImagePayload_UsesAssetIdWhenUriIsEmpty()
-    {
-        var value = NodeToolValue.From(new Dictionary<string, object?>
-        {
-            ["type"] = "image",
-            ["uri"] = "",
-            ["asset_id"] = "asset-123"
-        });
-
-        Assert.True(WorkflowNodeBase.TryExtractImageUri(value, out var uri));
-        Assert.Equal("asset:asset-123", uri);
-    }
-
-    [Theory]
-    [InlineData("asset:asset-123", "asset-123")]
-    [InlineData("asset://asset-123", "asset-123")]
-    [InlineData("asset:///asset-123", "asset-123")]
-    [InlineData("asset://asset-123.png", "asset-123.png")]
-    public void AssetImageUri_ExposesStorageKey(string uri, string expectedId)
-    {
-        Assert.True(WorkflowNodeBase.TryExtractAssetKey(uri, out var assetKey));
-        Assert.Equal(expectedId, assetKey);
-    }
-
-    [Fact]
-    public void AssetImageUri_MapsToCurrentStorageEndpoint()
-    {
-        var uri = WorkflowNodeBase.ResolveImageUri("asset://asset-123.png");
-
-        Assert.NotNull(uri);
-        Assert.Equal("/api/storage/asset-123.png", uri.AbsolutePath);
-    }
-
-    [Fact]
     public void LatchedWorkflowOutputs_AreReappliedAfterVlResetsValueTypes()
     {
         var count = new WorkflowNodeBase.InternalPin("count", typeof(int), 0);
@@ -458,19 +502,4 @@ public class WorkflowVlTypeMappingTests
                 consecutiveEmptySnapshots));
     }
 
-    private static ExecutionOutputUpdate Chunk(string content, string disposition, bool done = false)
-        => new(
-            NodeId: "output-node",
-            NodeName: "text",
-            OutputName: "text",
-            OutputType: "chunk",
-            Value: NodeToolValue.From(new Dictionary<string, object>
-            {
-                ["type"] = "chunk",
-                ["content"] = content
-            }),
-            Metadata: new Dictionary<string, NodeToolValue>(),
-            ReceivedAt: DateTimeOffset.UtcNow,
-            Disposition: disposition,
-            Done: done);
 }

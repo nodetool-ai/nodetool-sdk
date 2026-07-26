@@ -37,6 +37,30 @@ public class MessagePackWebSocketClientContractTests
     }
 
     [Fact]
+    public void RunJobRequest_SerializesExplicitTransientExecutionOptions()
+    {
+        var options = MessagePackSerializerOptions.Standard.WithResolver(
+            CompositeResolver.Create(
+                ContractlessStandardResolver.Instance,
+                StandardResolver.Instance));
+        var wireOptions = NodeToolExecutionClient.CreateRunJobExecutionOptions(
+            new WorkflowExecutionOptions(
+                WorkflowPersistence.Session,
+                WorkflowEventDetail.Outputs,
+                WorkflowAssetPersistence.Temporary));
+        var payload = MessagePackSerializer.Serialize(
+            new RunJobRequest { ExecutionOptions = wireOptions },
+            options);
+        var map = MessagePackSerializer.Deserialize<Dictionary<string, object?>>(payload, options);
+        var executionOptions = Assert.IsType<Dictionary<object, object?>>(
+            map["execution_options"]);
+
+        Assert.Equal("session", executionOptions["persistence"]);
+        Assert.Equal("outputs", executionOptions["event_detail"]);
+        Assert.Equal("temporary", executionOptions["asset_persistence"]);
+    }
+
+    [Fact]
     public void RequestEnvelope_PutsCorrelationIdAtTheTopLevel()
     {
         var data = new Dictionary<string, object?> { ["limit"] = 25 };

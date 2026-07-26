@@ -72,14 +72,16 @@ namespace Nodetool.SDK.VL.Nodes
                 "Boolean input - set to true (rising edge) to cancel the current execution.\n\n"
                 + "- If the workflow is not running, this does nothing.\n"
                 + "- Cancellation is best-effort: the server may take a moment to stop.\n"
-                + "- Output pins keep their last values."));
+                + "- Output pins keep their last values.",
+                isVisible: ExecutionPinVisibility.IsInputVisible(CancelInputName)));
 
             inputPins.Add(new PinDescription(AutoRunInputName, typeof(bool), false,
                 "🔁 Execute on input change",
                 "When enabled, this workflow automatically executes whenever any *workflow input pin* changes.\n\n"
                 + "- This watches workflow data pins (not execution-control pins).\n"
                 + "- Useful for chaining workflows and building autorun patches.\n"
-                + "- If an input changes while a run is active, behavior depends on RestartOnChange."));
+                + "- If an input changes while a run is active, behavior depends on RestartOnChange.",
+                isVisible: ExecutionPinVisibility.IsInputVisible(AutoRunInputName)));
 
             inputPins.Add(new PinDescription(RestartOnChangeInputName, typeof(bool), false,
                 "♻️ Restart on input change",
@@ -89,11 +91,13 @@ namespace Nodetool.SDK.VL.Nodes
                 + "- the workflow restarts immediately with the latest inputs.\n\n"
                 + "If false:\n"
                 + "- the workflow finishes the current run, then reruns once.\n\n"
-                + "Tip: enable this for interactive tweaking. Leave it off when the workflow is expensive or you prefer stable completion."));
+                + "Tip: enable this for interactive tweaking. Leave it off when the workflow is expensive or you prefer stable completion.",
+                isVisible: ExecutionPinVisibility.IsInputVisible(RestartOnChangeInputName)));
 
             inputPins.Add(new PinDescription(ExecutionTimeoutSecondsInputName, typeof(int), 0,
                 "Execution timeout override",
-                "Maximum duration of this workflow run in seconds. Use 0 to inherit the default from the Nodetool Connect node."));
+                "Maximum duration of this workflow run in seconds. Use 0 to inherit the default from the Nodetool Connect node.",
+                isVisible: ExecutionPinVisibility.IsInputVisible(ExecutionTimeoutSecondsInputName)));
 
             // Add workflow input pins
             foreach (var property in _workflow.GetInputProperties())
@@ -122,7 +126,8 @@ namespace Nodetool.SDK.VL.Nodes
 
             outputPins.Add(new PinDescription(ErrorOutputName, typeof(string), "",
                 "❌ Error message",
-                "Contains error details if execution fails, empty string if successful"));
+                "Contains error details if execution fails, empty string if successful",
+                isVisible: ExecutionPinVisibility.IsOutputVisible(ErrorOutputName)));
 
             outputPins.Add(new PinDescription(DebugOutputName, typeof(string), "",
                 "🪵 Debug (last updates)",

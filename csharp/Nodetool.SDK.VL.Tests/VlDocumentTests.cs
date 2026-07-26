@@ -1,6 +1,8 @@
 using NUnit.Framework;
+using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.Loader;
+using System.Xml.Linq;
 using VL.TestFramework;
 
 namespace Nodetool.SDK.VL.Tests;
@@ -37,9 +39,77 @@ public sealed class VlDocumentTests
         AssemblyLoadContext.Default.Resolving -= ResolveFromVvvv;
     }
 
-    [TestCase("vvvv/VL.Nodetool.vl")]
-    [TestCase("vvvv/help/Nodetool_Help.vl")]
-    public async Task DocumentCompilesWithoutErrors(string relativePath)
+    [Test]
+    public Task PrimaryDocumentCompilesWithoutErrors()
+        => CompileDocumentAsync("vvvv/VL.Nodetool.vl");
+
+    [Test]
+    public Task HelpDocumentCompilesWithoutErrors()
+        => CompileDocumentAsync("vvvv/help/Nodetool_Help.vl");
+
+    [Test]
+    public async Task PackagedDocumentCompilesFromIsolatedRepository()
+    {
+        var package = Directory
+            .EnumerateFiles(
+                Path.Combine(_repoRoot, "vvvv", "deployment", "out"),
+                "VL.Nodetool.*.nupkg")
+            .OrderByDescending(File.GetLastWriteTimeUtc)
+            .FirstOrDefault();
+        if (package is null)
+        {
+            Assert.Ignore(
+                "No packed VL.Nodetool package is available. Run " +
+                "vvvv/deployment/pack-and-verify.ps1 first.");
+            return;
+        }
+
+        var isolatedRoot = Path.Combine(
+            TestContext.CurrentContext.WorkDirectory,
+            ".vl-nodetool-package");
+        if (Directory.Exists(isolatedRoot))
+            Directory.Delete(isolatedRoot, recursive: true);
+        Directory.CreateDirectory(isolatedRoot);
+        ZipFile.ExtractToDirectory(package, isolatedRoot);
+        var documentPath = Path.Combine(
+            isolatedRoot,
+            "VL.Nodetool.vl");
+        Assert.That(
+            File.Exists(documentPath),
+            Is.True,
+            $"Package document is missing: {documentPath}");
+        var document = XDocument.Load(documentPath);
+        var factoryLocations = document
+            .Descendants()
+            .Where(element =>
+                element.Name.LocalName == "NodeFactoryDependency")
+            .Select(element => (string?)element.Attribute("Location"))
+            .Where(location => !string.IsNullOrWhiteSpace(location))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        Assert.That(
+            factoryLocations,
+            Is.EqualTo(new[]
+            {
+                "Nodetool",
+                "Nodetool.Nodes",
+                "Nodetool.Workflows"
+            }));
+
+        using var environment = TestEnvironmentLoader.Load(
+            Path.Combine(_vvvvDirectory, "vvvv.exe"),
+            new[] { isolatedRoot },
+            preCompilePackages: false);
+        await environment.LoadAndTestAsync(
+            documentPath,
+            runEntryPoint: false);
+
+        // Managed assemblies loaded by vvvv remain locked on Windows until
+        // this test process exits. The next run removes this fixed directory
+        // before extracting the new package, so artifacts do not accumulate.
+    }
+
+    private async Task CompileDocumentAsync(string relativePath)
     {
         var documentPath = Path.Combine(
             _repoRoot,

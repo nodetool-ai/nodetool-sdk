@@ -121,25 +121,54 @@ public class NodeMetadataResponse
     public List<string> RequiredRuntimes { get; set; } = new();
 
     [JsonPropertyName("supports_dynamic_inputs")]
+    [JsonConverter(typeof(NullToFalseBooleanConverter))]
     public bool SupportsDynamicInputs { get; set; }
 
     [JsonPropertyName("supports_dynamic_outputs")]
+    [JsonConverter(typeof(NullToFalseBooleanConverter))]
     public bool SupportsDynamicOutputs { get; set; }
 
     [JsonPropertyName("is_streaming_input")]
+    [JsonConverter(typeof(NullToFalseBooleanConverter))]
     public bool IsStreamingInput { get; set; }
 
     [JsonPropertyName("is_streaming_output")]
+    [JsonConverter(typeof(NullToFalseBooleanConverter))]
     public bool IsStreamingOutput { get; set; }
 
     [JsonPropertyName("hidden")]
+    [JsonConverter(typeof(NullToFalseBooleanConverter))]
     public bool Hidden { get; set; }
 
     [JsonPropertyName("deprecated")]
+    [JsonConverter(typeof(NullToFalseBooleanConverter))]
     public bool Deprecated { get; set; }
 
     [JsonPropertyName("replaced_by")]
     public string? ReplacedBy { get; set; }
+}
+
+/// <summary>
+/// Python-backed node metadata can encode an unset optional capability as
+/// JSON null. Public SDK consumers see the same false default as they do when
+/// the capability field is omitted.
+/// </summary>
+internal sealed class NullToFalseBooleanConverter : JsonConverter<bool>
+{
+    public override bool Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        return reader.TokenType switch
+        {
+            JsonTokenType.True => true,
+            JsonTokenType.False or JsonTokenType.Null => false,
+            _ => throw new JsonException($"Expected a boolean or null, got {reader.TokenType}.")
+        };
+    }
+
+    public override void Write(Utf8JsonWriter writer, bool value, JsonSerializerOptions options)
+    {
+        writer.WriteBooleanValue(value);
+    }
 }
 
 /// <summary>
@@ -408,15 +437,6 @@ public class JobResponse
 }
 
 /// <summary>
-/// Response model for workflow execution
-/// </summary>
-public class WorkflowExecutionRequest
-{
-    [JsonPropertyName("params")]
-    public Dictionary<string, object> Params { get; set; } = new();
-}
-
-/// <summary>
 /// Response model for workflow list endpoint
 /// </summary>
 public class WorkflowListResponse
@@ -426,16 +446,4 @@ public class WorkflowListResponse
 
     [JsonPropertyName("next")]
     public string? Next { get; set; }
-}
-
-/// <summary>
-/// Request model for node execution
-/// </summary>
-public class NodeExecutionRequest
-{
-    [JsonPropertyName("node_type")]
-    public string NodeType { get; set; } = string.Empty;
-    
-    [JsonPropertyName("inputs")]
-    public Dictionary<string, object> Inputs { get; set; } = new();
 }

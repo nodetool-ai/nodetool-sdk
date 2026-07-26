@@ -1,15 +1,18 @@
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 using Nodetool.SDK.Api;
 using Nodetool.SDK.Configuration;
+using Nodetool.SDK.Diagnostics;
 using Nodetool.SDK.Execution;
 using Nodetool.SDK.Types;
 using Nodetool.SDK.Values;
 using Nodetool.SDK.WebSocket;
+using Nodetool.SDK.Workflows;
 
 namespace Nodetool.SDK.TestConsole;
 
 /// <summary>
-/// Simple test console to validate the NodeTool type registry system.
+/// Simple workflow-only console consumer of the portable NodeTool SDK.
 /// </summary>
 class Program
 {
@@ -38,7 +41,7 @@ class Program
 
         try
         {
-            // Initialize type registries
+            // Workflow execution does not require the generated node catalog.
             var typeRegistry = new NodeToolTypeRegistry(loggerFactory.CreateLogger<NodeToolTypeRegistry>());
             var enumRegistry = new EnumRegistry(loggerFactory.CreateLogger<EnumRegistry>());
             var typeLookup = new TypeLookupService(typeRegistry, enumRegistry, loggerFactory.CreateLogger<TypeLookupService>());
@@ -90,7 +93,9 @@ class Program
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "❌ Test failed with error");
+            logger.LogError(
+                "❌ Test failed: {Error}",
+                NodeToolDiagnosticRedactor.RedactText(ex.Message));
         }
     }
 
@@ -102,7 +107,9 @@ class Program
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "NodeTool SDK smoke test failed");
+            logger.LogError(
+                "NodeTool SDK smoke test failed: {Error}",
+                NodeToolDiagnosticRedactor.RedactText(ex.Message));
             Environment.ExitCode = 1;
         }
     }
@@ -183,7 +190,9 @@ class Program
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "   ❌ WebSocket message test failed");
+            logger.LogError(
+                "   ❌ WebSocket message test failed: {Error}",
+                NodeToolDiagnosticRedactor.RedactText(ex.Message));
         }
 
         return Task.CompletedTask;
@@ -240,7 +249,9 @@ class Program
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "   ❌ MessagePack serialization test failed");
+            logger.LogError(
+                "   ❌ MessagePack serialization test failed: {Error}",
+                NodeToolDiagnosticRedactor.RedactText(ex.Message));
         }
 
         return Task.CompletedTask;
@@ -257,7 +268,9 @@ class Program
         }
 
         logger.LogInformation("🔍 NodeTool SDK Fetch Test (WebSocket)");
-        logger.LogInformation("  WS: {Ws}", ws);
+        logger.LogInformation(
+            "  WS: {Ws}",
+            NodeToolDiagnosticRedactor.RedactText(ws));
 
         var options = new NodeToolClientOptions { WorkerWebSocketUrl = new Uri(ws) };
         using var exec = new NodeToolExecutionClient(options, logger: loggerFactory.CreateLogger<NodeToolExecutionClient>());
@@ -282,16 +295,30 @@ class Program
             logger.LogInformation("  {NodeType}: {Title}", singleNode?.NodeType, singleNode?.Title);
         }
 
-        logger.LogInformation("--- list_workflows ---");
-        var workflows = await exec.GetWorkflowsAsync();
-        logger.LogInformation("Got {Count} workflows", workflows.Count);
-        foreach (var w in workflows)
-            logger.LogInformation("  [{Id}] {Name}", w.Id, w.Name);
+        logger.LogInformation("--- workflow catalog ---");
+        using var catalog = new WorkflowCatalog(
+            exec,
+            ws,
+            TimeSpan.Zero,
+            logger: loggerFactory.CreateLogger<WorkflowCatalog>());
+        var workflowSnapshot = await catalog.RefreshAsync();
+        logger.LogInformation(
+            "Got {Count} workflow descriptors ({CacheHits} cached, {Skipped} skipped)",
+            workflowSnapshot.Workflows.Count,
+            workflowSnapshot.CacheHitCount,
+            workflowSnapshot.SkippedCount);
+        foreach (var workflow in workflowSnapshot.Workflows)
+            logger.LogInformation(
+                "  [{Id}] {Name}: {Inputs} inputs, {Outputs} outputs",
+                workflow.Id,
+                workflow.Name,
+                workflow.Inputs.Count,
+                workflow.Outputs.Count);
 
-        if (workflows.Count > 0)
+        if (workflowSnapshot.Workflows.Count > 0)
         {
             logger.LogInformation("--- get_workflow ---");
-            var single = await exec.GetWorkflowAsync(workflows[0].Id);
+            var single = await exec.GetWorkflowAsync(workflowSnapshot.Workflows[0].Id);
             logger.LogInformation("  {Name} — inputs: {InputCount}, graph nodes: {NodeCount}",
                 single?.Name,
                 single?.InputSchema?.Properties?.Count ?? 0,
@@ -331,7 +358,9 @@ class Program
         }
 
         logger.LogInformation("🚀 NodeTool SDK Workflow Runner (WebSocket)");
-        logger.LogInformation("  WS:       {Ws}", ws);
+        logger.LogInformation(
+            "  WS:       {Ws}",
+            NodeToolDiagnosticRedactor.RedactText(ws));
         logger.LogInformation("  Workflow: {Workflow}", workflowName);
 
         var options = new NodeToolClientOptions
@@ -348,7 +377,13 @@ class Program
             inputs["string_input_1"] = "hello from c#";
         }
 
-        logger.LogInformation("Sending inputs: {Inputs}", string.Join(", ", inputs.Select(kvp => $"{kvp.Key}={kvp.Value}")));
+        logger.LogInformation(
+            "Sending inputs: {Inputs}",
+            NodeToolDiagnosticRedactor.RedactWorkflowInputs(
+                inputs.ToDictionary(
+                    pair => pair.Key,
+                    pair => (object?)pair.Value,
+                    StringComparer.Ordinal)));
 
         using var exec = new NodeToolExecutionClient(options, logger: loggerFactory.CreateLogger<NodeToolExecutionClient>());
         if (!await exec.ConnectAsync())
@@ -357,63 +392,106 @@ class Program
             return;
         }
 
-        IExecutionSession session;
-        if (seededDefault)
+        using var catalog = new WorkflowCatalog(
+            exec,
+            scope: ws,
+            logger: loggerFactory.CreateLogger<WorkflowCatalog>());
+        var catalogSnapshot = await catalog.RefreshAsync(force: true);
+        var workflow = catalogSnapshot.Workflows.FirstOrDefault(candidate =>
+            string.Equals(
+                candidate.Name,
+                workflowName,
+                StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(
+                candidate.Id,
+                workflowName,
+                StringComparison.Ordinal));
+        if (workflow == null)
         {
-            // Demonstrate the convenience overload.
-            session = await exec.ExecuteWorkflowByNameAsync(workflowName, "string_input_1", "hello from c#");
+            logger.LogError(
+                "Workflow '{Workflow}' was not found in {Count} descriptors.",
+                workflowName,
+                catalogSnapshot.Workflows.Count);
+            await exec.DisconnectAsync();
+            return;
         }
-        else
+
+        await using var controller = new WorkflowExecutionController(
+            exec,
+            workflow.Outputs);
+        var loggedOutputs = new Dictionary<string, DateTimeOffset>(
+            StringComparer.Ordinal);
+        var lastState = WorkflowExecutionState.Idle;
+        controller.SnapshotChanged += snapshot =>
         {
-            session = await exec.ExecuteWorkflowByNameAsync(workflowName, inputs);
-        }
-        session.OutputReceived += update =>
-        {
-            var renderedValue = update.Value.Kind == NodeToolValueKind.String
-                ? (update.Value.AsString() ?? "")
-                : update.Value.ToJsonString();
-            logger.LogInformation("output_update: node={NodeName} output={OutputName} type={OutputType} value={Value}",
-                update.NodeName, update.OutputName, update.OutputType, renderedValue);
-        };
-        session.PreviewReceived += update =>
-        {
-            logger.LogInformation("preview_update: node={NodeId} value={Value}", update.NodeId, update.Value.TypeDiscriminator ?? update.Value.AsString() ?? update.Value.ToJsonString());
-        };
-        session.NodeUpdated += update =>
-        {
-            if (!string.IsNullOrWhiteSpace(update.error))
+            if (snapshot.State != lastState)
             {
-                logger.LogWarning("node_update error: node={NodeName} error={Error}", update.node_name, update.error);
+                lastState = snapshot.State;
+                logger.LogInformation(
+                    "state={State} progress={Progress:P0}",
+                    snapshot.State,
+                    snapshot.Progress);
+            }
+
+            foreach (var output in snapshot.Outputs.Values)
+            {
+                if (loggedOutputs.TryGetValue(
+                        output.PublicName,
+                        out var loggedAt) &&
+                    loggedAt >= output.UpdatedAt)
+                {
+                    continue;
+                }
+                loggedOutputs[output.PublicName] = output.UpdatedAt;
+                var renderedValue =
+                    output.Value.Kind == NodeToolValueKind.String
+                        ? output.Value.AsString() ?? ""
+                        : output.Value.ToJsonString();
+                logger.LogInformation(
+                    "output: name={Name} streaming={Streaming} done={Done} value={Value}",
+                    output.PublicName,
+                    output.IsStreaming,
+                    output.Done,
+                    renderedValue);
             }
         };
-        session.Completed += (ok, msg) =>
-        {
-            logger.LogInformation("completed: ok={Ok} message={Message}", ok, msg ?? "");
-        };
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSec));
-        var ok = await session.WaitForCompletionAsync(cts.Token);
-        if (!ok)
-        {
-            logger.LogWarning("Session did not complete within {Timeout}s (or was cancelled).", timeoutSec);
-        }
+        await controller.StartAsync(new WorkflowInvocation(
+            workflow.Id,
+            inputs.ToDictionary(
+                pair => pair.Key,
+                pair => (object?)pair.Value,
+                StringComparer.Ordinal),
+            TimeSpan.FromSeconds(timeoutSec)));
+        await controller.WaitForTerminalAsync();
 
-        var outputs = session.GetLatestOutputs();
-        if (outputs.Count > 0)
+        var terminal = controller.Snapshot;
+        if (terminal.Outputs.Count > 0)
         {
-            logger.LogInformation("Final outputs ({Count}):", outputs.Count);
-            foreach (var kvp in outputs.OrderBy(k => k.Key, StringComparer.Ordinal))
+            logger.LogInformation("Final outputs ({Count}):", terminal.Outputs.Count);
+            foreach (var output in terminal.Outputs.Values.OrderBy(
+                         output => output.PublicName,
+                         StringComparer.Ordinal))
             {
-                // Avoid "System.Collections.Generic.Dictionary`2" noise by preferring JSON for non-strings.
-                var rendered = kvp.Value.Kind == NodeToolValueKind.String
-                    ? (kvp.Value.AsString() ?? "")
-                    : kvp.Value.ToJsonString();
-                logger.LogInformation("  {Key} = {Value}", kvp.Key, rendered);
+                var rendered = output.Value.Kind == NodeToolValueKind.String
+                    ? output.Value.AsString() ?? ""
+                    : output.Value.ToJsonString();
+                logger.LogInformation(
+                    "  {Name} = {Value}",
+                    output.PublicName,
+                    rendered);
             }
         }
         else
         {
             logger.LogInformation("No outputs captured.");
+        }
+        if (terminal.State != WorkflowExecutionState.Completed)
+        {
+            logger.LogWarning(
+                "Workflow ended in {State}: {Error}",
+                terminal.State,
+                terminal.Error ?? "");
         }
 
         await exec.DisconnectAsync();
@@ -451,9 +529,54 @@ class Program
             var val = token[(eq + 1)..];
             if (key.Length == 0) continue;
 
-            result[key] = val;
+            result[key] = ParseInputValue(val);
         }
 
         return result;
     }
+
+    private static object ParseInputValue(string value)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(value);
+            return JsonElementToObject(document.RootElement) ?? "";
+        }
+        catch (JsonException)
+        {
+            if (value.Length >= 2 &&
+                value[0] == '[' &&
+                value[^1] == ']')
+            {
+                return value[1..^1]
+                    .Split(',', StringSplitOptions.TrimEntries |
+                                StringSplitOptions.RemoveEmptyEntries)
+                    .Select(ParseInputValue)
+                    .ToArray();
+            }
+            return value;
+        }
+    }
+
+    private static object? JsonElementToObject(JsonElement value)
+        => value.ValueKind switch
+        {
+            JsonValueKind.Object => value.EnumerateObject().ToDictionary(
+                property => property.Name,
+                property => JsonElementToObject(property.Value),
+                StringComparer.Ordinal),
+            JsonValueKind.Array => value.EnumerateArray()
+                .Select(JsonElementToObject)
+                .ToArray(),
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Number when value.TryGetInt32(out var integer)
+                => integer,
+            JsonValueKind.Number when value.TryGetInt64(out var longInteger)
+                => longInteger,
+            JsonValueKind.Number => value.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null or JsonValueKind.Undefined => null,
+            _ => value.ToString()
+        };
 }

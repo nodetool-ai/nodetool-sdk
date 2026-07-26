@@ -9,8 +9,8 @@ The first release target is intentionally narrow:
 
 - NodeTool protocol/package version: `0.7.0-rc.32`
 - NodeTool SDK workflow contract: `workflow-interface` version `1`
-- C# SDK assemblies: `0.1.1`
-- VL package: `VL.Nodetool` `0.1.5`
+- C# SDK assemblies: `0.1.6`
+- VL package: `VL.Nodetool` `0.1.6`
 - vvvv gamma: `7.1`
 - `VL.Core`: `2025.7.1`
 - .NET: `8.0`
@@ -27,18 +27,23 @@ From Git Bash:
 
 ```bash
 cd /m/P/NODETOOL/____REPOS____/nodetool
-NODETOOL_ENABLE_SDK_WORKFLOW_INTERFACE_V1=1 npm run dev
+npm run dev
 ```
 
 To run only the backend:
 
 ```bash
 cd /m/P/NODETOOL/____REPOS____/nodetool
-NODETOOL_ENABLE_SDK_WORKFLOW_INTERFACE_V1=1 npm run dev:server
+npm run dev:server
 ```
 
 Confirm that `http://127.0.0.1:7777/health` responds before opening a test
 patch. Only one process may listen on port 7777.
+
+SDK workflow-interface and lifecycle v1 are enabled by default. The
+`NODETOOL_DISABLE_SDK_WORKFLOW_INTERFACE_V1=1` and
+`NODETOOL_DISABLE_SDK_LIFECYCLE_V1=1` environment variables are emergency
+server-side kill switches, not normal test startup settings.
 
 ## Build the SDK
 
@@ -60,6 +65,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass \
   -File ./regen-and-verify.ps1 \
   -SkipGeneration -SkipGitDiff -IncludeVL -IncludeVLTests -VerifyVLPackage
 ```
+
+The release command builds `VL.Nodetool` before running the headless suite.
+Besides the source and help documents, the suite extracts the actual `.nupkg`
+into an isolated repository and compiles its package-relative document. This
+catches missing package entries and accidental source-tree assembly paths.
 
 The primary vvvv executable used for the release check is:
 

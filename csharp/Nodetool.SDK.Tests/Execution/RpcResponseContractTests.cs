@@ -82,12 +82,28 @@ public class RpcResponseContractTests
             }
         };
 
-        var error = Assert.Throws<WorkflowInterfaceUnavailableException>(() =>
+        var error = Assert.Throws<SdkApiException>(() =>
             client.DeserializeRequiredResult<WorkflowInterfaceResponse>(
                 raw,
                 "get_workflow_interface"));
 
+        Assert.Equal(SdkApiTransport.WebSocket, error.Transport);
+        Assert.True(error.Retryable);
         Assert.Equal("SERVICE_UNAVAILABLE", error.ApiCode);
+    }
+
+    [Fact]
+    public void ExecutionTargetAnnouncement_IsRetainedForPreflight()
+    {
+        using var client = CreateClient();
+
+        client.RouteExecutionMessage(new Dictionary<string, object?>
+        {
+            ["type"] = "sdk_execution_target",
+            ["runner_id"] = "runner-1"
+        });
+
+        Assert.Equal("runner-1", client.ExecutionTargetId);
     }
 
     private static NodeToolExecutionClient CreateClient()

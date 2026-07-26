@@ -1,5 +1,6 @@
 using System.Reflection;
 using Microsoft.Extensions.Logging;
+using Nodetool.SDK.Diagnostics;
 
 namespace Nodetool.SDK.Types;
 
@@ -75,7 +76,8 @@ public class EnumRegistry
             catch (ReflectionTypeLoadException ex)
             {
                 _logger.LogWarning("Failed to load enum types from assembly {Assembly}: {Error}", 
-                    assembly.FullName, ex.Message);
+                    assembly.FullName,
+                    NodeToolDiagnosticRedactor.RedactText(ex.Message));
             }
         }
 
@@ -302,4 +304,4 @@ public class EnumRegistry
             RegisterAllEnums();
         }
     }
-} 
+}

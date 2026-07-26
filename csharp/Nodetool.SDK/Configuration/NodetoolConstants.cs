@@ -11,11 +11,12 @@ public static class NodetoolConstants
     public static class Endpoints
     {
         public const string Health = "/api/health";
+        public const string SdkCapabilitiesV1 = "/api/sdk/v1/capabilities";
+        public const string SdkPreflightV1 = "/api/sdk/v1/preflight";
 
         // Node operations
         public const string NodesMetadata = "/api/nodes/metadata";
         public const string NodeTypeInventoryV1 = "/api/sdk/v1/node-types";
-        public const string NodeExecute = "/api/nodes/execute"; // NOT IMPLEMENTED
         
         // Workflow operations  
         /// <summary>No trailing slash — avoids 404 on servers that distinguish exact paths.</summary>
@@ -24,8 +25,6 @@ public static class NodetoolConstants
         public const string WorkflowSummariesV1 = "/api/sdk/v1/workflows";
         public const string WorkflowInterfaceV1 = "/api/workflows/{0}/interface?version=1";
         public const string WorkflowInterfacesV1 = "/api/sdk/v1/workflow-interfaces";
-        public const string WorkflowRun = "/api/workflows/{0}/run";
-        public const string WorkflowRunSyncPlus = "/api/workflows/{0}/run_sync_plus_fetch_outputs";
         
         // Asset operations
         public const string Assets = "/api/assets/";

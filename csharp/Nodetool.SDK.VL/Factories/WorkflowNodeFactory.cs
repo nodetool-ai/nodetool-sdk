@@ -66,10 +66,13 @@ namespace Nodetool.SDK.VL.Factories
         public static string CurrentApiStatusMessage => _apiStatusMessage;
         public static string CurrentProcessingSummary => _processingSummary;
 
-        public static void Configure(SynchronizationContext? synchronizationContext)
+        public static void Configure(
+            SynchronizationContext? synchronizationContext)
         {
             lock (_lock)
+            {
                 _synchronizationContext = synchronizationContext;
+            }
         }
 
         public static void RequestRefresh()
@@ -152,7 +155,7 @@ namespace Nodetool.SDK.VL.Factories
                 catch (AggregateException ex)
                 {
                     VlLog.Error(
-                        $"WorkflowNodeFactory: initial refresh failed: {ex.GetBaseException().Message}");
+                        $"WorkflowNodeFactory: initial refresh failed: {VlLog.SafeError(ex.GetBaseException())}");
                 }
             }
 
@@ -217,7 +220,7 @@ namespace Nodetool.SDK.VL.Factories
                     catch (Exception ex)
                     {
                         failedToProcessCount++;
-                        VlLog.Error($"WorkflowNodeFactory: error processing workflow '{workflow.Name}': {ex.Message}");
+                        VlLog.Error($"WorkflowNodeFactory: error processing workflow '{workflow.Name}': {VlLog.SafeError(ex)}");
                     }
                 }
 
@@ -233,7 +236,7 @@ namespace Nodetool.SDK.VL.Factories
                 {
                     _descriptionCache.Remove(removedId);
                 }
-                VlLog.Info(_processingSummary);
+                VlLog.Debug(_processingSummary);
 
                 try
                 {
@@ -291,16 +294,19 @@ namespace Nodetool.SDK.VL.Factories
                 }
                 catch (Exception ex)
                 {
-                    VlLog.Error($"WorkflowNodeFactory: error creating WorkflowAPIStatus node: {ex.Message}");
+                    VlLog.Error($"WorkflowNodeFactory: error creating WorkflowAPIStatus node: {VlLog.SafeError(ex)}");
                 }
 
-                return NodeBuilding.NewFactoryImpl(
+                var factory = NodeBuilding.NewFactoryImpl(
                     ImmutableArray.CreateRange(allDescriptions),
                     FactoryInvalidated);
+                if (_hasSuccessfulSnapshot)
+                    VlReadinessLog.MarkWorkflowFactoryResolved();
+                return factory;
             }
             catch (Exception ex)
             {
-                VlLog.Error($"WorkflowNodeFactory: factory build failed: {ex.GetType().Name}: {ex.Message}");
+                VlLog.Error($"WorkflowNodeFactory: factory build failed: {ex.GetType().Name}: {VlLog.SafeError(ex)}");
                 return NodeBuilding.NewFactoryImpl(
                     ImmutableArray<IVLNodeDescription>.Empty,
                     FactoryInvalidated);
@@ -360,6 +366,7 @@ namespace Nodetool.SDK.VL.Factories
                         var result = await FetchWorkflowMetadataAsync(cancellationToken)
                             .ConfigureAwait(false);
                         bool retainForConfirmation;
+                        var hadPublishedFactory = false;
                         lock (_lock)
                         {
                             if (generation != _resetGeneration)
@@ -378,6 +385,7 @@ namespace Nodetool.SDK.VL.Factories
                             }
                             else
                             {
+                                hadPublishedFactory = _factoryImpl is not null;
                                 consecutiveEmptySnapshots = result.Workflows.Count == 0
                                     ? consecutiveEmptySnapshots + 1
                                     : 0;
@@ -394,7 +402,7 @@ namespace Nodetool.SDK.VL.Factories
 
                         if (retainForConfirmation)
                         {
-                            VlLog.Info(
+                            VlLog.Debug(
                                 "WorkflowNodeFactory: ignored an unconfirmed empty discovery snapshot; "
                                 + "the current factory remains available.");
                             await Task.Delay(RetryDelay, cancellationToken).ConfigureAwait(false);
@@ -408,10 +416,18 @@ namespace Nodetool.SDK.VL.Factories
                             continue;
                         }
 
+                        VlReadinessLog.MarkWorkflowDiscovery(
+                            result.Workflows.Count,
+                            result.DiscoveryTransport);
                         VlLog.Debug(
                             $"WorkflowNodeFactory: {result.StatusMessage} via {result.DiscoveryTransport} "
                             + $"({result.Workflows.Count} workflows)");
-                        SignalFactoryInvalidated();
+                        // During the synchronous initial grace period there is no
+                        // published factory to invalidate. Posting here races the
+                        // caller that is about to build the first factory and can
+                        // make VL compile against two different pin layouts.
+                        if (hadPublishedFactory)
+                            SignalFactoryInvalidated();
                     }
                     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
@@ -479,7 +495,7 @@ namespace Nodetool.SDK.VL.Factories
                 }
                 catch (Exception ex)
                 {
-                    VlLog.Error($"WorkflowNodeFactory: invalidation failed: {ex.Message}");
+                    VlLog.Error($"WorkflowNodeFactory: invalidation failed: {VlLog.SafeError(ex)}");
                 }
             }
 
@@ -496,7 +512,7 @@ namespace Nodetool.SDK.VL.Factories
                 }
                 catch (Exception ex)
                 {
-                    VlLog.Error($"WorkflowNodeFactory: failed to post invalidation: {ex.Message}");
+                    VlLog.Error($"WorkflowNodeFactory: failed to post invalidation: {VlLog.SafeError(ex)}");
                 }
             }
 
@@ -517,28 +533,99 @@ namespace Nodetool.SDK.VL.Factories
                                   NodeToolClientProvider.IsConnected
                 ? NodeToolClientProvider.GetClient()
                 : null;
-            using var metadataService = new WorkflowMetadataService(
-                webSocketClient: webSocketClient);
+            var (metadataService, ownsMetadataService) =
+                ResolveMetadataService();
 
-            metadataService.Configure(new NodetoolOptions
+            try
             {
-                BaseUrl = apiBase,
-                ApiKey = NodeToolClientProvider.CurrentAuthToken
-            });
+                using var timeout =
+                    CancellationTokenSource.CreateLinkedTokenSource(
+                        cancellationToken);
+                timeout.CancelAfter(DiscoveryTimeout);
+                var apiClient = await NodeToolClientProvider
+                    .GetApiClientAsync(timeout.Token)
+                    .ConfigureAwait(false);
+                var options = new NodetoolOptions
+                {
+                    BaseUrl = apiBase,
+                    ApiKey = NodeToolClientProvider.CurrentAuthToken
+                };
+                try
+                {
+                    metadataService.Configure(
+                        apiClient,
+                        options,
+                        webSocketClient);
+                }
+                catch (ObjectDisposedException)
+                    when (!ownsMetadataService)
+                {
+                    metadataService =
+                        new WorkflowMetadataService();
+                    ownsMetadataService = true;
+                    metadataService.Configure(
+                        apiClient,
+                        options,
+                        webSocketClient);
+                }
 
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(DiscoveryTimeout);
-            var workflows = await metadataService
-                .FetchWorkflowMetadataAsync(timeout.Token)
-                .ConfigureAwait(false);
-            return new WorkflowFetchResult(
-                workflows?.ToImmutableList() ?? ImmutableList<WorkflowDetail>.Empty,
-                metadataService.StatusMessage,
-                metadataService.LastSuccessfulRefreshUtc,
-                metadataService.ServerVersion,
-                metadataService.InterfaceSource,
-                metadataService.LastError ?? "",
-                metadataService.DiscoveryTransport);
+                List<WorkflowDetail> workflows;
+                try
+                {
+                    workflows = await metadataService
+                        .FetchWorkflowMetadataAsync(timeout.Token)
+                        .ConfigureAwait(false);
+                }
+                catch (ObjectDisposedException)
+                    when (!ownsMetadataService)
+                {
+                    metadataService =
+                        new WorkflowMetadataService();
+                    ownsMetadataService = true;
+                    metadataService.Configure(
+                        apiClient,
+                        options,
+                        webSocketClient);
+                    workflows = await metadataService
+                        .FetchWorkflowMetadataAsync(timeout.Token)
+                        .ConfigureAwait(false);
+                }
+                return new WorkflowFetchResult(
+                    workflows?.ToImmutableList() ??
+                    ImmutableList<WorkflowDetail>.Empty,
+                    metadataService.StatusMessage,
+                    metadataService.LastSuccessfulRefreshUtc,
+                    metadataService.ServerVersion,
+                    metadataService.InterfaceSource,
+                    metadataService.LastError ?? "",
+                    metadataService.DiscoveryTransport);
+            }
+            finally
+            {
+                if (ownsMetadataService)
+                    metadataService.Dispose();
+            }
+        }
+
+        private static (
+            WorkflowMetadataService Service,
+            bool OwnsService) ResolveMetadataService()
+        {
+            try
+            {
+                var service =
+                    AppHost.CurrentOrGlobal.Services.GetService(
+                        typeof(WorkflowMetadataService))
+                    as WorkflowMetadataService;
+                if (service is { IsDisposed: false })
+                    return (service, false);
+            }
+            catch
+            {
+                // A design-time factory refresh can run without an AppHost.
+            }
+
+            return (new WorkflowMetadataService(), true);
         }
 
         /// <summary>
@@ -549,7 +636,7 @@ namespace Nodetool.SDK.VL.Factories
             var hasStaleWorkflows = _fetchedWorkflows.Count > 0;
             string errorCategory = "Unknown";
             string userGuidance = "";
-            _lastError = ex.Message;
+            _lastError = VlLog.SafeError(ex);
             
             // Categorize the error and provide specific guidance
             switch (ex)
@@ -574,13 +661,13 @@ namespace Nodetool.SDK.VL.Factories
                     
                 case System.Net.WebException webEx:
                     errorCategory = "Web Request Failed";
-                    _apiStatusMessage = $"🌐 Workflow Web Error: {webEx.Message}";
+                    _apiStatusMessage = $"🌐 Workflow Web Error: {VlLog.SafeError(webEx)}";
                     userGuidance = GetWorkflowNetworkErrorGuidance();
                     break;
                     
                 default:
                     errorCategory = "Workflow API Error";
-                    _apiStatusMessage = $"❌ Workflow Fetch Error: {ex.Message}";
+                    _apiStatusMessage = $"❌ Workflow Fetch Error: {VlLog.SafeError(ex)}";
                     userGuidance = "Check the console output for detailed error information.";
                     break;
             }
@@ -590,7 +677,9 @@ namespace Nodetool.SDK.VL.Factories
 
             // Log comprehensive error information
             // Keep default startup logs concise; show full troubleshooting only in verbose mode.
-            VlLog.Error($"Workflows API error ({errorCategory}): {_apiStatusMessage}");
+            VlReadinessLog.ReportError(
+                "workflow discovery",
+                $"{errorCategory}: {_apiStatusMessage}");
 
             if (VlLog.Verbose)
             {
@@ -606,10 +695,10 @@ namespace Nodetool.SDK.VL.Factories
                 Console.WriteLine("");
                 Console.WriteLine("🔧 Technical Details:");
                 Console.WriteLine($"   Error Type: {ex.GetType().Name}");
-                Console.WriteLine($"   Message: {ex.Message}");
+                Console.WriteLine($"   Message: {VlLog.SafeError(ex)}");
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"   Inner Error: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                    Console.WriteLine($"   Inner Error: {ex.InnerException.GetType().Name}: {VlLog.SafeError(ex.InnerException)}");
                 }
                 Console.WriteLine("");
                 Console.WriteLine("🔍 Troubleshooting Steps:");

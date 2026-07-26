@@ -351,8 +351,27 @@ public class RunJobRequest
     [Key("require_terminal_result")]
     public bool RequireTerminalResult { get; set; } = true;
 
+    [Key("execution_options")]
+    public RunJobExecutionOptions? ExecutionOptions { get; set; } = null;
+
     [Key("resource_limits")]
     public Dictionary<string, object>? ResourceLimits { get; set; } = null;
+}
+
+/// <summary>
+/// Wire representation of optional run-level overhead controls.
+/// </summary>
+[MessagePackObject]
+public sealed class RunJobExecutionOptions
+{
+    [Key("persistence")]
+    public string Persistence { get; set; } = "job";
+
+    [Key("event_detail")]
+    public string EventDetail { get; set; } = "full";
+
+    [Key("asset_persistence")]
+    public string AssetPersistence { get; set; } = "auto";
 }
 
 /// <summary>

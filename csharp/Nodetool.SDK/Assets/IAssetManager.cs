@@ -49,6 +49,24 @@ public interface IAssetManager : IDisposable
     Task<AssetRef> UploadAssetAsync(string localPath, string contentType, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Upload a stream as an asset. The caller retains ownership of the stream.
+    /// </summary>
+    Task<AssetRef> UploadAssetAsync(
+        string fileName,
+        Stream content,
+        string contentType,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Upload in-memory bytes as an asset.
+    /// </summary>
+    Task<AssetRef> UploadAssetAsync(
+        string fileName,
+        ReadOnlyMemory<byte> content,
+        string contentType,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Clear the entire cache.
     /// </summary>
     void ClearCache();

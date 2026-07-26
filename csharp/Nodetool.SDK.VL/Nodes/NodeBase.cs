@@ -262,7 +262,7 @@ namespace Nodetool.SDK.VL.Nodes
             }
             catch (Exception ex)
             {
-                _lastError = $"Update error: {ex.Message}";
+                _lastError = $"Update error: {VlLog.SafeError(ex)}";
                 _isRunning = false;
             }
         }
@@ -304,7 +304,9 @@ namespace Nodetool.SDK.VL.Nodes
                 AppendDebug($"start node='{_nodeMetadata.NodeType}'");
                 // Help debug "changes not taking effect": print the actual loaded DLL + version at runtime.
                 var asm = typeof(NodeBase).Assembly;
-                Console.WriteLine($"NodeBase: Using assembly '{asm.Location}', version={asm.GetName().Version}");
+                VlLog.Debug(
+                    $"NodeBase: assembly '{asm.Location}', " +
+                    $"version={asm.GetName().Version}");
 
                 if (string.IsNullOrWhiteSpace(_nodeMetadata.NodeType))
                     throw new InvalidOperationException("NodeType is missing from node metadata.");
@@ -350,7 +352,14 @@ namespace Nodetool.SDK.VL.Nodes
                 var nodeTerminalTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 try
                 {
-                    session = await client.ExecuteNodeAsync(_nodeMetadata.NodeType, inputData, linked.Token);
+                    var executionOptions = await NodeToolClientProvider
+                        .ResolveExecutionOptionsAsync(linked.Token)
+                        .ConfigureAwait(false);
+                    session = await client.ExecuteNodeAsync(
+                        _nodeMetadata.NodeType,
+                        inputData,
+                        executionOptions,
+                        linked.Token);
                     lock (_lock)
                     {
                         _activeSession = session;
@@ -501,10 +510,10 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 lock (_lock)
                 {
-                    _lastError = $"Execution error: {ex.Message}";
+                    _lastError = $"Execution error: {VlLog.SafeError(ex)}";
                     _lastOutputs.Clear();
                 }
-                AppendDebug($"exception: {ex.Message}");
+                AppendDebug($"exception: {VlLog.SafeError(ex)}");
             }
             finally
             {
@@ -595,7 +604,7 @@ namespace Nodetool.SDK.VL.Nodes
 
             if (VlTypeMapping.IsFileBackedAssetReference(nodeType))
             {
-                return await WorkflowNodeBase.ConvertMediaInputAsync(
+                return await VlMediaInputAdapter.PrepareAsync(
                     inputName,
                     ResolveMediaType(nodeType),
                     rawValue,
@@ -836,7 +845,7 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 lock (_lock)
                 {
-                    _lastError = $"Output update error: {ex.Message}";
+                    _lastError = $"Output update error: {VlLog.SafeError(ex)}";
                 }
             }
         }
@@ -892,120 +901,19 @@ namespace Nodetool.SDK.VL.Nodes
         /// <summary>
         /// Convert a NodeToolValue to the expected pin type to prevent casting exceptions
         /// </summary>
-        private static object? ConvertNodeToolValueToExpectedType(NodeToolValue value, Type expectedType)
+        internal static object? ConvertNodeToolValueToExpectedType(NodeToolValue value, Type expectedType)
         {
             // Fast paths for common VL pin types
             try
             {
                 if (expectedType == typeof(string))
                 {
-                    if (TryRenderTypedText(value, out var rendered))
-                        return rendered;
-
-                    // Avoid ToString() on dictionaries (it yields "System.Collections.Generic.Dictionary`2[...]").
-                    // For refs/typed payloads, try common fields first, otherwise fall back to JSON.
-                    if (value.Kind == NodeToolValueKind.Map)
-                    {
-                        var map = value.AsMapOrEmpty();
-
-                        if (map.TryGetValue("uri", out var uri) &&
-                            uri.AsString() is string uriStr &&
-                            !string.IsNullOrWhiteSpace(uriStr))
-                        {
-                            return uriStr;
-                        }
-
-                        // Common payload shapes:
-                        // - { type: "text", text: "..." }
-                        // - { type: "chunk", content: "..." }
-                        // - { value: "..." }
-                        // - { result: "..." }
-                        if (map.TryGetValue("text", out var textVal) && textVal.AsString() is string textStr)
-                            return textStr;
-
-                        if (map.TryGetValue("content", out var contentVal))
-                            return contentVal.AsString() ?? contentVal.ToJsonString();
-
-                        if (map.TryGetValue("value", out var valueVal))
-                            return valueVal.AsString() ?? valueVal.ToJsonString();
-
-                        if (map.TryGetValue("result", out var resultVal))
-                            return resultVal.AsString() ?? resultVal.ToJsonString();
-
-                        return value.ToJsonString();
-                    }
-
-                    if (value.Kind == NodeToolValueKind.List)
-                    {
-                        if (TryConcatChunkList(value, out var text))
-                            return text;
-
-                        // Common: ["hello"] (list of primitive strings) -> unwrap for ergonomics.
-                        var list = value.AsListOrEmpty();
-                        if (list.Count > 0)
-                        {
-                            var allStrings = new List<string>(list.Count);
-                            var ok = true;
-                            foreach (var item in list)
-                            {
-                                if (item.Kind == NodeToolValueKind.String && item.AsString() is string s)
-                                {
-                                    allStrings.Add(s);
-                                    continue;
-                                }
-
-                                if (item.Kind == NodeToolValueKind.Map)
-                                {
-                                    var m = item.AsMapOrEmpty();
-                                    if (m.TryGetValue("type", out var t) &&
-                                        string.Equals(t.AsString(), "string", StringComparison.OrdinalIgnoreCase) &&
-                                        m.TryGetValue("value", out var inner))
-                                    {
-                                        allStrings.Add(inner.AsString() ?? inner.ToJsonString());
-                                        continue;
-                                    }
-                                }
-
-                                ok = false;
-                                break;
-                            }
-
-                            if (ok)
-                            {
-                                // If it's a list-of-1, treat it as a scalar string (common for workflow outputs).
-                                if (allStrings.Count == 1)
-                                    return allStrings[0];
-
-                                // If it's a list-of-many, we should NOT concatenate: that loses structure.
-                                // In vvvv, list-like results should be represented as a Spread via a string[] pin,
-                                // which requires the schema/metadata to expose an array type.
-                                // For a string pin, keep structure visible as JSON.
-                                return value.ToJsonString();
-                            }
-                        }
-
-                        // Common: [{ type:"string", value:"..." }] -> unwrap
-                        var first = value.AsListOrEmpty().FirstOrDefault(v => v.Kind == NodeToolValueKind.Map);
-                        if (first != null && first.Kind == NodeToolValueKind.Map)
-                        {
-                            var map = first.AsMapOrEmpty();
-                            if (map.TryGetValue("type", out var t) &&
-                                string.Equals(t.AsString(), "string", StringComparison.OrdinalIgnoreCase) &&
-                                map.TryGetValue("value", out var inner))
-                            {
-                                return inner.AsString() ?? inner.ToJsonString();
-                            }
-                        }
-
-                        return value.ToJsonString();
-                    }
-
-                    return value.AsString() ?? value.ToJsonString();
+                    return NodeToolValuePresentation.ToDisplayString(value);
                 }
                 else if (expectedType == typeof(int))
                 {
                     if (value.TryGetLong(out var l))
-                        return (int)l;
+                        return checked((int)l);
                     return 0;
                 }
                 else if (expectedType == typeof(float))
@@ -1029,7 +937,14 @@ namespace Nodetool.SDK.VL.Nodes
                         var items = value.AsListOrEmpty();
                         var result = new byte[items.Count];
                         for (var i = 0; i < items.Count; i++)
-                            result[i] = items[i].TryGetLong(out var item) ? unchecked((byte)item) : (byte)0;
+                        {
+                            if (!items[i].TryGetLong(out var item) ||
+                                item is < byte.MinValue or > byte.MaxValue)
+                            {
+                                return Array.Empty<byte>();
+                            }
+                            result[i] = (byte)item;
+                        }
                         return result;
                     }
                     return Array.Empty<byte>();
@@ -1057,26 +972,15 @@ namespace Nodetool.SDK.VL.Nodes
                 }
                 else if (expectedType == typeof(object))
                 {
-                    // VL isn't great at displaying/handling arbitrary dictionaries; prefer readable text/JSON.
-                    if (value.Kind == NodeToolValueKind.Map)
-                    {
-                        var map = value.AsMapOrEmpty();
-                        if (map.TryGetValue("text", out var textVal) && textVal.AsString() is string textStr)
-                            return textStr;
-                        if (map.TryGetValue("delta", out var deltaVal))
-                            return deltaVal.AsString() ?? deltaVal.ToJsonString();
-                        if (map.TryGetValue("content", out var contentVal))
-                            return contentVal.AsString() ?? contentVal.ToJsonString();
-                        return value.ToJsonString();
-                    }
-                    if (value.Kind == NodeToolValueKind.List)
-                        return value.ToJsonString();
-
-                    return value.Raw; // primitives etc.
+                    return NodeToolValuePresentation.ToDisplayObject(value);
                 }
                 else
                 {
-                    return value.Raw ?? value.AsString() ?? value.ToJsonString();
+                    var fallback = GetDefaultValueForPinType(expectedType);
+                    return VlValueConversion.ConvertOrFallback(
+                        value.Raw ?? value.AsString() ?? value.ToJsonString(),
+                        expectedType,
+                        fallback);
                 }
             }
             catch (Exception)
@@ -1084,98 +988,6 @@ namespace Nodetool.SDK.VL.Nodes
                 // If conversion fails, return default value for the expected type
                 return GetDefaultValueForPinType(expectedType);
             }
-        }
-
-        private static bool TryRenderTypedText(NodeToolValue value, out string text)
-        {
-            text = "";
-            if (value.Kind != NodeToolValueKind.Map)
-                return false;
-
-            var map = value.AsMapOrEmpty();
-            if (!map.TryGetValue("type", out var typeVal))
-                return false;
-
-            var typeStr = typeVal.AsString();
-            if (string.Equals(typeStr, "string", StringComparison.OrdinalIgnoreCase) &&
-                map.TryGetValue("value", out var inner))
-            {
-                text = inner.AsString() ?? inner.ToJsonString();
-                return true;
-            }
-
-            if (string.Equals(typeStr, "list", StringComparison.OrdinalIgnoreCase) &&
-                map.TryGetValue("value", out var innerList))
-            {
-                if (TryConcatChunkList(innerList, out var t))
-                {
-                    text = t;
-                    return true;
-                }
-            }
-
-            if (string.Equals(typeStr, "chunk", StringComparison.OrdinalIgnoreCase) &&
-                map.TryGetValue("content", out var content))
-            {
-                text = content.AsString() ?? "";
-                return true;
-            }
-
-            return false;
-        }
-
-        private static bool TryConcatChunkList(NodeToolValue value, out string text)
-        {
-            text = "";
-
-            IReadOnlyList<NodeToolValue> list;
-            if (value.Kind == NodeToolValueKind.List)
-            {
-                list = value.AsListOrEmpty();
-            }
-            else if (value.Kind == NodeToolValueKind.Map)
-            {
-                var map = value.AsMapOrEmpty();
-                if (map.TryGetValue("type", out var t) &&
-                    string.Equals(t.AsString(), "list", StringComparison.OrdinalIgnoreCase) &&
-                    map.TryGetValue("value", out var v) &&
-                    v.Kind == NodeToolValueKind.List)
-                {
-                    list = v.AsListOrEmpty();
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                return false;
-            }
-
-            var sb = new StringBuilder();
-            var sawChunk = false;
-
-            foreach (var item in list)
-            {
-                if (item.Kind != NodeToolValueKind.Map)
-                    continue;
-
-                var typeDisc = item.TypeDiscriminator;
-                if (!string.Equals(typeDisc, "chunk", StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                sawChunk = true;
-                var map = item.AsMapOrEmpty();
-                if (map.TryGetValue("content", out var c) && c.AsString() is string s)
-                    sb.Append(s);
-            }
-
-            if (!sawChunk)
-                return false;
-
-            text = sb.ToString();
-            return true;
         }
 
         /// <summary>
@@ -1264,14 +1076,44 @@ namespace Nodetool.SDK.VL.Nodes
             private IReadOnlyList<IVLPinDescription> CreateInputDescriptions()
             {
                 var pins = new List<IVLPinDescription>();
-                pins.Add(new SimplePinDescription("Execute", typeof(bool)));
+                pins.Add(new SimplePinDescription("Execute", typeof(bool), false));
+                pins.Add(new SimplePinDescription(
+                    "Cancel",
+                    typeof(bool),
+                    false,
+                    ExecutionPinVisibility.IsInputVisible("Cancel")));
+                pins.Add(new SimplePinDescription(
+                    "AutoRun",
+                    typeof(bool),
+                    false,
+                    ExecutionPinVisibility.IsInputVisible("AutoRun")));
+                pins.Add(new SimplePinDescription(
+                    "RestartOnChange",
+                    typeof(bool),
+                    false,
+                    ExecutionPinVisibility.IsInputVisible("RestartOnChange")));
+                pins.Add(new SimplePinDescription(
+                    "ExecutionTimeoutSeconds",
+                    typeof(int),
+                    0,
+                    ExecutionPinVisibility.IsInputVisible(
+                        "ExecutionTimeoutSeconds")));
                 
                 if (_nodeMetadata.Properties != null)
                 {
                     foreach (var property in _nodeMetadata.Properties)
                     {
-                        var (vlType, _) = MapNodeType(property.Type);
-                        pins.Add(new SimplePinDescription(property.Name, vlType ?? typeof(string)));
+                        var (vlType, defaultValue) =
+                            VlTypeMapping.MapNodeInputType(property.Type);
+                        var targetType = vlType ?? typeof(string);
+                        var initial = VlValueConversion.ConvertOrFallback(
+                            property.Default,
+                            targetType,
+                            defaultValue);
+                        pins.Add(new SimplePinDescription(
+                            property.Name,
+                            targetType,
+                            initial));
                     }
                 }
                 
@@ -1286,13 +1128,26 @@ namespace Nodetool.SDK.VL.Nodes
                 {
                     foreach (var output in _nodeMetadata.Outputs)
                     {
-                        var (vlType, _) = MapNodeType(output.Type);
-                        pins.Add(new SimplePinDescription(output.Name, vlType ?? typeof(string)));
+                        var (vlType, defaultValue) = MapNodeType(output.Type);
+                        pins.Add(new SimplePinDescription(
+                            output.Name,
+                            vlType ?? typeof(string),
+                            defaultValue));
                     }
                 }
                 
-                pins.Add(new SimplePinDescription("IsRunning", typeof(bool)));
-                pins.Add(new SimplePinDescription("Error", typeof(string)));
+                pins.Add(new SimplePinDescription("IsRunning", typeof(bool), false));
+                pins.Add(new SimplePinDescription("On Update", typeof(bool), false));
+                pins.Add(new SimplePinDescription(
+                    "Error",
+                    typeof(string),
+                    "",
+                    ExecutionPinVisibility.IsOutputVisible("Error")));
+                pins.Add(new SimplePinDescription(
+                    "Debug",
+                    typeof(string),
+                    "",
+                    ExecutionPinVisibility.IsOutputVisible("Debug")));
                 
                 return pins.AsReadOnly();
             }
@@ -1301,27 +1156,20 @@ namespace Nodetool.SDK.VL.Nodes
         /// <summary>
         /// Minimal pin description for VL's requirements
         /// </summary>
-        private class SimplePinDescription : IVLPinDescription
+        private class SimplePinDescription
+            : IVLPinDescription,
+              IVLPinDescriptionWithVisibility
         {
-            public SimplePinDescription(string name, Type type)
+            public SimplePinDescription(
+                string name,
+                Type type,
+                object? defaultValue,
+                bool isVisible = true)
             {
                 Name = name;
                 Type = type;
-                DefaultValue = GetDefaultValueForType(type);
-            }
-
-            private static object? GetDefaultValueForType(Type type)
-            {
-                if (type == typeof(string)) return "";
-                if (type == typeof(int)) return 0;
-                if (type == typeof(float)) return 0.0f;
-                if (type == typeof(bool)) return false;
-                if (VlValueConversion.IsSpreadType(type))
-                    return VlValueConversion.CreateEmptySpread(type.GetGenericArguments()[0]);
-                if (type.IsArray && type.GetElementType() is Type elementType)
-                    return Array.CreateInstance(elementType, 0);
-                if (type == typeof(object)) return null;
-                return Activator.CreateInstance(type);
+                DefaultValue = defaultValue;
+                IsVisible = isVisible;
             }
 
             public string Name { get; }
@@ -1330,6 +1178,7 @@ namespace Nodetool.SDK.VL.Nodes
             public string Summary => "";
             public string Remarks => "";
             public IReadOnlyList<string> Tags => new List<string>().AsReadOnly();
+            public bool IsVisible { get; }
         }
     }
 }

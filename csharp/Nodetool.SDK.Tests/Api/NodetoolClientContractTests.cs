@@ -1,10 +1,76 @@
 using System.Net;
 using Nodetool.SDK.Api;
+using Nodetool.SDK.Api.Models;
 
 namespace Nodetool.SDK.Tests.Api;
 
 public class NodetoolClientContractTests
 {
+    [Fact]
+    public async Task InjectedHttpClient_RemainsCallerConfigured()
+    {
+        using var httpClient = new HttpClient(
+            new StubHttpMessageHandler(_ =>
+                new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        """{"version":"test","uptime":1}""")
+                }))
+        {
+            BaseAddress = new Uri("https://caller.example/"),
+            Timeout = TimeSpan.FromSeconds(9)
+        };
+        httpClient.DefaultRequestHeaders.Add("X-Caller", "retained");
+        var client = new NodetoolClient(
+            new Uri("https://server.example/nodetool"),
+            "secret",
+            httpClient);
+
+        await client.GetHealthAsync();
+
+        Assert.Equal(
+            new Uri("https://caller.example/"),
+            httpClient.BaseAddress);
+        Assert.Equal(TimeSpan.FromSeconds(9), httpClient.Timeout);
+        Assert.Equal(
+            "retained",
+            Assert.Single(
+                httpClient.DefaultRequestHeaders.GetValues("X-Caller")));
+    }
+
+    [Fact]
+    public async Task ExplicitBaseAddress_PreservesDeploymentSubpathAndAddsHeaders()
+    {
+        Uri? requestedUri = null;
+        string? authorization = null;
+        string? userAgent = null;
+        using var httpClient = new HttpClient(
+            new StubHttpMessageHandler(request =>
+            {
+                requestedUri = request.RequestUri;
+                authorization =
+                    request.Headers.Authorization?.ToString();
+                userAgent = request.Headers.UserAgent.ToString();
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        """{"version":"test","uptime":1}""")
+                };
+            }));
+        var client = new NodetoolClient(
+            new Uri("https://server.example/nodetool/"),
+            "secret",
+            httpClient);
+
+        await client.GetHealthAsync();
+
+        Assert.Equal(
+            new Uri("https://server.example/nodetool/api/health"),
+            requestedUri);
+        Assert.Equal("Bearer secret", authorization);
+        Assert.Contains("Nodetool.SDK", userAgent);
+    }
+
     [Fact]
     public async Task GetHealthAsync_ReadsServerVersionAndUptime()
     {
@@ -24,6 +90,197 @@ public class NodetoolClientContractTests
         Assert.Equal("/api/health", requestedUri?.AbsolutePath);
         Assert.Equal("0.7.0", health.Version);
         Assert.Equal(123, health.UptimeSeconds);
+    }
+
+    [Fact]
+    public async Task GetSdkCapabilitiesAsync_ReadsExecutionOptionSupport()
+    {
+        Uri? requestedUri = null;
+        const string body = """
+            {
+              "protocol_version": "1",
+              "nodetool_version": "0.7.0-rc.32",
+              "server_time": "2026-07-26T00:00:00.000Z",
+              "supported_encodings": ["messagepack", "json-text"],
+              "default_encoding": "messagepack",
+              "profiles": { "discovery": "available", "execution": "available" },
+              "registry_revision": 2528,
+              "python_bridge": "ready",
+              "auth_modes": ["trusted_local"],
+              "asset_uri_schemes": ["asset"],
+              "execution_options": {
+                "persistence": ["job", "session"],
+                "event_detail": ["full", "outputs", "terminal"],
+                "asset_persistence": ["auto", "temporary"],
+                "defaults": {
+                  "persistence": "job",
+                  "event_detail": "full",
+                  "asset_persistence": "auto"
+                }
+              },
+              "limits": {
+                "max_rpc_batch": 100,
+                "max_inline_bytes": 0,
+                "max_upload_bytes": 104857600,
+                "max_queued_jobs": 0,
+                "max_job_event_replay": 0,
+                "request_timeout_seconds": 30
+              }
+            }
+            """;
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(request =>
+        {
+            requestedUri = request.RequestUri;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(body)
+            };
+        }));
+        var client = new NodetoolClient(httpClient);
+
+        var capabilities = await client.GetSdkCapabilitiesAsync();
+
+        Assert.Equal("/api/sdk/v1/capabilities", requestedUri?.AbsolutePath);
+        Assert.Equal("1", capabilities.ProtocolVersion);
+        Assert.Contains("session", capabilities.ExecutionOptions!.Persistence);
+        Assert.Contains("terminal", capabilities.ExecutionOptions.EventDetail);
+        Assert.Equal(104857600, capabilities.Limits.MaxUploadBytes);
+    }
+
+    [Fact]
+    public async Task PreflightWorkflowAsync_PostsTypedRequestAndReadsSummary()
+    {
+        Uri? requestedUri = null;
+        string? requestedBody = null;
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(request =>
+        {
+            requestedUri = request.RequestUri;
+            requestedBody = request.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    """
+                    {
+                      "version": 1,
+                      "level": "availability",
+                      "workflow_id": "wf-1",
+                      "workflow_etag": "rev-2",
+                      "runnable": false,
+                      "issues": [{
+                        "severity": "error",
+                        "code": "MISSING_INPUT",
+                        "message": "Prompt is required.",
+                        "node_id": "input-1",
+                        "pin_name": "prompt"
+                      }],
+                      "requirements": [{
+                        "kind": "provider",
+                        "id": "openai",
+                        "name": "OpenAI",
+                        "status": "missing",
+                        "blocking": true,
+                        "message": "Provider is not configured."
+                      }],
+                      "cost": {
+                        "amount": null,
+                        "currency": null,
+                        "confidence": "unknown",
+                        "unknown_cost_nodes": ["node-1"],
+                        "approval_required": false
+                      }
+                    }
+                    """)
+            };
+        }));
+        var client = new NodetoolClient(httpClient);
+
+        var result = await client.PreflightWorkflowAsync(new SdkPreflightRequest
+        {
+            WorkflowId = "wf-1",
+            WorkspaceId = "workspace-1",
+            WorkflowEtag = "rev-2",
+            Level = SdkPreflightLevels.Availability,
+            Inputs = new Dictionary<string, object?> { ["prompt"] = "hello" }
+        });
+
+        Assert.Equal("/api/sdk/v1/preflight", requestedUri?.AbsolutePath);
+        Assert.Contains("\"workflow_id\":\"wf-1\"", requestedBody);
+        Assert.Contains("\"interface_version\":1", requestedBody);
+        Assert.False(result.Runnable);
+        Assert.Equal("MISSING_INPUT", Assert.Single(result.Issues).Code);
+        Assert.Equal("openai", Assert.Single(result.Requirements).Id);
+        Assert.Equal("node-1", Assert.Single(result.Cost!.UnknownCostNodes));
+    }
+
+    [Fact]
+    public async Task PreflightWorkflowAsync_ExposesStructuredServerFailure()
+    {
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+            {
+                Content = new StringContent(
+                    """{"code":"PREFLIGHT_LEVEL_UNAVAILABLE","detail":"Execution readiness unavailable.","retryable":false}""")
+            }));
+        var client = new NodetoolClient(httpClient);
+
+        var error = await Assert.ThrowsAsync<SdkApiException>(() =>
+            client.PreflightWorkflowAsync(new SdkPreflightRequest
+            {
+                WorkflowId = "wf-1",
+                Level = SdkPreflightLevels.Execution
+            }));
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, error.StatusCode);
+        Assert.Equal("PREFLIGHT_LEVEL_UNAVAILABLE", error.ApiCode);
+        Assert.False(error.Retryable);
+    }
+
+    [Fact]
+    public async Task PreflightWorkflowAsync_SendsExplicitExecutionTarget()
+    {
+        string? requestedBody = null;
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(
+            request =>
+            {
+                requestedBody = request.Content!
+                    .ReadAsStringAsync()
+                    .GetAwaiter()
+                    .GetResult();
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        """
+                        {
+                          "version": 1,
+                          "level": "execution",
+                          "workflow_id": "wf-1",
+                          "workflow_etag": null,
+                          "runnable": true,
+                          "issues": [],
+                          "requirements": [],
+                          "cost": null
+                        }
+                        """)
+                };
+            }));
+        var client = new NodetoolClient(httpClient);
+
+        await client.PreflightWorkflowAsync(new SdkPreflightRequest
+        {
+            WorkflowId = "wf-1",
+            Level = SdkPreflightLevels.Execution,
+            ExecutionTarget = new SdkExecutionTarget
+            {
+                Kind = SdkExecutionTargetKinds.Worker,
+                WorkerId = "worker-1",
+                Concurrent = true
+            }
+        });
+
+        Assert.Contains(
+            "\"execution_target\":{\"kind\":\"worker\"," +
+            "\"worker_id\":\"worker-1\",\"concurrent\":true}",
+            requestedBody);
     }
 
     [Fact]
@@ -55,6 +312,42 @@ public class NodetoolClientContractTests
         Assert.Equal("image", Assert.Single(property.Type.TypeArgs!).Type);
         Assert.True(Assert.Single(node.Outputs).Stream);
         Assert.Equal("/api/nodes/metadata?fields=full", requestedUri?.PathAndQuery);
+    }
+
+    [Fact]
+    public async Task GetNodeTypesAsync_TreatsNullOptionalCapabilitiesAsFalse()
+    {
+        const string body = """
+            [{
+              "node_type": "python.OptionalCapabilities",
+              "title": "Optional capabilities",
+              "namespace": "python",
+              "description": "",
+              "properties": [],
+              "outputs": [],
+              "supports_dynamic_inputs": null,
+              "supports_dynamic_outputs": null,
+              "is_streaming_input": null,
+              "is_streaming_output": null,
+              "hidden": null,
+              "deprecated": null
+            }]
+            """;
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(body)
+            }));
+        var client = new NodetoolClient(httpClient);
+
+        var node = Assert.Single(await client.GetNodeTypesAsync());
+
+        Assert.False(node.SupportsDynamicInputs);
+        Assert.False(node.SupportsDynamicOutputs);
+        Assert.False(node.IsStreamingInput);
+        Assert.False(node.IsStreamingOutput);
+        Assert.False(node.Hidden);
+        Assert.False(node.Deprecated);
     }
 
     [Fact]
@@ -273,10 +566,11 @@ public class NodetoolClientContractTests
             }));
         var client = new NodetoolClient(httpClient);
 
-        var error = await Assert.ThrowsAsync<WorkflowInterfaceUnavailableException>(
+        var error = await Assert.ThrowsAsync<SdkApiException>(
             () => client.GetWorkflowSummariesAsync());
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, error.StatusCode);
+        Assert.Equal(SdkApiTransport.Http, error.Transport);
         Assert.Equal("SDK_WORKFLOW_INTERFACE_DISABLED", error.ApiCode);
         Assert.Contains("disabled", error.Message, StringComparison.OrdinalIgnoreCase);
     }

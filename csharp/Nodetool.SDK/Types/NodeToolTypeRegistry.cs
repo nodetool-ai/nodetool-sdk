@@ -1,6 +1,7 @@
 using System.Reflection;
 using MessagePack;
 using Microsoft.Extensions.Logging;
+using Nodetool.SDK.Diagnostics;
 
 namespace Nodetool.SDK.Types;
 
@@ -23,10 +24,15 @@ public class NodeToolTypeRegistry
     }
 
     /// <summary>
-    /// Discovers and registers all MessagePack types from loaded assemblies.
+    /// Discovers and registers all NodeTool MessagePack types from loaded assemblies
+    /// and any explicitly supplied catalog assemblies.
     /// Call this once during application startup.
     /// </summary>
-    public void RegisterAllTypes()
+    /// <param name="additionalAssemblies">
+    /// Optional assemblies supplied by a host adapter. The portable SDK does not load
+    /// a generated node catalog implicitly.
+    /// </param>
+    public void RegisterAllTypes(params Assembly[] additionalAssemblies)
     {
         if (_isInitialized)
         {
@@ -36,50 +42,47 @@ public class NodeToolTypeRegistry
 
         _logger.LogInformation("Discovering and registering NodeTool types...");
 
-        // A package/project reference does not guarantee that the CLR has loaded the
-        // generated DTO assembly yet. Load it before scanning AppDomain assemblies so
-        // base SDK consumers get deterministic discovery without touching a DTO first.
-        try
-        {
-            Assembly.Load("Nodetool.Types");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(
-                ex,
-                "Nodetool.Types could not be loaded; only already-loaded NodeTool types will be discovered");
-        }
-
         var discoveredTypes = 0;
-        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+        var assemblies = AppDomain.CurrentDomain.GetAssemblies()
+            .Concat(additionalAssemblies ?? [])
+            .Distinct();
 
         foreach (var assembly in assemblies)
         {
             try
             {
-                var messagePackTypes = assembly.GetTypes()
-                    .Where(IsMessagePackType)
-                    .ToList();
-
-                foreach (var type in messagePackTypes)
-                {
-                    var typeName = ExtractTypeName(type);
-                    if (!string.IsNullOrEmpty(typeName))
-                    {
-                        RegisterType(type, typeName);
-                        discoveredTypes++;
-                    }
-                }
+                discoveredTypes += RegisterAssemblyTypes(assembly.GetTypes());
             }
             catch (ReflectionTypeLoadException ex)
             {
-                _logger.LogWarning("Failed to load types from assembly {Assembly}: {Error}", 
-                    assembly.FullName, ex.Message);
+                // A partially loadable application assembly should not prevent types
+                // from independent assemblies from being registered.
+                discoveredTypes += RegisterAssemblyTypes(ex.Types.OfType<Type>());
+                _logger.LogWarning(
+                    "Partially loaded types from assembly {Assembly}: {Error}",
+                    assembly.FullName,
+                    NodeToolDiagnosticRedactor.RedactText(ex.Message));
             }
         }
 
         _isInitialized = true;
         _logger.LogInformation("Registered {Count} NodeTool types", discoveredTypes);
+    }
+
+    private int RegisterAssemblyTypes(IEnumerable<Type> types)
+    {
+        var discoveredTypes = 0;
+        foreach (var type in types.Where(IsMessagePackType))
+        {
+            var typeName = ExtractTypeName(type);
+            if (string.IsNullOrEmpty(typeName))
+                continue;
+
+            RegisterType(type, typeName);
+            discoveredTypes++;
+        }
+
+        return discoveredTypes;
     }
 
     /// <summary>
@@ -208,7 +211,10 @@ public class NodeToolTypeRegistry
         }
         catch (Exception ex)
         {
-            _logger.LogWarning("Failed to extract type name from {Type}: {Error}", type.Name, ex.Message);
+            _logger.LogWarning(
+                "Failed to extract type name from {Type}: {Error}",
+                type.Name,
+                NodeToolDiagnosticRedactor.RedactText(ex.Message));
             return null;
         }
     }

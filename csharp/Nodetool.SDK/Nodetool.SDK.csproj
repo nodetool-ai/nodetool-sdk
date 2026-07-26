@@ -7,7 +7,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <PackageId>Nodetool.SDK</PackageId>
-    <Version>0.1.1</Version>
     <Description>C# SDK for NodeTool with WebSocket communication and type support</Description>
     <Authors>NodeTool Contributors</Authors>
     <RepositoryUrl>https://github.com/nodetool-ai/nodetool-sdk</RepositoryUrl>
@@ -23,10 +22,6 @@
 
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../Nodetool.Types/Nodetool.Types.csproj" />
   </ItemGroup>
 
 </Project>

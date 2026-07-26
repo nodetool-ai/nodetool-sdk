@@ -27,10 +27,11 @@ Optional custom output:
 
 ## Installation
 
-Add a reference to the NuGet package:
+`Nodetool.SDK.VL` is the managed adapter assembly and is not published as a
+separate package. Install the user-facing `VL.Nodetool` package instead:
 
-```xml
-<PackageReference Include="Nodetool.SDK.VL" Version="0.1.1" />
+```text
+nuget install VL.Nodetool -Version 0.1.6
 ```
 
 ## Usage (overview)
@@ -39,15 +40,15 @@ Add a reference to the NuGet package:
 
 In vvvv gamma, reference either:
 
-- `Nodetool.SDK.VL.csproj` directly (good for development), or
-- the built DLLs directly, or the release
-- nuget install VL.Nodetool
+- `Nodetool.SDK.VL.csproj` directly (good for development),
+- the built DLLs directly, or
+- `nuget install VL.Nodetool`.
 
 DLLs:
 
-- `nodetool-sdk\csharp\Nodetool.SDK.VL\bin\Release\Nodetool.SDK.VL.dll`
-- `nodetool-sdk\csharp\Nodetool.SDK.VL\bin\Release\Nodetool.SDK.dll`
-- `nodetool-sdk\csharp\Nodetool.SDK.VL\bin\Release\Nodetool.Types.dll`
+- `nodetool-sdk\csharp\Nodetool.SDK.VL\bin\Release\net8.0\Nodetool.SDK.VL.dll`
+- `nodetool-sdk\csharp\Nodetool.SDK.VL\bin\Release\net8.0\Nodetool.SDK.dll`
+- `nodetool-sdk\csharp\Nodetool.SDK.VL\bin\Release\net8.0\Nodetool.Types.dll`
 
 ### Connect node
 
@@ -71,6 +72,23 @@ Connection recovery:
 - Active workflow sessions send `reconnect_job` after the socket returns and poll the server's persisted job state until a terminal update arrives.
 - Turning `AutoReconnect` off only disables automatic retries; the Connect node's `Reconnect` pulse remains available.
 - An intentional Disconnect does not trigger automatic reconnection.
+- Connection and workflow-catalog lifetimes are scoped to the active vvvv
+  `AppHost`. Host disposal closes its portable connection session and catalog;
+  live nodes resolve the service belonging to their current host rather than
+  retaining a disposed service from an earlier patch/runtime instance.
+- Connect-node endpoint/authentication, timeout, media threshold,
+  auto-reconnect, and discovery-mode settings are also isolated per AppHost;
+  separate runtime instances do not share mutable connection configuration.
+- Individual-node and workflow discovery borrow the HTTP API client owned by
+  that connection session. They share endpoint derivation, authentication,
+  retry policy, and disposal with execution; factories do not dispose the
+  borrowed client.
+- The Connect node exposes hidden advanced defaults for execution persistence
+  (`Job`/`Session`), event detail (`Full`/`Outputs`/`Terminal`), and output
+  asset persistence (`Auto`/`Temporary`). Ordinary defaults preserve existing
+  NodeTool behavior. Non-default values are submitted only after the server's
+  capabilities advertise support, and apply to workflow and individual-node
+  runs in that AppHost.
 
 Workflow discovery transport:
 
@@ -105,6 +123,13 @@ Discovery diagnostics:
 - `Nodetool Workflows -> WorkflowAPIStatus` reports the last successful UTC refresh, server version, authoritative interface source, workflow count, and last discovery error.
 - Pulse `Refresh` to request another compact discovery pass. Unchanged interfaces are reused by workflow revision, node-registry revision, and interface etag.
 - If a refresh fails after a successful load, the existing workflow nodes stay available and `Status` reports that their metadata is stale.
+
+Console logging is intentionally restrained. A healthy AppHost emits one
+summary after connection-backed discovery and both dynamic factories have
+resolved. Actionable errors remain visible and repeated identical discovery
+errors are suppressed until recovery or reset. Set
+`NODETOOL_VL_VERBOSE=1` to include assembly, factory, execution-timing, pin,
+and routine refresh details while diagnosing a problem.
 
 ### Node nodes
 

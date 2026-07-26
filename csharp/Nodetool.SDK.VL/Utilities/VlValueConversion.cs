@@ -1,8 +1,6 @@
 using System;
-using System.Globalization;
 using System.Collections;
 using System.Reflection;
-using System.Text.Json;
 using Nodetool.SDK.Types.Assets;
 using Nodetool.SDK.Values;
 using VL.Lib.Collections;
@@ -64,21 +62,43 @@ internal static class VlValueConversion
     {
         if (value is VlPath path)
             return path.ToString();
+        if (DynamicWorkflowEnumFactory.TryToWireValue(value, out var wireValue))
+            return wireValue ?? "";
 
-        if (value is AssetRef assetReference)
-            return assetReference.ToDict();
+        return NodeToolValueConverter.NormalizeForTransport(value) ?? "";
+    }
 
-        if (!IsSpreadType(value.GetType()) || value is not IEnumerable enumerable)
-            return value;
+    /// <summary>
+    /// Replaces VL dynamic-enum values with their NodeTool wire values while
+    /// preserving host-native media objects for the media input adapter.
+    /// </summary>
+    public static object? NormalizeDynamicEnumsForTransport(object? value)
+    {
+        if (DynamicWorkflowEnumFactory.TryToWireValue(value, out var wireValue))
+            return wireValue;
 
-        var elementType = value.GetType().GetGenericArguments()[0];
-        var items = enumerable
-            .Cast<object?>()
-            .Select(item => item == null ? null : NormalizeForTransport(item))
-            .ToArray();
-        return items.All(item => item == null || elementType.IsInstanceOfType(item))
-            ? CreateCollection(elementType.MakeArrayType(), elementType, items)
-            : items;
+        if (value is IDictionary dictionary)
+        {
+            var normalized = new Dictionary<string, object?>(StringComparer.Ordinal);
+            foreach (DictionaryEntry entry in dictionary)
+            {
+                var key = Convert.ToString(
+                    entry.Key,
+                    System.Globalization.CultureInfo.InvariantCulture) ?? "";
+                normalized[key] = NormalizeDynamicEnumsForTransport(entry.Value);
+            }
+            return normalized;
+        }
+
+        if (value is IEnumerable enumerable and not string and not byte[])
+        {
+            return enumerable
+                .Cast<object?>()
+                .Select(NormalizeDynamicEnumsForTransport)
+                .ToArray();
+        }
+
+        return value;
     }
 
     public static NodeToolValue UnwrapTerminalResultEnvelope(NodeToolValue value)
@@ -225,194 +245,48 @@ internal static class VlValueConversion
         if (targetType.IsAssignableFrom(value.GetType()))
             return value;
 
-        // System.Text.Json often deserializes "object" as JsonElement
-        if (value is JsonElement je)
+        // VL dynamic enums are reference types implementing IDynamicEnum, not
+        // CLR enum types, so Type.IsEnum must not gate this conversion.
+        if (DynamicWorkflowEnumFactory.TryFromWireValue(
+                targetType,
+                value,
+                out var enumValue))
         {
-            if (TryConvertJsonElement(je, targetType, out var converted))
-                return converted;
-
-            return fallback;
-        }
-
-        try
-        {
-            if (targetType == typeof(string))
-                return value.ToString() ?? "";
-
-            if (targetType == typeof(VlPath))
-                return new VlPath(value.ToString() ?? "");
-
-            if (targetType == typeof(int))
-                return Convert.ToInt32(value, CultureInfo.InvariantCulture);
-
-            if (targetType == typeof(float))
-                return Convert.ToSingle(value, CultureInfo.InvariantCulture);
-
-            if (targetType == typeof(bool))
-                return Convert.ToBoolean(value, CultureInfo.InvariantCulture);
-
-            if (TryGetCollectionElementType(targetType, out var elementType))
-            {
-                if (value is IEnumerable enumerable and not string)
-                {
-                    var items = enumerable.Cast<object?>().ToArray();
-                    var elementFallback = GetDefaultValue(elementType);
-                    var convertedItems = new object?[items.Length];
-                    for (var i = 0; i < items.Length; i++)
-                        convertedItems[i] = ConvertOrFallback(items[i], elementType, elementFallback);
-                    return CreateCollection(targetType, elementType, convertedItems);
-                }
-
-                return CreateCollection(
-                    targetType,
-                    elementType,
-                    [ConvertOrFallback(value, elementType, GetDefaultValue(elementType))]);
-            }
-
-            if (targetType.IsClass && value is IDictionary or IEnumerable)
-            {
-                var json = JsonSerializer.Serialize(value);
-                return JsonSerializer.Deserialize(json, targetType, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                }) ?? fallback;
-            }
-
-            return Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
-        }
-        catch
-        {
-            return fallback;
-        }
-    }
-
-    private static bool TryConvertJsonElement(JsonElement je, Type targetType, out object? converted)
-    {
-        converted = null;
-
-        if (targetType == typeof(string))
-        {
-            converted = je.ValueKind == JsonValueKind.String ? (je.GetString() ?? "") : (je.ToString() ?? "");
-            return true;
+            return enumValue;
         }
 
         if (targetType == typeof(VlPath))
         {
-            converted = new VlPath(
-                je.ValueKind == JsonValueKind.String
-                    ? je.GetString() ?? ""
-                    : je.ToString());
-            return true;
+            return NodeToolValueConverter.TryConvert(
+                value,
+                typeof(string),
+                out var path,
+                out _)
+                ? new VlPath(path as string ?? "")
+                : fallback;
         }
 
-        if (targetType == typeof(bool))
+        if (IsSpreadType(targetType) &&
+            TryGetCollectionElementType(targetType, out var elementType))
         {
-            if (je.ValueKind is JsonValueKind.True or JsonValueKind.False)
-            {
-                converted = je.GetBoolean();
-                return true;
-            }
-
-            if (je.ValueKind == JsonValueKind.String && bool.TryParse(je.GetString(), out var b))
-            {
-                converted = b;
-                return true;
-            }
-
-            return false;
+            var normalized = NodeToolValueConverter.Convert(value, typeof(object));
+            var items = normalized is IEnumerable enumerable and not string
+                ? enumerable.Cast<object?>().ToArray()
+                : new[] { normalized };
+            var elementFallback = GetDefaultValue(elementType);
+            var convertedItems = items
+                .Select(item => ConvertOrFallback(item, elementType, elementFallback))
+                .ToArray();
+            return CreateCollection(targetType, elementType, convertedItems);
         }
 
-        if (targetType == typeof(int))
-        {
-            if (je.ValueKind == JsonValueKind.Number)
-            {
-                if (je.TryGetInt32(out var i))
-                {
-                    converted = i;
-                    return true;
-                }
-                if (je.TryGetDouble(out var d))
-                {
-                    converted = (int)d;
-                    return true;
-                }
-            }
-
-            if (je.ValueKind == JsonValueKind.String && int.TryParse(je.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var istring))
-            {
-                converted = istring;
-                return true;
-            }
-
-            return false;
-        }
-
-        if (targetType == typeof(float))
-        {
-            if (je.ValueKind == JsonValueKind.Number)
-            {
-                if (je.TryGetDouble(out var d))
-                {
-                    converted = (float)d;
-                    return true;
-                }
-            }
-
-            if (je.ValueKind == JsonValueKind.String && float.TryParse(je.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var fstring))
-            {
-                converted = fstring;
-                return true;
-            }
-
-            return false;
-        }
-
-        if (TryGetCollectionElementType(targetType, out var elementType))
-        {
-            if (je.ValueKind == JsonValueKind.Array)
-            {
-                var items = new object?[je.GetArrayLength()];
-                var idx = 0;
-                foreach (var item in je.EnumerateArray())
-                {
-                    if (!TryConvertJsonElement(item, elementType, out var itemValue))
-                        itemValue = GetDefaultValue(elementType);
-                    items[idx++] = itemValue;
-                }
-                converted = CreateCollection(targetType, elementType, items);
-                return true;
-            }
-            return false;
-        }
-
-        // Preserve structured JSON for object fallback pins and MessagePack execution inputs.
-        if (targetType == typeof(object))
-        {
-            converted = ConvertJsonElementToClr(je);
-            return true;
-        }
-
-        return false;
-    }
-
-    private static object? ConvertJsonElementToClr(JsonElement element)
-    {
-        return element.ValueKind switch
-        {
-            JsonValueKind.Object => element.EnumerateObject().ToDictionary(
-                property => property.Name,
-                property => ConvertJsonElementToClr(property.Value),
-                StringComparer.Ordinal),
-            JsonValueKind.Array => element.EnumerateArray().Select(ConvertJsonElementToClr).ToArray(),
-            JsonValueKind.String => element.GetString(),
-            JsonValueKind.Number when element.TryGetInt32(out var i) => i,
-            JsonValueKind.Number when element.TryGetInt64(out var l) => l,
-            JsonValueKind.Number when element.TryGetDouble(out var d) => d,
-            JsonValueKind.True => true,
-            JsonValueKind.False => false,
-            JsonValueKind.Null or JsonValueKind.Undefined => null,
-            _ => element.ToString()
-        };
+        return NodeToolValueConverter.TryConvert(
+            value,
+            targetType,
+            out var converted,
+            out _)
+            ? converted
+            : fallback;
     }
 
     private static object? GetDefaultValue(Type type)
