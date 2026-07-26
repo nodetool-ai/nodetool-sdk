@@ -89,6 +89,15 @@ Connection recovery:
   NodeTool behavior. Non-default values are submitted only after the server's
   capabilities advertise support, and apply to workflow and individual-node
   runs in that AppHost.
+- For interactive low-overhead use, prefer `EventDetail = Outputs`. It
+  suppresses ordinary node and edge events while preserving workflow outputs
+  as they are emitted during the run.
+- `EventDetail = Terminal` is final-result-only behavior, not a transparent
+  performance switch. Outputs emitted during a workflow run are withheld from
+  vvvv until the terminal result snapshot arrives. Use it only when delayed
+  output delivery is acceptable.
+- `EventDetail = Full` remains the default and provides complete execution
+  visibility for diagnostics.
 
 Workflow discovery transport:
 
@@ -101,7 +110,6 @@ Media transport:
 
 - `InlineMediaLimitBytes` defaults to 4 MiB. Larger local media is uploaded through the asset API and represented by `asset_id` during execution.
 - Set the limit to `0` to upload all binary media, or raise it up to 64 MiB when inline transport is preferable.
-- `Terminal` suppresses intermediate node and output events; completed values, including temporary media references, arrive in the final result snapshot.
 - Workflow and individual-node inputs for file-backed audio, video, document, generic asset, folder, font, and model values use vvvv's native `Path` type (and `Spread<Path>` for lists). The SDK reads or uploads those files and constructs the NodeTool asset payload only while preparing execution.
 - Media outputs remain typed SDK asset references (`AudioRef`, `VideoRef`, `DocumentRef`, `GenericAssetRef`, and the other specialized reference types), preserving URI, IDs, inline data, metadata, and media-specific properties.
 - Individual NodeTool image and text-reference pins remain typed references where the node metadata identifies those types. Namespaced `type_name` values retain their native shape.

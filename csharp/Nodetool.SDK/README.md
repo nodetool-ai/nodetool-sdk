@@ -132,6 +132,14 @@ in-memory run. Temporary assets are suitable only while their returned
 references remain valid; use automatic asset persistence when outputs must be
 durable.
 
+`WorkflowEventDetail.Outputs` is the recommended low-overhead choice for
+interactive clients: it suppresses ordinary node and edge events but continues
+to deliver workflow outputs while the run is active.
+`WorkflowEventDetail.Terminal` changes delivery semantics. Outputs emitted
+during the run are withheld until the final result snapshot, so it should be
+used only when delayed, final-only output delivery is acceptable. `Full`
+remains the default for complete execution visibility.
+
 Connection sessions cache the server capability document for their current
 connection generation, so repeated negotiated runs do not add one HTTP
 discovery request per execution. A successful reconnect, profile replacement,
