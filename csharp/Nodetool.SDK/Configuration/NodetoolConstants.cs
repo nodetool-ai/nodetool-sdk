@@ -28,6 +28,8 @@ public static class NodetoolConstants
         
         // Asset operations
         public const string Assets = "/api/assets/";
+        public const string TemporaryAssetUploadV1 =
+            "/api/sdk/v1/assets/temporary";
         public const string AssetById = "/api/assets/{0}";
         public const string AssetDownload = "/api/assets/{0}/download";
         

@@ -18,6 +18,7 @@ public class AssetManager : IAssetManager
     private readonly ILogger<AssetManager> _logger;
     private readonly string _cacheDirectory;
     private readonly bool _ownsHttpClient;
+    private readonly bool _useTemporaryUploads;
     private bool _disposed;
 
     /// <inheritdoc/>
@@ -30,16 +31,22 @@ public class AssetManager : IAssetManager
     /// <param name="nodetoolClient">Optional NodeTool API client for uploads.</param>
     /// <param name="httpClient">Optional HTTP client for downloads.</param>
     /// <param name="logger">Logger instance.</param>
+    /// <param name="useTemporaryUploads">
+    /// Use the SDK temporary execution-input route instead of creating
+    /// persistent assets.
+    /// </param>
     public AssetManager(
         string? cacheDirectory = null,
         INodetoolClient? nodetoolClient = null,
         HttpClient? httpClient = null,
-        ILogger<AssetManager>? logger = null)
+        ILogger<AssetManager>? logger = null,
+        bool useTemporaryUploads = false)
     {
         _cacheDirectory = cacheDirectory ?? GetDefaultCacheDirectory();
         _nodetoolClient = nodetoolClient;
         _httpClient = httpClient ?? new HttpClient();
         _ownsHttpClient = httpClient == null;
+        _useTemporaryUploads = useTemporaryUploads;
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<AssetManager>.Instance;
 
         // Ensure cache directory exists
@@ -160,13 +167,25 @@ public class AssetManager : IAssetManager
         }
 
         using var nonDisposingContent = new NonDisposingStream(content);
-        var response = await _nodetoolClient.UploadAssetAsync(
+        if (_useTemporaryUploads)
+        {
+            var temporary = await _nodetoolClient
+                .UploadTemporaryAssetAsync(
+                    fileName,
+                    nonDisposingContent,
+                    contentType,
+                    cancellationToken);
+            return CreateTemporaryAssetReference(
+                temporary,
+                contentType);
+        }
+
+        var persistent = await _nodetoolClient.UploadAssetAsync(
             fileName,
             nonDisposingContent,
             contentType,
             cancellationToken);
-
-        return CreateAssetReference(response, contentType);
+        return CreateAssetReference(persistent, contentType);
     }
 
     /// <inheritdoc/>
@@ -361,17 +380,7 @@ public class AssetManager : IAssetManager
         var contentType = string.IsNullOrWhiteSpace(response.ContentType)
             ? requestedContentType
             : response.ContentType;
-        AssetRef result = contentType.ToLowerInvariant() switch
-        {
-            var value when value.StartsWith("image/") => new ImageRef
-            {
-                MimeType = contentType
-            },
-            var value when value.StartsWith("audio/") => new AudioRef(),
-            var value when value.StartsWith("video/") => new VideoRef(),
-            "application/pdf" => new DocumentRef(),
-            _ => new GenericAssetRef()
-        };
+        var result = CreateTypedAssetReference(contentType);
 
         result.AssetId = response.Id;
         result.Uri = response.GetUrl
@@ -386,6 +395,45 @@ public class AssetManager : IAssetManager
         };
         return result;
     }
+
+    private static AssetRef CreateTemporaryAssetReference(
+        TemporaryAssetUploadResponse response,
+        string requestedContentType)
+    {
+        if (string.IsNullOrWhiteSpace(response.Uri))
+        {
+            throw new InvalidOperationException(
+                "Temporary asset upload returned no URI.");
+        }
+
+        var contentType = string.IsNullOrWhiteSpace(response.ContentType)
+            ? requestedContentType
+            : response.ContentType;
+        var result = CreateTypedAssetReference(contentType);
+        result.Uri = response.Uri;
+        result.Metadata = new Dictionary<string, object?>
+        {
+            ["content_type"] = contentType,
+            ["name"] = response.Name,
+            ["size"] = response.Size,
+            ["temporary"] = true,
+            ["expires_at"] = response.ExpiresAt
+        };
+        return result;
+    }
+
+    private static AssetRef CreateTypedAssetReference(string contentType)
+        => contentType.ToLowerInvariant() switch
+        {
+            var value when value.StartsWith("image/") => new ImageRef
+            {
+                MimeType = contentType
+            },
+            var value when value.StartsWith("audio/") => new AudioRef(),
+            var value when value.StartsWith("video/") => new VideoRef(),
+            "application/pdf" => new DocumentRef(),
+            _ => new GenericAssetRef()
+        };
 
     private static string SafeUri(string value)
     {

@@ -6,6 +6,14 @@ namespace Nodetool.SDK.Tests.Assets;
 public class MediaInputPreparerTests
 {
     [Fact]
+    public void DefaultInlineLimit_IsTenMiB()
+    {
+        Assert.Equal(
+            10 * 1024 * 1024,
+            MediaInputPreparer.DefaultInlineLimitBytes);
+    }
+
+    [Fact]
     public async Task SmallLocalFileIsInlinedWithFileUri()
     {
         var path = CreateTemporaryFile(".wav", [1, 2, 3, 4]);

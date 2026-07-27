@@ -43,6 +43,7 @@ internal static class VlMediaInputAdapter
         string inputName,
         string mediaType,
         object? value,
+        bool useTemporaryAssetUploads,
         CancellationToken cancellationToken)
     {
         var portableValue = await AdaptValueAsync(
@@ -60,7 +61,9 @@ internal static class VlMediaInputAdapter
                 apiClient = new NodetoolClient(
                     apiBase,
                     NodeToolClientProvider.CurrentAuthToken);
-                assetManager = new AssetManager(nodetoolClient: apiClient);
+                assetManager = new AssetManager(
+                    nodetoolClient: apiClient,
+                    useTemporaryUploads: useTemporaryAssetUploads);
             }
 
             return await new MediaInputPreparer(

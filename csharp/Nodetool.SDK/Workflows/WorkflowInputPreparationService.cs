@@ -13,6 +13,7 @@ public sealed class WorkflowInputPreparationService
     private readonly string? _authToken;
     private readonly long _inlineMediaLimitBytes;
     private readonly HttpClient? _httpClient;
+    private readonly bool _useTemporaryAssetUploads;
     private readonly Func<
         string,
         string,
@@ -26,6 +27,7 @@ public sealed class WorkflowInputPreparationService
         long inlineMediaLimitBytes =
             MediaInputPreparer.DefaultInlineLimitBytes,
         HttpClient? httpClient = null,
+        bool useTemporaryAssetUploads = false,
         Func<
             string,
             string,
@@ -40,6 +42,7 @@ public sealed class WorkflowInputPreparationService
         _authToken = authToken;
         _inlineMediaLimitBytes = inlineMediaLimitBytes;
         _httpClient = httpClient;
+        _useTemporaryAssetUploads = useTemporaryAssetUploads;
         _adaptHostMediaValue = adaptHostMediaValue;
     }
 
@@ -65,7 +68,8 @@ public sealed class WorkflowInputPreparationService
                     _httpClient);
                 assetManager = new AssetManager(
                     nodetoolClient: apiClient,
-                    httpClient: _httpClient);
+                    httpClient: _httpClient,
+                    useTemporaryUploads: _useTemporaryAssetUploads);
             }
 
             return await new WorkflowInputPreparer(

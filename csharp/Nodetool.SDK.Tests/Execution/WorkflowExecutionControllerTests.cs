@@ -477,6 +477,10 @@ public class WorkflowExecutionControllerTests
                 Persistence = ["job", "session"],
                 EventDetail = ["full", "outputs", "terminal"],
                 AssetPersistence = ["auto", "temporary"]
+            },
+            Profiles = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["temporary_asset_upload"] = "available"
             }
         };
 
@@ -685,7 +689,7 @@ public class WorkflowExecutionControllerTests
 
         public Task<SdkCapabilitiesResponse> GetSdkCapabilitiesAsync(
             CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
+            => Task.FromResult(SupportedCapabilities());
 
         public Task<INodeToolExecutionClient> GetConnectedClientAsync(
             CancellationToken cancellationToken = default)

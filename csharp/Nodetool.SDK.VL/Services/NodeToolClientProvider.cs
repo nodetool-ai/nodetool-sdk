@@ -211,6 +211,24 @@ public static class NodeToolClientProvider
         return options;
     }
 
+    internal static async Task<bool> SupportsTemporaryAssetUploadAsync(
+        CancellationToken cancellationToken = default)
+    {
+        if (Settings.ExecutionOptions.AssetPersistence !=
+            WorkflowAssetPersistence.Temporary)
+        {
+            return false;
+        }
+
+        var capabilities = await Session
+            .GetSdkCapabilitiesAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return capabilities.Profiles.TryGetValue(
+                "temporary_asset_upload",
+                out var status) &&
+            string.Equals(status, "available", StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// Updates the shared execution timeout without resetting discovery or the connection.
     /// </summary>

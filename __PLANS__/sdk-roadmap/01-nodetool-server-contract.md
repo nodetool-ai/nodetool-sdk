@@ -397,9 +397,10 @@ another connection's queue.
 ## Phase 4A - Optional low-overhead SDK execution profile
 
 This is a bounded optimization phase, not a second runner. Existing Electron,
-WebSocket, HTTP, and unannotated `run_job` behavior remains the default. A
-client must explicitly request each relaxation per run, and capabilities must
-declare which relaxations the server honors.
+WebSocket, HTTP, and unannotated `run_job` behavior remains unchanged.
+Capabilities declare which relaxations the server honors. Public SDK runs
+default generated-asset autosave to off; callers explicitly select `auto` when
+they want persistent generated assets.
 
 - [x] Enable the additive SDK workflow-interface and lifecycle v1 profiles by
       default after their current regression suites pass.
@@ -433,8 +434,9 @@ Short path review (2026-07-25):
       `persistence = "job" | "session"`,
       `event_detail = "full" | "outputs" | "terminal"`, and
       `asset_persistence = "auto" | "temporary"`.
-- [x] Keep the server defaults at `job`, `full`, and `auto`; unknown or absent
-      options preserve current behavior.
+- [x] Keep ordinary/unannotated server defaults at `job`, `full`, and `auto`;
+      SDK runs default asset persistence to `temporary`, while an explicit
+      `auto` remains available.
 - [x] Advertise supported values in SDK capabilities before a client sends
       non-default options.
 - [x] For session persistence, skip queued/running/final `Job` database writes
@@ -448,6 +450,10 @@ Short path review (2026-07-25):
 - [x] For temporary assets, bypass generation-history autosave and thumbnail
       work while preserving output materialization needed by the requesting
       client.
+- [x] Add capability-advertised
+      `POST /api/sdk/v1/assets/temporary` for large SDK execution inputs;
+      write directly to temporary storage without an Asset row, thumbnail, or
+      asset-list entry, and return a runtime-resolvable URI.
 - [x] **Deferred timing refinement:** add phase timing around graph lookup/hydration, pre-run readiness,
       persistence, kernel execution, event/output normalization, autosave, and
       finalization. Timings are diagnostic and do not include inputs or secrets.
@@ -467,8 +473,9 @@ Short path review (2026-07-25):
       identical; the Electron interactive pass remains in Phase 0.
 - [x] Each advertised option has an isolated test proving which work is
       skipped and which terminal/error/cancellation guarantees remain.
-- [x] **Deferred:** no convenience profile default is selected before the
-      benchmark follow-up.
+- [x] Select only the low-risk SDK default `asset_persistence = temporary`;
+      keep persistence and event-detail defaults unchanged until benchmark
+      follow-up.
 
 ## Phase 5 - Canonical asset references and minimum result safety
 

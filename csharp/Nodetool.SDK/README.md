@@ -126,11 +126,23 @@ var session = await client.ExecuteWorkflowAsync(
     executionOptions);
 ```
 
-Omitting the options preserves normal server behavior. Session persistence
-does not provide completed-job history or reconnect after the server loses the
-in-memory run. Temporary assets are suitable only while their returned
-references remain valid; use automatic asset persistence when outputs must be
-durable.
+SDK runs default to `WorkflowAssetPersistence.Temporary`: generated outputs
+are not autosaved into the asset library. Set
+`WorkflowAssetPersistence.Auto` explicitly when generated outputs must be
+persisted with normal asset metadata and thumbnails. This SDK default does not
+change NodeTool web, Electron, or other unannotated `run_job` clients.
+
+When `Temporary` is selected and the server advertises
+`temporary_asset_upload`, large execution inputs also use the SDK fast upload
+route. It writes directly to temporary storage and skips the asset database
+row, thumbnail generation, and asset-list entry. The workflow receives a
+storage URI rather than an `asset_id`. If the profile is unavailable, input
+upload safely uses the persistent asset route.
+
+Session persistence does not provide completed-job history or reconnect after
+the server loses the in-memory run. Temporary input and output references are
+suitable only for the configured temporary-storage retention period; use
+automatic asset persistence when outputs must be durable.
 
 `WorkflowEventDetail.Outputs` is the recommended low-overhead choice for
 interactive clients: it suppresses ordinary node and edge events but continues
@@ -347,12 +359,19 @@ bearer tokens are attached only to same-origin downloads.
 
 `MediaInputPreparer` is the corresponding execution-input boundary. It accepts
 asset references, local paths, URIs, and byte buffers; inlines small local
-values and uploads values above a configurable size through an injected
-`IAssetManager`. Engine-specific image objects should be encoded to bytes by
-the host adapter before calling it. Common image, audio, video, document,
+values up to 10 MiB by default and uploads larger values through an injected
+`IAssetManager`. Inline bytes avoid an extra HTTP round trip. MessagePack keeps
+them binary; JSON fallback expands them as base64. Engine-specific image
+objects should be encoded to bytes by the host adapter before calling it.
+Common image, audio, video, document,
 glTF/GLB model, and font extensions receive specialized MIME types; common
 binary image/audio/video/document/model signatures are detected when no
 filename is available.
+
+`AssetManager(useTemporaryUploads: true)` sends uploads through
+`POST /api/sdk/v1/assets/temporary`. This is intended for execution inputs, not
+for user-visible asset creation: the returned typed reference has a URI but no
+persistent `AssetId`.
 
 `WorkflowInputPreparer` applies that behavior recursively from a
 `WorkflowDescriptor`, including list/array media pins, while using the

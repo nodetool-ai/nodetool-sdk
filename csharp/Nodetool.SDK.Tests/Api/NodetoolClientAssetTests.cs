@@ -50,6 +50,58 @@ public class NodetoolClientAssetTests
         Assert.Equal("http://localhost/assets/asset-1.png", asset.GetUrl);
     }
 
+    [Fact]
+    public async Task UploadTemporaryAsset_UsesSdkFastPathAndReturnsUri()
+    {
+        var handler = new InspectingHandler(request =>
+        {
+            Assert.Equal(
+                "/api/sdk/v1/assets/temporary",
+                request.RequestUri?.AbsolutePath);
+            var multipart =
+                Assert.IsType<MultipartFormDataContent>(request.Content);
+            var file = Assert.Single(multipart);
+            Assert.Equal("image/png", file.Headers.ContentType?.MediaType);
+            Assert.Equal("\"file\"", file.Headers.ContentDisposition?.Name);
+            Assert.Equal(
+                "\"sample.png\"",
+                file.Headers.ContentDisposition?.FileName);
+
+            const string json = """
+                {
+                  "version": 1,
+                  "uri": "file:///server/temp/sdk-inputs/upload.png",
+                  "name": "sample.png",
+                  "content_type": "image/png",
+                  "size": 3,
+                  "expires_at": null
+                }
+                """;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    json,
+                    Encoding.UTF8,
+                    "application/json")
+            };
+        });
+        using var httpClient = new HttpClient(handler);
+        var client = new NodetoolClient(httpClient);
+        client.Configure("http://localhost:7777");
+        using var content = new MemoryStream(new byte[] { 1, 2, 3 });
+
+        var asset = await client.UploadTemporaryAssetAsync(
+            "sample.png",
+            content,
+            "image/png");
+
+        Assert.Equal(1, asset.Version);
+        Assert.Equal(
+            "file:///server/temp/sdk-inputs/upload.png",
+            asset.Uri);
+        Assert.Equal(3, asset.Size);
+    }
+
     private sealed class InspectingHandler(
         Func<HttpRequestMessage, HttpResponseMessage> inspect) : HttpMessageHandler
     {

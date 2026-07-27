@@ -187,6 +187,64 @@ public class BaseSdkCleanupTests
         }
     }
 
+    [Fact]
+    public async Task AssetManagerTemporaryUpload_ReturnsUriWithoutAssetId()
+    {
+        var handler = new TrackingHandler(request =>
+        {
+            Assert.Equal(
+                "/api/sdk/v1/assets/temporary",
+                request.RequestUri?.AbsolutePath);
+            const string json = """
+                {
+                  "version": 1,
+                  "uri": "memory://temp/sdk-inputs/image.png",
+                  "name": "image.png",
+                  "content_type": "image/png",
+                  "size": 4,
+                  "expires_at": null
+                }
+                """;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    json,
+                    Encoding.UTF8,
+                    "application/json")
+            };
+        });
+        using var httpClient = new HttpClient(handler);
+        using var apiClient = new NodetoolClient(httpClient);
+        apiClient.Configure("http://localhost:7777");
+        var cacheDirectory = Path.Combine(
+            Path.GetTempPath(),
+            $"nodetool-sdk-assets-{Guid.NewGuid():N}");
+        try
+        {
+            using var manager = new AssetManager(
+                cacheDirectory: cacheDirectory,
+                nodetoolClient: apiClient,
+                useTemporaryUploads: true);
+
+            var result = await manager.UploadAssetAsync(
+                "image.png",
+                new byte[] { 1, 2, 3, 4 },
+                "image/png");
+
+            var image = Assert.IsType<ImageRef>(result);
+            Assert.Null(image.AssetId);
+            Assert.Equal(
+                "memory://temp/sdk-inputs/image.png",
+                image.Uri);
+            Assert.Equal(true, image.Metadata?["temporary"]);
+        }
+        finally
+        {
+            if (Directory.Exists(cacheDirectory))
+                Directory.Delete(cacheDirectory, recursive: true);
+        }
+    }
+
     private sealed class TrackingHandler(
         Func<HttpRequestMessage, HttpResponseMessage> responseFactory)
         : HttpMessageHandler

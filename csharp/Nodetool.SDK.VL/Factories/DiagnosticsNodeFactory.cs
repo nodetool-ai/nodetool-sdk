@@ -84,9 +84,9 @@ internal static class DiagnosticsNodeFactory
                 var assetPersistencePin = new VlPinDescription(
                     "AssetPersistence",
                     typeof(WorkflowAssetPersistence),
-                    WorkflowAssetPersistence.Auto,
+                    WorkflowAssetPersistence.Temporary,
                     "Asset persistence",
-                    "Auto preserves normal asset behavior; Temporary requests temporary output assets when advertised by the server.",
+                    "Temporary is the SDK default and disables generated-asset autosave. Auto explicitly enables normal persistent asset behavior.",
                     isVisible: false);
 
                 // Output pins

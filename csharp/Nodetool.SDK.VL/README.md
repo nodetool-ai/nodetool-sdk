@@ -85,10 +85,12 @@ Connection recovery:
   borrowed client.
 - The Connect node exposes hidden advanced defaults for execution persistence
   (`Job`/`Session`), event detail (`Full`/`Outputs`/`Terminal`), and output
-  asset persistence (`Auto`/`Temporary`). Ordinary defaults preserve existing
-  NodeTool behavior. Non-default values are submitted only after the server's
-  capabilities advertise support, and apply to workflow and individual-node
-  runs in that AppHost.
+  asset persistence (`Auto`/`Temporary`). `Temporary` is the SDK default:
+  generated assets are not autosaved. Select `Auto` explicitly when outputs
+  should enter the normal persistent asset library. This does not change the
+  NodeTool web or Electron defaults. Values are submitted only after the
+  server's capabilities advertise support, and apply to workflow and
+  individual-node runs in that AppHost.
 - For interactive low-overhead use, prefer `EventDetail = Outputs`. It
   suppresses ordinary node and edge events while preserving workflow outputs
   as they are emitted during the run.
@@ -108,7 +110,7 @@ Workflow discovery transport:
 
 Media transport:
 
-- `InlineMediaLimitBytes` defaults to 4 MiB. Larger local media is uploaded through the asset API and represented by `asset_id` during execution.
+- `InlineMediaLimitBytes` defaults to 10 MiB. With the default `AssetPersistence = Temporary`, larger local media uses the advertised SDK temporary-upload route and is represented by a storage URI. This skips persistent asset metadata and thumbnail work. Selecting `Auto`, or connecting to a server without that profile, uses the normal asset API and `asset_id`.
 - Set the limit to `0` to upload all binary media, or raise it up to 64 MiB when inline transport is preferable.
 - Workflow and individual-node inputs for file-backed audio, video, document, generic asset, folder, font, and model values use vvvv's native `Path` type (and `Spread<Path>` for lists). The SDK reads or uploads those files and constructs the NodeTool asset payload only while preparing execution.
 - Media outputs remain typed SDK asset references (`AudioRef`, `VideoRef`, `DocumentRef`, `GenericAssetRef`, and the other specialized reference types), preserving URI, IDs, inline data, metadata, and media-specific properties.

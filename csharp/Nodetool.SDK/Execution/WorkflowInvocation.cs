@@ -24,13 +24,14 @@ public sealed record WorkflowInvocation(
 }
 
 /// <summary>
-/// Additive server execution preferences. Omitting this object preserves the
-/// normal persisted job, full event stream, and automatic asset persistence.
+/// Additive server execution preferences. SDK runs default to temporary asset
+/// handling so generated outputs and large execution inputs are not autosaved.
 /// </summary>
 public sealed record WorkflowExecutionOptions(
     WorkflowPersistence Persistence = WorkflowPersistence.Job,
     WorkflowEventDetail EventDetail = WorkflowEventDetail.Full,
-    WorkflowAssetPersistence AssetPersistence = WorkflowAssetPersistence.Auto);
+    WorkflowAssetPersistence AssetPersistence =
+        WorkflowAssetPersistence.Temporary);
 
 public enum WorkflowPersistence
 {
@@ -65,9 +66,6 @@ public static class WorkflowExecutionOptionNegotiator
     {
         ArgumentNullException.ThrowIfNull(capabilities);
         ArgumentNullException.ThrowIfNull(options);
-        if (IsDefault(options))
-            return;
-
         var support = capabilities.ExecutionOptions ??
             throw new NotSupportedException(
                 "The server does not advertise SDK execution options.");

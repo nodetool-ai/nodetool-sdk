@@ -140,6 +140,8 @@ public sealed class WorkflowExecutionRuntime : IAsyncDisposable, IDisposable
 
             INodeToolExecutionClient client;
             Dictionary<string, object> preparedInputs;
+            var effectiveExecutionOptions =
+                executionOptions ?? new WorkflowExecutionOptions();
             try
             {
                 client = await _connection.GetConnectedClientAsync(
@@ -147,11 +149,34 @@ public sealed class WorkflowExecutionRuntime : IAsyncDisposable, IDisposable
                 connectionDuration = timer.Elapsed - phaseStarted;
                 phaseStarted = timer.Elapsed;
 
+                var useTemporaryAssetUploads = false;
+                if (
+                    effectiveExecutionOptions.AssetPersistence ==
+                        WorkflowAssetPersistence.Temporary &&
+                    _workflow.Inputs.Any(input =>
+                        WorkflowInputPreparer.ContainsMedia(input.Type)))
+                {
+                    var capabilities = await _connection
+                        .GetSdkCapabilitiesAsync(
+                            preparationCancellation.Token);
+                    WorkflowExecutionOptionNegotiator.EnsureSupported(
+                        capabilities,
+                        effectiveExecutionOptions);
+                    useTemporaryAssetUploads =
+                        capabilities.Profiles.TryGetValue(
+                        "temporary_asset_upload",
+                        out var temporaryUploadStatus) &&
+                        string.Equals(
+                            temporaryUploadStatus,
+                            "available",
+                            StringComparison.Ordinal);
+                }
                 var inputPreparation = new WorkflowInputPreparationService(
                     _connection.ApiBaseUrl,
                     _connection.AuthToken,
                     InlineMediaLimitBytes,
                     _httpClient,
+                    useTemporaryAssetUploads,
                     _adaptHostMediaValue);
                 preparedInputs = await inputPreparation.PrepareAsync(
                     _workflow,
@@ -187,7 +212,7 @@ public sealed class WorkflowExecutionRuntime : IAsyncDisposable, IDisposable
                         StringComparer.Ordinal),
                     remaining,
                     retainOutputs,
-                    executionOptions),
+                    effectiveExecutionOptions),
                 activeRun.Token);
             await controller.WaitForTerminalAsync();
 

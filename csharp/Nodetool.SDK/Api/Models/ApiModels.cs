@@ -407,6 +407,31 @@ public class AssetResponse
 }
 
 /// <summary>
+/// Reference returned by the SDK temporary input-upload endpoint.
+/// It intentionally has no persistent asset ID or database metadata.
+/// </summary>
+public sealed class TemporaryAssetUploadResponse
+{
+    [JsonPropertyName("version")]
+    public int Version { get; set; }
+
+    [JsonPropertyName("uri")]
+    public string Uri { get; set; } = string.Empty;
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("content_type")]
+    public string ContentType { get; set; } = string.Empty;
+
+    [JsonPropertyName("size")]
+    public long Size { get; set; }
+
+    [JsonPropertyName("expires_at")]
+    public DateTimeOffset? ExpiresAt { get; set; }
+}
+
+/// <summary>
 /// Response model for jobs
 /// </summary>
 public class JobResponse

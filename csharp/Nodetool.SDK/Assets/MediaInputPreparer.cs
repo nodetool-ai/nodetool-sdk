@@ -9,7 +9,7 @@ namespace Nodetool.SDK.Assets;
 /// </summary>
 public sealed class MediaInputPreparer
 {
-    public const int DefaultInlineLimitBytes = 4 * 1024 * 1024;
+    public const int DefaultInlineLimitBytes = 10 * 1024 * 1024;
 
     private readonly IAssetManager? _assetManager;
     private readonly long _inlineLimitBytes;

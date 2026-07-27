@@ -87,6 +87,16 @@ public interface INodetoolClient : IDisposable, Workflows.IWorkflowDiscoveryClie
         Stream content,
         string contentType,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Upload an execution input directly to temporary storage without
+    /// creating persistent asset metadata or a thumbnail.
+    /// </summary>
+    Task<TemporaryAssetUploadResponse> UploadTemporaryAssetAsync(
+        string fileName,
+        Stream content,
+        string contentType,
+        CancellationToken cancellationToken = default);
     
     /// <summary>
     /// Get asset information

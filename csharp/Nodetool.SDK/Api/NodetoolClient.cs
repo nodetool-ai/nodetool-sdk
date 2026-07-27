@@ -621,10 +621,7 @@ public class NodetoolClient : INodetoolClient
         // .NET emits simple Content-Disposition parameters without quotes.
         // Node's Web API multipart parser requires the RFC form used by
         // browsers/curl (`name="file"; filename="..."`).
-        var disposition = streamContent.Headers.ContentDisposition!;
-        disposition.Name = QuoteMultipartParameter("file");
-        disposition.FileName = QuoteMultipartParameter(fileName);
-        disposition.FileNameStar = null;
+        ConfigureMultipartDisposition(streamContent, fileName);
         
         using var request = CreateConfiguredRequest(
             HttpMethod.Post,
@@ -640,6 +637,54 @@ public class NodetoolClient : INodetoolClient
         
         _logger?.LogDebug("Asset uploaded: {AssetId}", asset?.Id);
         return asset ?? throw new InvalidOperationException("Failed to upload asset");
+    }
+
+    public async Task<TemporaryAssetUploadResponse>
+        UploadTemporaryAssetAsync(
+            string fileName,
+            Stream content,
+            string contentType,
+            CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
+        ArgumentNullException.ThrowIfNull(content);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentType);
+        _logger?.LogDebug(
+            "Uploading temporary execution asset: {FileName}",
+            fileName);
+
+        using var form = new MultipartFormDataContent();
+        using var streamContent = new StreamContent(content);
+        streamContent.Headers.ContentType =
+            System.Net.Http.Headers.MediaTypeHeaderValue.Parse(contentType);
+        form.Add(streamContent, "file", fileName);
+        ConfigureMultipartDisposition(streamContent, fileName);
+
+        using var request = CreateConfiguredRequest(
+            HttpMethod.Post,
+            NodetoolConstants.Endpoints.TemporaryAssetUploadV1,
+            form);
+        using var response = await _httpClient.SendAsync(
+            request,
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var asset = JsonSerializer.Deserialize<TemporaryAssetUploadResponse>(
+            json,
+            _jsonOptions);
+        return asset ?? throw new InvalidOperationException(
+            "Failed to deserialize temporary asset upload.");
+    }
+
+    private static void ConfigureMultipartDisposition(
+        StreamContent content,
+        string fileName)
+    {
+        var disposition = content.Headers.ContentDisposition!;
+        disposition.Name = QuoteMultipartParameter("file");
+        disposition.FileName = QuoteMultipartParameter(fileName);
+        disposition.FileNameStar = null;
     }
 
     private static string QuoteMultipartParameter(string value)

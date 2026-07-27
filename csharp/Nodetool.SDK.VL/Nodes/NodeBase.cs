@@ -321,6 +321,17 @@ namespace Nodetool.SDK.VL.Nodes
                 AppendDebug("connected");
 
                 var client = NodeToolClientProvider.GetClient();
+                var executionOptions = await NodeToolClientProvider
+                    .ResolveExecutionOptionsAsync(linked.Token)
+                    .ConfigureAwait(false);
+                var hasMediaInputs =
+                    _nodeMetadata.Properties?.Any(property =>
+                        ContainsFileBackedAssetReference(property.Type)) ==
+                    true;
+                var useTemporaryAssetUploads = hasMediaInputs &&
+                    await NodeToolClientProvider
+                        .SupportsTemporaryAssetUploadAsync(linked.Token)
+                        .ConfigureAwait(false);
 
                 // Collect input values
                 var inputData = new Dictionary<string, object>(StringComparer.Ordinal);
@@ -337,6 +348,7 @@ namespace Nodetool.SDK.VL.Nodes
                                     property.Name,
                                     property.Type,
                                     inputValue,
+                                    useTemporaryAssetUploads,
                                     linked.Token);
                         }
                         else
@@ -352,9 +364,6 @@ namespace Nodetool.SDK.VL.Nodes
                 var nodeTerminalTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 try
                 {
-                    var executionOptions = await NodeToolClientProvider
-                        .ResolveExecutionOptionsAsync(linked.Token)
-                        .ConfigureAwait(false);
                     session = await client.ExecuteNodeAsync(
                         _nodeMetadata.NodeType,
                         inputData,
@@ -578,6 +587,7 @@ namespace Nodetool.SDK.VL.Nodes
             string inputName,
             NodeTypeDefinition? nodeType,
             object? rawValue,
+            bool useTemporaryAssetUploads,
             CancellationToken cancellationToken)
         {
             if (nodeType == null)
@@ -596,6 +606,7 @@ namespace Nodetool.SDK.VL.Nodes
                         $"{inputName}[{index++}]",
                         elementType,
                         value,
+                        useTemporaryAssetUploads,
                         cancellationToken));
                 }
 
@@ -608,10 +619,22 @@ namespace Nodetool.SDK.VL.Nodes
                     inputName,
                     ResolveMediaType(nodeType),
                     rawValue,
+                    useTemporaryAssetUploads,
                     cancellationToken);
             }
 
             return rawValue == null ? "" : VlValueConversion.NormalizeForTransport(rawValue);
+        }
+
+        private static bool ContainsFileBackedAssetReference(
+            NodeTypeDefinition? nodeType)
+        {
+            if (nodeType == null)
+                return false;
+            if (VlTypeMapping.IsFileBackedAssetReference(nodeType))
+                return true;
+            return nodeType.TypeArgs?.Any(
+                ContainsFileBackedAssetReference) == true;
         }
 
         private void ApplyBufferedOutputs(IExecutionSession session)

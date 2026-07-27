@@ -396,14 +396,20 @@ and reverse-proxy deployment subpaths, including storage asset URLs.
 - [x] Add portable typed execution options for job/session persistence,
       full/output/terminal event detail, and automatic/temporary asset
       persistence.
+- [x] Default SDK asset persistence to `Temporary` so generated-asset
+      autosave is off; retain explicit `Auto` for durable asset-library
+      behavior.
+- [x] Negotiate the `temporary_asset_upload` capability and use the additive
+      temporary input route for large media without database or thumbnail
+      work; retain persistent upload as the safe fallback.
 - [x] Negotiate non-default options through capabilities; never assume an
       older/current server supports them.
 - [x] Cache the capability document per portable connection generation so
       negotiated low-overhead executions do not add a discovery request per
       run; reconnecting, replacing the profile, or resetting invalidates the
       cache.
-- [x] Keep current behavior when options are absent; unsupported-option
-      capability negotiation remains part of the preceding item.
+- [x] Keep current non-SDK clients unchanged when options are absent; SDK
+      clients project their documented temporary-asset default.
 - [x] Add safe portable runtime timings for connection, input/media
       preparation, remote execution, and total duration.
 - [x] Expose runtime timings through the portable execution result so VL,
