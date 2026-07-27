@@ -50,6 +50,7 @@ namespace Nodetool.SDK.VL.Factories
         private static long _resetGeneration;
         private static bool _hasSuccessfulSnapshot;
         private static bool _factoryWasRequested;
+        private static bool _enabled = true;
         private static SynchronizationContext? _synchronizationContext;
 
         // Cached data from the Nodetool API
@@ -79,6 +80,8 @@ namespace Nodetool.SDK.VL.Factories
         {
             lock (_lock)
             {
+                if (!_enabled)
+                    return;
                 _apiStatusMessage = _fetchedWorkflows.Count > 0
                     ? "Workflow refresh requested; current nodes remain available."
                     : "Workflow refresh requested.";
@@ -86,6 +89,18 @@ namespace Nodetool.SDK.VL.Factories
                 if (_factoryWasRequested)
                     StartRefreshLoopLocked();
             }
+        }
+
+        public static void SetEnabled(bool enabled)
+        {
+            lock (_lock)
+            {
+                if (_enabled == enabled)
+                    return;
+                _enabled = enabled;
+            }
+
+            Reset();
         }
 
         public static void Reset()
@@ -132,6 +147,13 @@ namespace Nodetool.SDK.VL.Factories
                 _factoryWasRequested = true;
                 if (_factoryImpl != null)
                     return _factoryImpl;
+                if (!_enabled)
+                {
+                    _factoryImpl = NodeBuilding.NewFactoryImpl(
+                        ImmutableArray<IVLNodeDescription>.Empty,
+                        FactoryInvalidated);
+                    return _factoryImpl;
+                }
 
                 if (!_hasSuccessfulSnapshot)
                 {
@@ -801,7 +823,7 @@ namespace Nodetool.SDK.VL.Factories
             => string.Join("|",
                 workflow.WorkflowRevision,
                 workflow.RegistryRevision?.ToString() ?? "unknown",
-                workflow.Interface?.Etag ?? "no-etag");
+                workflow.Descriptor.InterfaceEtag ?? "no-etag");
 
         private static string GetBaseNodeName(WorkflowDetail workflow)
         {
@@ -849,41 +871,6 @@ namespace Nodetool.SDK.VL.Factories
             }
 
             return result.Trim('_');
-        }
-        
-        private static string BuildWorkflowRemarks(WorkflowDetail workflow)
-        {
-            var parts = new List<string>();
-            parts.Add($"Nodetool Workflow ID: {workflow.Id}");
-            parts.Add($"Name: {workflow.Name}");
-            
-            if (!string.IsNullOrWhiteSpace(workflow.Description) && 
-                workflow.Description != workflow.Name)
-                parts.Add($"Description: {workflow.Description}");
-                
-            var inputCount = workflow.GetInputProperties().Count();
-            var outputCount = workflow.GetOutputProperties().Count();
-            parts.Add($"📌 {inputCount} inputs, {outputCount} outputs");
-            
-            parts.Add($"Created: {workflow.CreatedAt:yyyy-MM-dd}");
-            parts.Add($"Updated: {workflow.UpdatedAt:yyyy-MM-dd}");
-            
-            return string.Join("\n", parts);
-        }
-        
-        private static string BuildWorkflowInputRemarks(dynamic property)
-        {
-            var parts = new List<string>();
-            
-            if (property.Type != null)
-                parts.Add($"Type: {property.Type}");
-                
-            if (property.DefaultValue != null)
-                parts.Add($"Default: {property.DefaultValue}");
-                
-            parts.Add("Workflow input");
-            
-            return string.Join(" | ", parts);
         }
         
         private static string BuildWorkflowOutputRemarks(dynamic property)

@@ -108,21 +108,6 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         _webSocketClient.ConnectionStatusChanged += OnConnectionStatusChanged;
     }
 
-    /// <summary>
-    /// Backwards-compat convenience constructor. Prefer <see cref="NodeToolExecutionClient(NodeToolClientOptions,string?,ILogger{NodeToolExecutionClient}?)"/>.
-    /// </summary>
-    [Obsolete("Pass explicit NodeToolClientOptions (no hardcoded localhost defaults).")]
-    public NodeToolExecutionClient(
-        string serverUrl,
-        string? apiKey = null,
-        ILogger<NodeToolExecutionClient>? logger = null)
-        : this(
-            new NodeToolClientOptions { WorkerWebSocketUrl = new Uri(serverUrl) },
-            apiKey,
-            logger)
-    {
-    }
-
     /// <inheritdoc/>
     public async Task<bool> ConnectAsync(CancellationToken cancellationToken = default)
     {

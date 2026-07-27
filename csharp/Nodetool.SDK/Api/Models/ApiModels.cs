@@ -172,31 +172,6 @@ internal sealed class NullToFalseBooleanConverter : JsonConverter<bool>
 }
 
 /// <summary>
-/// Property metadata for nodes (deprecated - use NodeProperty instead)
-/// </summary>
-[Obsolete("Use NodeProperty instead - this will be removed")]
-public class PropertyMetadata
-{
-    [JsonPropertyName("name")]
-    public string Name { get; set; } = string.Empty;
-    
-    [JsonPropertyName("title")]
-    public string Title { get; set; } = string.Empty;
-    
-    [JsonPropertyName("description")]
-    public string Description { get; set; } = string.Empty;
-    
-    [JsonPropertyName("type")]
-    public TypeMetadata Type { get; set; } = new();
-    
-    [JsonPropertyName("default")]
-    public object? Default { get; set; }
-    
-    [JsonPropertyName("required")]
-    public bool Required { get; set; } = false;
-}
-
-/// <summary>
 /// Response model for workflows
 /// </summary>
 public class WorkflowResponse

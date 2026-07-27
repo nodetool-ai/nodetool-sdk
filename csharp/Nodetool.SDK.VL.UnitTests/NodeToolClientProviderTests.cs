@@ -25,6 +25,29 @@ public class NodeToolClientProviderTests
     }
 
     [Fact]
+    public void DiscoveryCatalogSelection_IsIdempotentAndReversible()
+    {
+        try
+        {
+            NodeToolClientProvider.SetLoadNodes(false);
+            NodeToolClientProvider.SetLoadNodes(false);
+            NodeToolClientProvider.SetLoadWorkflows(false);
+            NodeToolClientProvider.SetLoadWorkflows(false);
+
+            Assert.False(NodeToolClientProvider.LoadNodes);
+            Assert.False(NodeToolClientProvider.LoadWorkflows);
+        }
+        finally
+        {
+            NodeToolClientProvider.SetLoadNodes(true);
+            NodeToolClientProvider.SetLoadWorkflows(true);
+        }
+
+        Assert.True(NodeToolClientProvider.LoadNodes);
+        Assert.True(NodeToolClientProvider.LoadWorkflows);
+    }
+
+    [Fact]
     public void DisposedHostSession_IsNotRetainedByStaticFacade()
     {
         var settings = new VlNodeToolHostSettings();

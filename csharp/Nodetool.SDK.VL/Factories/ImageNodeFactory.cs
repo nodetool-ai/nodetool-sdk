@@ -1,6 +1,4 @@
-using System.Collections.Immutable;
 using System.Text.Json;
-using SkiaSharp;
 using VL.Core;
 using VL.Core.CompilerServices;
 using Nodetool.SDK.VL.Utilities;
@@ -12,23 +10,6 @@ namespace Nodetool.SDK.VL.Factories;
 /// </summary>
 internal static class ImageNodeFactory
 {
-    public static NodeBuilding.FactoryImpl GetFactory(IVLNodeDescriptionFactory vlSelfFactory)
-    {
-        if (vlSelfFactory == null)
-            return NodeBuilding.NewFactoryImpl(ImmutableArray<IVLNodeDescription>.Empty);
-
-        var nodeDescriptions = new List<IVLNodeDescription>();
-        var decode = CreateDecodeImageRefNode(vlSelfFactory);
-        if (decode != null)
-            nodeDescriptions.Add(decode);
-
-        var decodeToImage = CreateDecodeImageRefToSKImageNode(vlSelfFactory);
-        if (decodeToImage != null)
-            nodeDescriptions.Add(decodeToImage);
-
-        return NodeBuilding.NewFactoryImpl(ImmutableArray.CreateRange(nodeDescriptions));
-    }
-
     internal static IVLNodeDescription? CreateDecodeImageRefNode(IVLNodeDescriptionFactory vlSelfFactory)
     {
         return vlSelfFactory.NewNodeDescription(
@@ -142,113 +123,6 @@ internal static class ImageNodeFactory
                     },
                     summary: "Decode an ImageRef payload to encoded bytes",
                     remarks: "Use this to turn workflow outputs like [{type:\"image\", data:[...]}] into encoded bytes"
-                );
-            }
-        );
-    }
-
-    internal static IVLNodeDescription? CreateDecodeImageRefToSKImageNode(IVLNodeDescriptionFactory vlSelfFactory)
-    {
-        return vlSelfFactory.NewNodeDescription(
-            name: "DecodeImageRefToSKImage",
-            category: "Nodetool.Images",
-            fragmented: false,
-            bc =>
-            {
-                var valuePin = bc.Pin("Value", typeof(object), null,
-                    "ImageRef value", "Accepts ImageRef JSON (string), a file path (string), or encoded image bytes (byte[]).");
-
-                var imageOut = bc.Pin("Image", typeof(SKImage), default(SKImage),
-                    "SKImage", "Decoded SkiaSharp SKImage (dispose handled by node).");
-                var widthOut = bc.Pin("Width", typeof(int), 0, "Width", "Decoded image width.");
-                var heightOut = bc.Pin("Height", typeof(int), 0, "Height", "Decoded image height.");
-                var okOut = bc.Pin("IsValid", typeof(bool), false, "Valid", "True when decoding succeeded.");
-                var errorOut = bc.Pin("Error", typeof(string), "", "Error", "Decode error message.");
-
-                return bc.Node(
-                    inputs: new[] { valuePin },
-                    outputs: new[] { imageOut, widthOut, heightOut, okOut, errorOut },
-                    newNode: ibc =>
-                    {
-                        object? current = null;
-                        SKImage? image = null;
-                        int width = 0;
-                        int height = 0;
-                        bool ok = false;
-                        string error = "";
-
-                        void Recompute()
-                        {
-                            ok = false;
-                            error = "";
-                            width = 0;
-                            height = 0;
-
-                            try
-                            {
-                                byte[] bytes;
-                                if (current is byte[] direct)
-                                {
-                                    bytes = direct;
-                                }
-                                else if (current is string s)
-                                {
-                                    s = s.Trim();
-                                    if (File.Exists(s))
-                                    {
-                                        bytes = File.ReadAllBytes(s);
-                                    }
-                                    else
-                                    {
-                                        if (!TryParseImageRefJson(s, out var parsedBytes, out _, out var parseError) || parsedBytes == null)
-                                            throw new InvalidOperationException(parseError ?? "Not valid ImageRef JSON.");
-                                        bytes = parsedBytes;
-                                    }
-                                }
-                                else
-                                {
-                                    var jsonStr = current?.ToString() ?? "";
-                                    if (!TryParseImageRefJson(jsonStr, out var parsedBytes, out _, out var parseError) || parsedBytes == null)
-                                        throw new InvalidOperationException(parseError ?? "Unsupported value.");
-                                    bytes = parsedBytes;
-                                }
-
-                                if (bytes.Length == 0)
-                                    throw new InvalidOperationException("No image bytes.");
-
-                                // Replace image (dispose previous)
-                                image?.Dispose();
-                                image = SKImage.FromEncodedData(bytes) ?? throw new InvalidOperationException("Failed to decode image bytes.");
-                                width = image.Width;
-                                height = image.Height;
-                                ok = true;
-                            }
-                            catch (Exception ex)
-                            {
-                                image?.Dispose();
-                                image = null;
-                                error = VlLog.SafeError(ex);
-                                ok = false;
-                            }
-                        }
-
-                        return ibc.Node(
-                            inputs: new IVLPin[]
-                            {
-                                ibc.Input<object?>(val => { current = val; Recompute(); }),
-                            },
-                            outputs: new IVLPin[]
-                            {
-                                ibc.Output<SKImage>(() => image ?? default!),
-                                ibc.Output<int>(() => width),
-                                ibc.Output<int>(() => height),
-                                ibc.Output<bool>(() => ok),
-                                ibc.Output<string>(() => error),
-                            }
-                        );
-                    },
-                    summary: "Decode an ImageRef payload to a SkiaSharp SKImage",
-                    remarks: "Uses SkiaSharp.SKImage.FromEncodedData on the encoded bytes from ImageRef.data"
                 );
             }
         );

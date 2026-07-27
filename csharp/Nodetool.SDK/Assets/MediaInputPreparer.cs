@@ -5,22 +5,22 @@ namespace Nodetool.SDK.Assets;
 /// <summary>
 /// Prepares host-neutral media values for workflow execution.
 /// Small local values are inlined; values above the configured limit are
-/// uploaded through an injected asset manager.
+/// uploaded through an injected asset uploader.
 /// </summary>
 public sealed class MediaInputPreparer
 {
     public const int DefaultInlineLimitBytes = 10 * 1024 * 1024;
 
-    private readonly IAssetManager? _assetManager;
+    private readonly IAssetUploader? _assetUploader;
     private readonly long _inlineLimitBytes;
 
     public MediaInputPreparer(
-        IAssetManager? assetManager = null,
+        IAssetUploader? assetUploader = null,
         long inlineLimitBytes = DefaultInlineLimitBytes)
     {
         if (inlineLimitBytes < 0)
             throw new ArgumentOutOfRangeException(nameof(inlineLimitBytes));
-        _assetManager = assetManager;
+        _assetUploader = assetUploader;
         _inlineLimitBytes = inlineLimitBytes;
     }
 
@@ -134,8 +134,8 @@ public sealed class MediaInputPreparer
         string path,
         CancellationToken cancellationToken)
     {
-        var manager = RequireAssetManager(inputName, mediaType);
-        var asset = await manager.UploadAssetAsync(
+        var uploader = RequireAssetUploader(inputName, mediaType);
+        var asset = await uploader.UploadAssetAsync(
             path,
             GetContentType(path, mediaType),
             cancellationToken);
@@ -150,8 +150,8 @@ public sealed class MediaInputPreparer
         string contentType,
         CancellationToken cancellationToken)
     {
-        var manager = RequireAssetManager(inputName, mediaType);
-        var asset = await manager.UploadAssetAsync(
+        var uploader = RequireAssetUploader(inputName, mediaType);
+        var asset = await uploader.UploadAssetAsync(
             $"nodetool-{mediaType}-{Guid.NewGuid():N}{extension}",
             bytes,
             contentType,
@@ -159,12 +159,12 @@ public sealed class MediaInputPreparer
         return ToTransport(asset, mediaType, preserveData: false);
     }
 
-    private IAssetManager RequireAssetManager(
+    private IAssetUploader RequireAssetUploader(
         string inputName,
         string mediaType)
-        => _assetManager ?? throw new InvalidOperationException(
+        => _assetUploader ?? throw new InvalidOperationException(
             $"Cannot upload large {mediaType} input '{inputName}': " +
-            "no asset manager is configured.");
+            "no asset uploader is configured.");
 
     private static Dictionary<string, object> ToTransport(
         AssetRef asset,

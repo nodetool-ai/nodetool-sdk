@@ -109,6 +109,8 @@ public static class NodeToolClientProvider
         {
             connectionSession.Configure(settings.CreateProfile());
         }
+        NodesFactory.SetEnabled(settings.LoadNodes);
+        WorkflowNodeFactory.SetEnabled(settings.LoadWorkflows);
     }
 
     /// <summary>
@@ -168,6 +170,10 @@ public static class NodeToolClientProvider
     public static bool UseWebSocketDiscovery =>
         Settings.UseWebSocketDiscovery;
 
+    public static bool LoadNodes => Settings.LoadNodes;
+
+    public static bool LoadWorkflows => Settings.LoadWorkflows;
+
     public static WorkflowExecutionOptions ExecutionOptions =>
         Settings.ExecutionOptions;
 
@@ -182,6 +188,26 @@ public static class NodeToolClientProvider
         if (!Settings.SetUseWebSocketDiscovery(enabled))
             return;
         WorkflowNodeFactory.RequestRefresh();
+    }
+
+    public static void SetLoadNodes(bool enabled)
+    {
+        Settings.SetLoadNodes(enabled);
+        NodesFactory.SetEnabled(enabled);
+    }
+
+    public static void SetLoadWorkflows(bool enabled)
+    {
+        Settings.SetLoadWorkflows(enabled);
+        WorkflowNodeFactory.SetEnabled(enabled);
+    }
+
+    public static void RefreshDiscovery()
+    {
+        if (Settings.LoadNodes)
+            NodesFactory.RequestRefresh();
+        if (Settings.LoadWorkflows)
+            WorkflowNodeFactory.RequestRefresh();
     }
 
     public static void SetWorkflowPersistence(WorkflowPersistence value)
@@ -409,10 +435,9 @@ public static class NodeToolClientProvider
         string status,
         VlNodeToolHostSettings settings)
     {
-        if (status == "connected")
+        if (status == "connected" && settings.LoadNodes)
             NodesFactory.RequestRefresh();
-        if (status == "connected" &&
-            settings.UseWebSocketDiscovery)
+        if (status == "connected" && settings.LoadWorkflows)
             WorkflowNodeFactory.RequestRefresh();
         StatusChanged?.Invoke(status);
     }

@@ -55,7 +55,7 @@ public sealed class WorkflowInputPreparationService
         ArgumentNullException.ThrowIfNull(inputs);
 
         NodetoolClient? apiClient = null;
-        AssetManager? assetManager = null;
+        AssetUploader? assetUploader = null;
         try
         {
             if (_apiBaseUrl != null &&
@@ -66,15 +66,14 @@ public sealed class WorkflowInputPreparationService
                     _apiBaseUrl,
                     _authToken,
                     _httpClient);
-                assetManager = new AssetManager(
-                    nodetoolClient: apiClient,
-                    httpClient: _httpClient,
+                assetUploader = new AssetUploader(
+                    apiClient,
                     useTemporaryUploads: _useTemporaryAssetUploads);
             }
 
             return await new WorkflowInputPreparer(
                     new MediaInputPreparer(
-                        assetManager,
+                        assetUploader,
                         _inlineMediaLimitBytes),
                     _adaptHostMediaValue)
                 .PrepareAsync(
@@ -84,7 +83,6 @@ public sealed class WorkflowInputPreparationService
         }
         finally
         {
-            assetManager?.Dispose();
             apiClient?.Dispose();
         }
     }

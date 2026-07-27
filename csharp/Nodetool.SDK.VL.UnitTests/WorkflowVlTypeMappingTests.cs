@@ -8,6 +8,7 @@ using Nodetool.SDK.VL.Utilities;
 using Nodetool.SDK.VL.Models;
 using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.VL.Services;
+using Nodetool.SDK.Workflows;
 using Nodetool.Types.Core;
 using SkiaSharp;
 using System.Text.Json;
@@ -27,26 +28,34 @@ public class WorkflowVlTypeMappingTests
     public void OptionConstrainedWorkflowString_UsesDynamicVlEnum()
     {
         using var defaultDocument = JsonDocument.Parse("\"words\"");
-        var workflow = new WorkflowDetail
-        {
-            Interface = new WorkflowInterfaceResponse
-            {
-                Inputs =
-                [
-                    new WorkflowInterfaceInput
-                    {
-                        Name = "measure",
-                        Required = true,
-                        Default = defaultDocument.RootElement.Clone(),
-                        Type = new NodeTypeDefinition
-                        {
-                            Type = "str",
-                            Values = ["characters", "words", "lines"]
-                        }
-                    }
-                ]
-            }
-        };
+        var workflow = new WorkflowDetail(new WorkflowDescriptor(
+            "workflow-1",
+            "Workflow",
+            "",
+            "revision-1",
+            1,
+            "workflow",
+            1,
+            "etag-1",
+            "server",
+            [
+                new WorkflowInputDescriptor(
+                    "input-1",
+                    "measure",
+                    "",
+                    new WorkflowTypeDescriptor(
+                        "str",
+                        false,
+                        null,
+                        ["characters", "words", "lines"],
+                        []),
+                    true,
+                    defaultDocument.RootElement.Clone(),
+                    null,
+                    null)
+            ],
+            [],
+            []));
 
         var input = Assert.Single(workflow.GetInputProperties());
         Assert.Equal("enum", input.Type.Type);

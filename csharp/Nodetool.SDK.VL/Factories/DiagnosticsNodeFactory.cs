@@ -67,6 +67,15 @@ internal static class DiagnosticsNodeFactory
                 var useWebSocketDiscoveryPin = bc.Pin("UseWebSocketDiscovery", typeof(bool), false,
                     "WebSocket discovery",
                     "Use compact correlated WebSocket RPC for workflow discovery after the shared connection opens. HTTP remains the bootstrap transport.");
+                var loadNodesPin = bc.Pin("LoadNodes", typeof(bool), true,
+                    "Load individual nodes",
+                    "Publish individual NodeTool nodes in the vvvv node browser. Disable this when only workflows are needed.");
+                var loadWorkflowsPin = bc.Pin("LoadWorkflows", typeof(bool), true,
+                    "Load workflows",
+                    "Publish NodeTool workflows in the vvvv node browser. Disable this when only individual nodes are needed.");
+                var refreshDiscoveryPin = bc.Pin("RefreshDiscovery", typeof(bool), false,
+                    "Refresh discovery",
+                    "Refresh the enabled node and workflow catalogs without restarting vvvv.");
                 var persistencePin = new VlPinDescription(
                     "Persistence",
                     typeof(WorkflowPersistence),
@@ -102,12 +111,14 @@ internal static class DiagnosticsNodeFactory
                         baseUrlPin, apiKeyPin, autoReconnectPin,
                         reconnectTriggerPin, executionTimeoutPin,
                         inlineMediaLimitPin, useWebSocketDiscoveryPin,
+                        loadNodesPin, loadWorkflowsPin, refreshDiscoveryPin,
                         persistencePin, eventDetailPin, assetPersistencePin
                     },
                     outputs: new IVLPinDescription[] { isConnectedPin, statusPin, lastErrorPin },
                     newNode: ibc =>
                     {
                         bool lastReconnectState = false;
+                        bool lastRefreshDiscoveryState = false;
                         bool hasConnected = false;
                         string lastUrl = "";
                         string lastApiKey = "";
@@ -159,6 +170,14 @@ internal static class DiagnosticsNodeFactory
                                 ibc.Input<int>(NodeToolClientProvider.SetExecutionTimeoutSeconds),
                                 ibc.Input<int>(NodeToolClientProvider.SetInlineMediaLimitBytes),
                                 ibc.Input<bool>(NodeToolClientProvider.SetUseWebSocketDiscovery),
+                                ibc.Input<bool>(NodeToolClientProvider.SetLoadNodes),
+                                ibc.Input<bool>(NodeToolClientProvider.SetLoadWorkflows),
+                                ibc.Input<bool>(val =>
+                                {
+                                    if (val && !lastRefreshDiscoveryState)
+                                        NodeToolClientProvider.RefreshDiscovery();
+                                    lastRefreshDiscoveryState = val;
+                                }),
                                 ibc.Input<WorkflowPersistence>(
                                     NodeToolClientProvider.SetWorkflowPersistence),
                                 ibc.Input<WorkflowEventDetail>(

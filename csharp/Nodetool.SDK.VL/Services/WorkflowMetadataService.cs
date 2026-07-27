@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using System.Text.Json;
 using Nodetool.SDK.Api;
 using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.VL.Models;
@@ -244,117 +243,7 @@ public class WorkflowMetadataService : IDisposable
 
     private static WorkflowDetail CreateWorkflowDetail(
         WorkflowDescriptor descriptor)
-    {
-        var workflowInterface = new WorkflowInterfaceResponse
-        {
-            Version = descriptor.InterfaceVersion,
-            WorkflowId = descriptor.Id,
-            Etag = descriptor.InterfaceEtag,
-            Source = descriptor.InterfaceSource,
-            Inputs = descriptor.Inputs.Select(input => new WorkflowInterfaceInput
-            {
-                NodeId = input.NodeId,
-                Name = input.Name,
-                Description = input.Description,
-                Type = ConvertType(input.Type),
-                Required = input.Required,
-                Default = input.DefaultValue ?? default,
-                Min = input.Minimum,
-                Max = input.Maximum
-            }).ToList(),
-            Outputs = descriptor.Outputs.Select(output => new WorkflowInterfaceOutput
-            {
-                NodeId = output.NodeId,
-                Name = output.Name,
-                Description = output.Description,
-                Type = ConvertType(output.Type),
-                Stream = output.Stream
-            }).ToList(),
-            Diagnostics = descriptor.Diagnostics.Select(diagnostic =>
-                new WorkflowInterfaceDiagnostic
-                {
-                    Severity = diagnostic.Severity,
-                    Code = diagnostic.Code,
-                    Message = diagnostic.Message,
-                    NodeId = diagnostic.NodeId,
-                    PinName = diagnostic.PinName
-                }).ToList()
-        };
-        var updatedAt = DateTime.TryParse(descriptor.Revision, out var parsedRevision)
-            ? parsedRevision
-            : DateTime.MinValue;
-        return new WorkflowDetail
-        {
-            Id = descriptor.Id,
-            Name = descriptor.Name,
-            Description = descriptor.Description,
-            UpdatedAt = updatedAt,
-            Interface = workflowInterface,
-            WorkflowRevision = descriptor.Revision,
-            RegistryRevision = descriptor.RegistryRevision,
-            Descriptor = descriptor,
-            InputSchema = CreateInterfaceSchema(workflowInterface.Inputs),
-            OutputSchema = CreateInterfaceSchema(workflowInterface.Outputs)
-        };
-    }
-
-    private static NodeTypeDefinition ConvertType(WorkflowTypeDescriptor type)
-        => new()
-        {
-            Type = type.Type,
-            Optional = type.Optional,
-            TypeName = type.TypeName,
-            Values = type.Values.ToList(),
-            TypeArgs = type.TypeArguments.Select(ConvertType).ToList()
-        };
-
-    private static WorkflowSchemaDefinition CreateInterfaceSchema(
-        IEnumerable<WorkflowInterfacePin> pins)
-    {
-        var schema = new WorkflowSchemaDefinition();
-        foreach (var pin in pins)
-        {
-            var property = ConvertInterfaceType(
-                pin.Type,
-                pin.Description,
-                pin is WorkflowInterfaceInput input &&
-                input.Default.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined)
-                    ? input.Default
-                    : null);
-            if (pin is WorkflowInterfaceInput inputPin)
-            {
-                property.Minimum = inputPin.Min;
-                property.Maximum = inputPin.Max;
-                if (inputPin.Required)
-                    schema.Required.Add(pin.Name);
-            }
-            schema.Properties[pin.Name] = property;
-        }
-        return schema;
-    }
-
-    private static WorkflowPropertyDefinition ConvertInterfaceType(
-        NodeTypeDefinition type,
-        string description,
-        object? defaultValue)
-    {
-        var property = new WorkflowPropertyDefinition
-        {
-            Type = type.Type,
-            Title = type.TypeName,
-            Description = description,
-            Default = defaultValue,
-            Enum = type.Values
-        };
-        if (string.Equals(type.Type, "list", StringComparison.OrdinalIgnoreCase))
-        {
-            property.Type = "array";
-            property.Items = type.TypeArgs?.Count > 0
-                ? ConvertInterfaceType(type.TypeArgs[0], "", null)
-                : new WorkflowPropertyDefinition { Type = "any" };
-        }
-        return property;
-    }
+        => new(descriptor);
 
     public void Dispose()
     {

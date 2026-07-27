@@ -23,8 +23,6 @@ public sealed class ExecutionPinVisibilityTests
     [Theory]
     [InlineData("Error")]
     [InlineData("Debug")]
-    [InlineData("InputSchemaJson")]
-    [InlineData("OutputSchemaJson")]
     public void DiagnosticOutputs_AreHiddenByDefault(string name)
         => Assert.False(ExecutionPinVisibility.IsOutputVisible(name));
 

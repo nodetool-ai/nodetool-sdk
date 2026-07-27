@@ -118,54 +118,6 @@ public interface IWebSocketMessage
 }
 
 /// <summary>
-/// WebSocket message for workflow execution requests.
-/// </summary>
-[MessagePackObject(true)]
-[Obsolete("Legacy message shape. Use the worker protocol: WebSocketCommand {command/type: run_job, data: RunJobRequest}.")]
-public class WorkflowExecuteRequest
-{
-    public string type { get; set; } = "workflow_execute";
-
-    public string workflow_id { get; set; } = "";
-
-    public Dictionary<string, object> inputs { get; set; } = new();
-
-    public string? job_id { get; set; } = null;
-
-    public Dictionary<string, object>? options { get; set; } = null;
-}
-
-/// <summary>
-/// WebSocket message for single node execution requests.
-/// </summary>
-[MessagePackObject(true)]
-[Obsolete("Legacy message shape. Use the worker protocol: WebSocketCommand {command/type: run_job, data: RunJobRequest} with a minimal graph.")]
-public class NodeExecuteRequest
-{
-    public string type { get; set; } = "node_execute";
-
-    public string node_type { get; set; } = "";
-
-    public Dictionary<string, object> inputs { get; set; } = new();
-
-    public string? node_id { get; set; } = null;
-
-    public Dictionary<string, object>? properties { get; set; } = null;
-}
-
-/// <summary>
-/// WebSocket message for job cancellation requests.
-/// </summary>
-[MessagePackObject(true)]
-[Obsolete("Legacy message shape. Use the worker protocol: WebSocketCommand {command/type: cancel_job, data: CancelJobData}.")]
-public class JobCancelRequest
-{
-    public string type { get; set; } = "job_cancel";
-
-    public string job_id { get; set; } = "";
-}
-
-/// <summary>
 /// Canonical cancel_job payload for the worker protocol.
 /// </summary>
 [MessagePackObject(true)]

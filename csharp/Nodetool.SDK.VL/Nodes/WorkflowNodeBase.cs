@@ -6,7 +6,6 @@ using System.IO;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Runtime.CompilerServices;
 using SkiaSharp;
@@ -92,32 +91,6 @@ namespace Nodetool.SDK.VL.Nodes
             _outputPins["IsRunning"] = new InternalPin("IsRunning", typeof(bool), false);
             _outputPins["Error"] = new InternalPin("Error", typeof(string), "");
             _outputPins["Debug"] = new InternalPin("Debug", typeof(string), "");
-            _outputPins["InputSchemaJson"] = new InternalPin("InputSchemaJson", typeof(string), "");
-            _outputPins["OutputSchemaJson"] = new InternalPin("OutputSchemaJson", typeof(string), "");
-
-            // Set schema pins once (debug convenience)
-            try
-            {
-                _outputPins["InputSchemaJson"].Value = _workflow.InputSchema == null
-                    ? ""
-                    : JsonSerializer.Serialize(_workflow.InputSchema, new JsonSerializerOptions { WriteIndented = true });
-            }
-            catch
-            {
-                _outputPins["InputSchemaJson"].Value = "<failed to serialize input schema>";
-            }
-
-            try
-            {
-                _outputPins["OutputSchemaJson"].Value = _workflow.OutputSchema == null
-                    ? ""
-                    : JsonSerializer.Serialize(_workflow.OutputSchema, new JsonSerializerOptions { WriteIndented = true });
-            }
-            catch
-            {
-                _outputPins["OutputSchemaJson"].Value = "<failed to serialize output schema>";
-            }
-            
             // Add workflow output pins
             foreach (var property in _workflow.GetOutputProperties())
             {
@@ -277,12 +250,6 @@ namespace Nodetool.SDK.VL.Nodes
 
                 SetIsRunning(true);
                 SetError("");
-
-                if (_workflow.InputSchema?.Properties != null && _workflow.InputSchema.Properties.Count > 0)
-                {
-                    var keys = string.Join(", ", _workflow.InputSchema.Properties.Keys);
-                    VlLog.Debug($"WorkflowNodeBase: input schema keys: {keys}");
-                }
 
                 var runtime = GetOrCreateExecutionRuntime();
                 runtime.InlineMediaLimitBytes =

@@ -34,6 +34,7 @@ namespace Nodetool.SDK.VL.Factories
         private static long _resetGeneration;
         private static bool _hasSuccessfulSnapshot;
         private static bool _factoryWasRequested;
+        private static bool _enabled = true;
         private static SynchronizationContext? _synchronizationContext;
 
         // Cached data from the Nodetool API
@@ -55,6 +56,8 @@ namespace Nodetool.SDK.VL.Factories
         {
             lock (_lock)
             {
+                if (!_enabled)
+                    return;
                 _apiStatusMessage = _fetchedNodes.Count > 0
                     ? "Node metadata refresh requested; current nodes remain available."
                     : "Node metadata refresh requested.";
@@ -62,6 +65,18 @@ namespace Nodetool.SDK.VL.Factories
                 if (_factoryWasRequested)
                     StartRefreshLoopLocked();
             }
+        }
+
+        public static void SetEnabled(bool enabled)
+        {
+            lock (_lock)
+            {
+                if (_enabled == enabled)
+                    return;
+                _enabled = enabled;
+            }
+
+            Reset();
         }
 
         public static void Reset()
@@ -107,6 +122,13 @@ namespace Nodetool.SDK.VL.Factories
                 _factoryWasRequested = true;
                 if (_factoryImpl != null)
                     return _factoryImpl;
+                if (!_enabled)
+                {
+                    _factoryImpl = NodeBuilding.NewFactoryImpl(
+                        ImmutableArray<IVLNodeDescription>.Empty,
+                        FactoryInvalidated);
+                    return _factoryImpl;
+                }
 
                 if (!_hasSuccessfulSnapshot)
                 {

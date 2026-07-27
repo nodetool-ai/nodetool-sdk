@@ -53,7 +53,7 @@ internal static class VlMediaInputAdapter
             cancellationToken);
 
         NodetoolClient? apiClient = null;
-        AssetManager? assetManager = null;
+        AssetUploader? assetUploader = null;
         try
         {
             if (NodeToolClientProvider.CurrentApiBaseUrl is { } apiBase)
@@ -61,13 +61,13 @@ internal static class VlMediaInputAdapter
                 apiClient = new NodetoolClient(
                     apiBase,
                     NodeToolClientProvider.CurrentAuthToken);
-                assetManager = new AssetManager(
-                    nodetoolClient: apiClient,
+                assetUploader = new AssetUploader(
+                    apiClient,
                     useTemporaryUploads: useTemporaryAssetUploads);
             }
 
             return await new MediaInputPreparer(
-                    assetManager,
+                    assetUploader,
                     NodeToolClientProvider.InlineMediaLimitBytes)
                 .PrepareAsync(
                     inputName,
@@ -77,7 +77,6 @@ internal static class VlMediaInputAdapter
         }
         finally
         {
-            assetManager?.Dispose();
             apiClient?.Dispose();
         }
     }

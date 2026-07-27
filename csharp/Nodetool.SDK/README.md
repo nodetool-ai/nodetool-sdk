@@ -314,7 +314,7 @@ dispose that externally owned instance.
 
 ## Assets
 
-The asset manager uses the canonical typed references from
+The asset uploader uses the canonical typed references from
 `Nodetool.SDK.Types.Assets`:
 
 ```csharp
@@ -323,7 +323,7 @@ using Nodetool.SDK.Assets;
 using Nodetool.SDK.Types.Assets;
 
 using var api = new NodetoolClient(new Uri("http://127.0.0.1:7777"));
-using var assets = new AssetManager(nodetoolClient: api);
+var assets = new AssetUploader(api);
 
 AssetRef uploaded = await assets.UploadAssetAsync(
     @"C:\media\sample.wav",
@@ -360,7 +360,7 @@ bearer tokens are attached only to same-origin downloads.
 `MediaInputPreparer` is the corresponding execution-input boundary. It accepts
 asset references, local paths, URIs, and byte buffers; inlines small local
 values up to 10 MiB by default and uploads larger values through an injected
-`IAssetManager`. Inline bytes avoid an extra HTTP round trip. MessagePack keeps
+`IAssetUploader`. Inline bytes avoid an extra HTTP round trip. MessagePack keeps
 them binary; JSON fallback expands them as base64. Engine-specific image
 objects should be encoded to bytes by the host adapter before calling it.
 Common image, audio, video, document,
@@ -368,7 +368,7 @@ glTF/GLB model, and font extensions receive specialized MIME types; common
 binary image/audio/video/document/model signatures are detected when no
 filename is available.
 
-`AssetManager(useTemporaryUploads: true)` sends uploads through
+`AssetUploader(useTemporaryUploads: true)` sends uploads through
 `POST /api/sdk/v1/assets/temporary`. This is intended for execution inputs, not
 for user-visible asset creation: the returned typed reference has a URI but no
 persistent `AssetId`.
@@ -385,14 +385,9 @@ or VL `SKImage` encoding—without reimplementing file and upload policy.
 references without I/O. `AssetReferenceUri` recognizes NodeTool storage
 references, while `IAssetMaterializer` remains the download/cache boundary.
 
-The default asset cache is:
-
-```text
-%USERPROFILE%\.nodetool\cache\assets
-```
-
-An injected `HttpClient` remains owned by the caller. An internally created
-client is disposed with `AssetManager`.
+`AssetUploader` owns no network client or cache. The caller owns its
+`INodetoolClient`; output download and cache lifetime belong exclusively to
+`AssetMaterializer`.
 
 ## NodeTool type mapping
 

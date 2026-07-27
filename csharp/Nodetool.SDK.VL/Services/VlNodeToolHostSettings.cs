@@ -22,6 +22,8 @@ internal sealed class VlNodeToolHostSettings
         MediaInputPreparer.DefaultInlineLimitBytes;
     private bool _autoReconnect = true;
     private bool _useWebSocketDiscovery;
+    private bool _loadNodes = true;
+    private bool _loadWorkflows = true;
     private WorkflowExecutionOptions _executionOptions = new();
     private string? _configurationError;
 
@@ -85,6 +87,24 @@ internal sealed class VlNodeToolHostSettings
         {
             lock (_gate)
                 return _useWebSocketDiscovery;
+        }
+    }
+
+    public bool LoadNodes
+    {
+        get
+        {
+            lock (_gate)
+                return _loadNodes;
+        }
+    }
+
+    public bool LoadWorkflows
+    {
+        get
+        {
+            lock (_gate)
+                return _loadWorkflows;
         }
     }
 
@@ -162,6 +182,28 @@ internal sealed class VlNodeToolHostSettings
             if (_useWebSocketDiscovery == enabled)
                 return false;
             _useWebSocketDiscovery = enabled;
+            return true;
+        }
+    }
+
+    public bool SetLoadNodes(bool enabled)
+    {
+        lock (_gate)
+        {
+            if (_loadNodes == enabled)
+                return false;
+            _loadNodes = enabled;
+            return true;
+        }
+    }
+
+    public bool SetLoadWorkflows(bool enabled)
+    {
+        lock (_gate)
+        {
+            if (_loadWorkflows == enabled)
+                return false;
+            _loadWorkflows = enabled;
             return true;
         }
     }

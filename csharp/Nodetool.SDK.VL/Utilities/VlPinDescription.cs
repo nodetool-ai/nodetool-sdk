@@ -16,9 +16,7 @@ internal static class ExecutionPinVisibility
     public static bool IsOutputVisible(string name)
         => name is not (
             "Error" or
-            "Debug" or
-            "InputSchemaJson" or
-            "OutputSchemaJson");
+            "Debug");
 }
 
 /// <summary>

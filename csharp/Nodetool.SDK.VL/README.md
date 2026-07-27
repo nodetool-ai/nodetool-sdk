@@ -105,7 +105,14 @@ Workflow discovery transport:
 
 - HTTP remains the default bootstrap transport, so loading the package does not require an open execution socket.
 - Enable `UseWebSocketDiscovery` on the Connect node to switch workflow summaries and interface batches to correlated MessagePack RPC after the shared socket connects.
-- When the socket first connects, the workflow factory requests a refresh. A later disconnect keeps the last successful workflow nodes available.
+- `LoadNodes` and `LoadWorkflows` default to enabled. Disable either catalog to
+  keep its generated entries out of the vvvv node browser; the Connect and
+  diagnostic nodes remain available.
+- Pulse `RefreshDiscovery` to refresh both enabled catalogs and republish
+  changed node descriptions without restarting vvvv.
+- When the socket connects, both enabled catalogs request a refresh regardless
+  of whether workflow discovery uses HTTP or WebSocket. A later disconnect
+  keeps the last successful workflow nodes available.
 - Connection changes retain the last workflow factory while the replacement is fetched. A single empty discovery response is treated as provisional and must be confirmed before existing workflow nodes are removed.
 
 Media transport:

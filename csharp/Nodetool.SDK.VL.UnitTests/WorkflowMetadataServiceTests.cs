@@ -27,7 +27,7 @@ public class WorkflowMetadataServiceTests
         Assert.Equal("workflow-1", workflow.Id);
         Assert.Equal("workflow-1", workflow.Descriptor?.Id);
         Assert.Equal("prompt", Assert.Single(workflow.Descriptor!.Inputs).Name);
-        Assert.Equal("etag-1", workflow.Interface?.Etag);
+        Assert.Equal("etag-1", workflow.Descriptor.InterfaceEtag);
         var input = Assert.Single(workflow.GetInputProperties());
         Assert.Equal("prompt", input.Name);
         Assert.True(input.Required);

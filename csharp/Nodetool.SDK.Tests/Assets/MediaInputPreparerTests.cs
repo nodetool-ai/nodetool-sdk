@@ -35,12 +35,12 @@ public class MediaInputPreparerTests
     }
 
     [Fact]
-    public async Task LargeLocalFileUsesInjectedAssetManager()
+    public async Task LargeLocalFileUsesInjectedAssetUploader()
     {
         var path = CreateTemporaryFile(".mp4", [1, 2, 3, 4]);
         try
         {
-            using var assets = new RecordingAssetManager();
+            var assets = new RecordingAssetUploader();
             var preparer = new MediaInputPreparer(
                 assets,
                 inlineLimitBytes: 2);
@@ -63,7 +63,7 @@ public class MediaInputPreparerTests
     [Fact]
     public async Task LargeBytesUseMemoryUploadAndMediaDefaults()
     {
-        using var assets = new RecordingAssetManager();
+        var assets = new RecordingAssetUploader();
         var preparer = new MediaInputPreparer(
             assets,
             inlineLimitBytes: 2);
@@ -84,7 +84,7 @@ public class MediaInputPreparerTests
     [Fact]
     public async Task ByteSignatureSelectsUploadExtensionAndContentType()
     {
-        using var assets = new RecordingAssetManager();
+        var assets = new RecordingAssetUploader();
         var preparer = new MediaInputPreparer(
             assets,
             inlineLimitBytes: 2);
@@ -110,7 +110,7 @@ public class MediaInputPreparerTests
         var path = CreateTemporaryFile(extension, [1, 2, 3]);
         try
         {
-            using var assets = new RecordingAssetManager();
+            var assets = new RecordingAssetUploader();
             var preparer = new MediaInputPreparer(
                 assets,
                 inlineLimitBytes: 1);
@@ -153,7 +153,7 @@ public class MediaInputPreparerTests
     }
 
     [Fact]
-    public async Task LargeValueWithoutAssetManagerHasStableError()
+    public async Task LargeValueWithoutAssetUploaderHasStableError()
     {
         var preparer = new MediaInputPreparer(inlineLimitBytes: 1);
 
@@ -163,7 +163,7 @@ public class MediaInputPreparerTests
                 "document",
                 new byte[] { 1, 2 }));
 
-        Assert.Contains("no asset manager", exception.Message);
+        Assert.Contains("no asset uploader", exception.Message);
         Assert.Contains("document", exception.Message);
     }
 
@@ -189,9 +189,8 @@ public class MediaInputPreparerTests
         return path;
     }
 
-    private sealed class RecordingAssetManager : IAssetManager
+    private sealed class RecordingAssetUploader : IAssetUploader
     {
-        public string CacheDirectory => "";
         public string? UploadedPath { get; private set; }
         public string? FileName { get; private set; }
         public string? ContentType { get; private set; }
@@ -225,24 +224,6 @@ public class MediaInputPreparerTests
             UploadedBytes = content.ToArray();
             return Task.FromResult<AssetRef>(UploadedAsset());
         }
-
-        public Task<string> DownloadAssetAsync(
-            AssetRef asset,
-            string? localPath = null,
-            CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
-
-        public Task<string> DownloadAssetAsync(
-            string uri,
-            string? localPath = null,
-            CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
-
-        public string? GetCachedPath(AssetRef asset) => null;
-        public string? GetCachedPath(string uri) => null;
-        public void ClearCache() { }
-        public long GetCacheSize() => 0;
-        public void Dispose() { }
 
         private static GenericAssetRef UploadedAsset()
             => new()

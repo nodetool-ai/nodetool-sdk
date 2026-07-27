@@ -4,9 +4,7 @@ using Nodetool.SDK.Api;
 using Nodetool.SDK.Configuration;
 using Nodetool.SDK.Diagnostics;
 using Nodetool.SDK.Execution;
-using Nodetool.SDK.Types;
 using Nodetool.SDK.Values;
-using Nodetool.SDK.WebSocket;
 using Nodetool.SDK.Workflows;
 
 namespace Nodetool.SDK.TestConsole;
@@ -36,67 +34,9 @@ class Program
             return;
         }
 
-        logger.LogInformation("🚀 NodeTool SDK Type Registry Test Console");
-        logger.LogInformation("========================================");
-
-        try
-        {
-            // Workflow execution does not require the generated node catalog.
-            var typeRegistry = new NodeToolTypeRegistry(loggerFactory.CreateLogger<NodeToolTypeRegistry>());
-            var enumRegistry = new EnumRegistry(loggerFactory.CreateLogger<EnumRegistry>());
-            var typeLookup = new TypeLookupService(typeRegistry, enumRegistry, loggerFactory.CreateLogger<TypeLookupService>());
-
-            logger.LogInformation("🔍 Initializing type system...");
-            typeLookup.Initialize();
-
-            // Get type system info
-            var typeInfo = typeLookup.GetTypeSystemInfo();
-            logger.LogInformation("📊 Type System Summary:");
-            logger.LogInformation("   - Total Types: {TotalTypes}", typeInfo.TotalTypes);
-            logger.LogInformation("   - Total Enums: {TotalEnums}", typeInfo.TotalEnums);
-
-            // Show types by category
-            logger.LogInformation("📁 Types by Category:");
-            foreach (var category in typeInfo.TypesByCategory)
-            {
-                logger.LogInformation("   - {Category}: {Count} types", category.Key, category.Value.Count);
-                
-                // Show first few types as examples
-                var examples = category.Value.Take(3).ToList();
-                if (examples.Any())
-                {
-                    logger.LogInformation("     Examples: {Examples}", string.Join(", ", examples));
-                }
-            }
-
-            // Show enums by category
-            logger.LogInformation("🔢 Enums by Category:");
-            foreach (var category in typeInfo.EnumsByCategory)
-            {
-                logger.LogInformation("   - {Category}: {Count} enums", category.Key, category.Value.Count);
-            }
-
-            // Test specific type lookups
-            logger.LogInformation("🧪 Testing specific type lookups...");
-            await TestTypeLookups(typeLookup, logger);
-
-            // Test WebSocket message types
-            logger.LogInformation("📡 Testing WebSocket message types...");
-            await TestWebSocketMessages(typeLookup, logger);
-
-            // Test MessagePack serialization
-            logger.LogInformation("📦 Testing MessagePack serialization...");
-            await TestMessagePackSerialization(typeLookup, logger);
-
-            logger.LogInformation("✅ All tests completed successfully!");
-
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(
-                "❌ Test failed: {Error}",
-                NodeToolDiagnosticRedactor.RedactText(ex.Message));
-        }
+        logger.LogInformation("NodeTool SDK smoke-test console");
+        logger.LogInformation(
+            "Use 'fetch --ws <url>' or 'run-workflow --ws <url> --workflow <name-or-id>'.");
     }
 
     private static async Task RunModeSafelyAsync(Func<Task> run, ILogger logger)
@@ -112,149 +52,6 @@ class Program
                 NodeToolDiagnosticRedactor.RedactText(ex.Message));
             Environment.ExitCode = 1;
         }
-    }
-
-    static Task TestTypeLookups(TypeLookupService typeLookup, ILogger logger)
-    {
-        // Test common asset types
-        var testTypes = new[] { "image", "audio", "video", "hf.stable_diffusion", "comfy.conditioning" };
-
-        foreach (var typeName in testTypes)
-        {
-            var type = typeLookup.GetTypesByCategory().Values
-                .SelectMany(types => types)
-                .FirstOrDefault(t => t == typeName);
-
-            if (type != null)
-            {
-                logger.LogInformation("   ✅ Found type: {TypeName}", typeName);
-            }
-            else
-            {
-                logger.LogWarning("   ⚠️  Type not found: {TypeName}", typeName);
-            }
-        }
-
-        return Task.CompletedTask;
-    }
-
-    static Task TestWebSocketMessages(TypeLookupService typeLookup, ILogger logger)
-    {
-        try
-        {
-            // Test JobUpdate
-            var jobUpdate = new JobUpdate
-            {
-                status = "completed",
-                job_id = "test-job-123",
-                message = "Test job completed successfully"
-            };
-
-            var typeName = typeLookup.GetTypeName(jobUpdate);
-            logger.LogInformation("   ✅ JobUpdate type name: {TypeName}", typeName);
-
-            // Test NodeUpdate
-            var nodeUpdate = new NodeUpdate
-            {
-                node_id = "node-456",
-                node_name = "TestNode",
-                status = "completed",
-                result = new Dictionary<string, object> { { "output", "test result" } }
-            };
-
-            typeName = typeLookup.GetTypeName(nodeUpdate);
-            logger.LogInformation("   ✅ NodeUpdate type name: {TypeName}", typeName);
-
-            // Test OutputUpdate
-            var outputUpdate = new OutputUpdate
-            {
-                node_id = "node-789",
-                node_name = "OutputNode",
-                output_name = "result",
-                value = "test output value",
-                output_type = "string"
-            };
-
-            typeName = typeLookup.GetTypeName(outputUpdate);
-            logger.LogInformation("   ✅ OutputUpdate type name: {TypeName}", typeName);
-
-            // Test PreviewUpdate
-            var previewUpdate = new PreviewUpdate
-            {
-                node_id = "node-101",
-                value = new Dictionary<string, object> { { "type", "image" }, { "uri", "data:..." } }
-            };
-
-            typeName = typeLookup.GetTypeName(previewUpdate);
-            logger.LogInformation("   ✅ PreviewUpdate type name: {TypeName}", typeName);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(
-                "   ❌ WebSocket message test failed: {Error}",
-                NodeToolDiagnosticRedactor.RedactText(ex.Message));
-        }
-
-        return Task.CompletedTask;
-    }
-
-    static Task TestMessagePackSerialization(TypeLookupService typeLookup, ILogger logger)
-    {
-        try
-        {
-            // Test serialization/deserialization round-trip
-            var originalMessage = new WebSocketCommand
-            {
-                command = "run_job",
-                type = "run_job",
-                data = new RunJobRequest
-                {
-                    WorkflowId = "test-workflow-123",
-                    JobType = "workflow",
-                    Params = new Dictionary<string, object>
-                    {
-                        { "prompt", "Generate an AI image" },
-                        { "width", 512 },
-                        { "height", 512 }
-                    },
-                    ExplicitTypes = true
-                }
-            };
-
-            // Serialize
-            var serializedData = typeLookup.Serialize(originalMessage);
-            logger.LogInformation("   ✅ Serialized run_job WebSocketCommand: {Size} bytes", serializedData.Length);
-
-            // Deserialize
-            var deserializedMessage = typeLookup.Deserialize<WebSocketCommand>(serializedData);
-            
-            if (deserializedMessage != null)
-            {
-                logger.LogInformation("   ✅ Deserialized WebSocketCommand: command={Command}, type={Type}", 
-                    deserializedMessage.command, deserializedMessage.type);
-                
-                if (deserializedMessage.command == originalMessage.command)
-                {
-                    logger.LogInformation("   ✅ Round-trip serialization successful!");
-                }
-                else
-                {
-                    logger.LogWarning("   ⚠️  Round-trip data mismatch");
-                }
-            }
-            else
-            {
-                logger.LogWarning("   ⚠️  Deserialization returned null");
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(
-                "   ❌ MessagePack serialization test failed: {Error}",
-                NodeToolDiagnosticRedactor.RedactText(ex.Message));
-        }
-
-        return Task.CompletedTask;
     }
 
     private static async Task FetchMode(string[] args, ILoggerFactory loggerFactory, ILogger logger)

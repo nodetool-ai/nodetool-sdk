@@ -28,8 +28,6 @@ namespace Nodetool.SDK.VL.Nodes
         public const string IsRunningOutputName = "IsRunning";
         public const string ErrorOutputName = "Error";
         public const string DebugOutputName = "Debug";
-        public const string InputSchemaJsonOutputName = "InputSchemaJson";
-        public const string OutputSchemaJsonOutputName = "OutputSchemaJson";
 
         public WorkflowNodeDescription(
             WorkflowDetail workflow,
@@ -134,16 +132,6 @@ namespace Nodetool.SDK.VL.Nodes
                 "Last few workflow runner updates (progress/node_update/output_update). Useful when results are partial or missing.",
                 isVisible: false));
 
-            outputPins.Add(new PinDescription(InputSchemaJsonOutputName, typeof(string), "",
-                "📄 Input schema (JSON)",
-                "The workflow input_schema as JSON (for debugging/type inspection).",
-                isVisible: false));
-
-            outputPins.Add(new PinDescription(OutputSchemaJsonOutputName, typeof(string), "",
-                "📄 Output schema (JSON)",
-                "The workflow output_schema as JSON (for debugging/type inspection).",
-                isVisible: false));
-
             // Add workflow output pins
             foreach (var property in _workflow.GetOutputProperties())
             {
@@ -171,19 +159,6 @@ namespace Nodetool.SDK.VL.Nodes
             get
             {
                 var tags = new List<string> { "Nodetool", "Workflow" };
-                if (_workflow.Tags != null)
-                {
-                    foreach (var t in _workflow.Tags)
-                    {
-                        if (string.IsNullOrWhiteSpace(t))
-                            continue;
-                        var trimmed = t.Trim();
-                        if (trimmed.Length == 0)
-                            continue;
-                        if (!tags.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
-                            tags.Add(trimmed);
-                    }
-                }
                 return tags.AsReadOnly();
             }
         }
@@ -225,22 +200,6 @@ namespace Nodetool.SDK.VL.Nodes
                 parts.Add(TrimTrailingPeriod(_workflow.Id.Trim()));
             // Don't repeat Name/Description here: vvvv shows Summary + Remarks, and Summary already contains the
             // human-readable description/title.
-
-            parts.Add($"Created: {_workflow.CreatedAt:yyyy-MM-dd}");
-            parts.Add($"Updated: {_workflow.UpdatedAt:yyyy-MM-dd}");
-
-            if (_workflow.Tags != null && _workflow.Tags.Count > 0)
-            {
-                var shown = _workflow.Tags
-                    .Where(t => !string.IsNullOrWhiteSpace(t))
-                    .Select(t => t.Trim())
-                    .Where(t => t.Length > 0)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .Take(12)
-                    .ToList();
-                if (shown.Count > 0)
-                    parts.Add($"Tags: {string.Join(", ", shown)}");
-            }
 
             return string.Join("\n", parts);
         }

@@ -49,33 +49,7 @@ public class BaseSdkCleanupTests
     }
 
     [Fact]
-    public void DisposingAssetManager_DoesNotDisposeInjectedHttpClient()
-    {
-        var handler = new TrackingHandler(_ => new HttpResponseMessage(HttpStatusCode.OK));
-        using var httpClient = new HttpClient(handler);
-        var cacheDirectory = Path.Combine(
-            Path.GetTempPath(),
-            $"nodetool-sdk-cache-{Guid.NewGuid():N}");
-
-        try
-        {
-            using (var manager = new AssetManager(
-                       cacheDirectory: cacheDirectory,
-                       httpClient: httpClient))
-            {
-            }
-
-            Assert.False(handler.IsDisposed);
-        }
-        finally
-        {
-            if (Directory.Exists(cacheDirectory))
-                Directory.Delete(cacheDirectory, recursive: true);
-        }
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task AssetManagerUpload_UsesCanonicalTypedAssetAndPreservesMimeType()
+    public async System.Threading.Tasks.Task AssetUploader_UsesCanonicalTypedAssetAndPreservesMimeType()
     {
         var handler = new TrackingHandler(request =>
         {
@@ -110,11 +84,9 @@ public class BaseSdkCleanupTests
 
         try
         {
-            using var manager = new AssetManager(
-                cacheDirectory: Path.Combine(directory, "cache"),
-                nodetoolClient: apiClient);
+            var uploader = new AssetUploader(apiClient);
 
-            var result = await manager.UploadAssetAsync(filePath, "audio/wav");
+            var result = await uploader.UploadAssetAsync(filePath, "audio/wav");
 
             var audio = Assert.IsType<AudioRef>(result);
             Assert.Equal("audio-1", audio.AssetId);
@@ -128,7 +100,7 @@ public class BaseSdkCleanupTests
     }
 
     [Fact]
-    public async Task AssetManagerUpload_StreamIsReusableAndBytesUseSameTypedContract()
+    public async Task AssetUploader_StreamIsReusableAndBytesUseSameTypedContract()
     {
         var uploads = 0;
         var handler = new TrackingHandler(request =>
@@ -155,40 +127,27 @@ public class BaseSdkCleanupTests
         using var httpClient = new HttpClient(handler);
         using var apiClient = new NodetoolClient(httpClient);
         apiClient.Configure("http://localhost:7777");
-        var cacheDirectory = Path.Combine(
-            Path.GetTempPath(),
-            $"nodetool-sdk-assets-{Guid.NewGuid():N}");
-        try
-        {
-            using var manager = new AssetManager(
-                cacheDirectory: cacheDirectory,
-                nodetoolClient: apiClient);
-            using var stream = new MemoryStream(new byte[] { 1, 2, 3, 4 });
+        using var stream = new MemoryStream(new byte[] { 1, 2, 3, 4 });
+        var uploader = new AssetUploader(apiClient);
 
-            var streamed = await manager.UploadAssetAsync(
-                "sample.png",
-                stream,
-                "image/png");
-            var buffered = await manager.UploadAssetAsync(
-                "sample.png",
-                new byte[] { 5, 6, 7, 8 },
-                "image/png");
+        var streamed = await uploader.UploadAssetAsync(
+            "sample.png",
+            stream,
+            "image/png");
+        var buffered = await uploader.UploadAssetAsync(
+            "sample.png",
+            new byte[] { 5, 6, 7, 8 },
+            "image/png");
 
-            Assert.True(stream.CanRead);
-            Assert.IsType<ImageRef>(streamed);
-            Assert.IsType<ImageRef>(buffered);
-            Assert.Equal("image-1", streamed.AssetId);
-            Assert.Equal("image-2", buffered.AssetId);
-        }
-        finally
-        {
-            if (Directory.Exists(cacheDirectory))
-                Directory.Delete(cacheDirectory, recursive: true);
-        }
+        Assert.True(stream.CanRead);
+        Assert.IsType<ImageRef>(streamed);
+        Assert.IsType<ImageRef>(buffered);
+        Assert.Equal("image-1", streamed.AssetId);
+        Assert.Equal("image-2", buffered.AssetId);
     }
 
     [Fact]
-    public async Task AssetManagerTemporaryUpload_ReturnsUriWithoutAssetId()
+    public async Task AssetUploaderTemporaryUpload_ReturnsUriWithoutAssetId()
     {
         var handler = new TrackingHandler(request =>
         {
@@ -216,33 +175,21 @@ public class BaseSdkCleanupTests
         using var httpClient = new HttpClient(handler);
         using var apiClient = new NodetoolClient(httpClient);
         apiClient.Configure("http://localhost:7777");
-        var cacheDirectory = Path.Combine(
-            Path.GetTempPath(),
-            $"nodetool-sdk-assets-{Guid.NewGuid():N}");
-        try
-        {
-            using var manager = new AssetManager(
-                cacheDirectory: cacheDirectory,
-                nodetoolClient: apiClient,
-                useTemporaryUploads: true);
+        var uploader = new AssetUploader(
+            apiClient,
+            useTemporaryUploads: true);
 
-            var result = await manager.UploadAssetAsync(
-                "image.png",
-                new byte[] { 1, 2, 3, 4 },
-                "image/png");
+        var result = await uploader.UploadAssetAsync(
+            "image.png",
+            new byte[] { 1, 2, 3, 4 },
+            "image/png");
 
-            var image = Assert.IsType<ImageRef>(result);
-            Assert.Null(image.AssetId);
-            Assert.Equal(
-                "memory://temp/sdk-inputs/image.png",
-                image.Uri);
-            Assert.Equal(true, image.Metadata?["temporary"]);
-        }
-        finally
-        {
-            if (Directory.Exists(cacheDirectory))
-                Directory.Delete(cacheDirectory, recursive: true);
-        }
+        var image = Assert.IsType<ImageRef>(result);
+        Assert.Null(image.AssetId);
+        Assert.Equal(
+            "memory://temp/sdk-inputs/image.png",
+            image.Uri);
+        Assert.Equal(true, image.Metadata?["temporary"]);
     }
 
     private sealed class TrackingHandler(
