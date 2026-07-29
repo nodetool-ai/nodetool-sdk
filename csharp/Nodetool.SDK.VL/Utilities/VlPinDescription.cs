@@ -16,7 +16,8 @@ internal static class ExecutionPinVisibility
     public static bool IsOutputVisible(string name)
         => name is not (
             "Error" or
-            "Debug");
+            "Debug" or
+            "Execution Time");
 }
 
 /// <summary>

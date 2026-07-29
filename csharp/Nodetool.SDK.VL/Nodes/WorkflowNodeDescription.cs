@@ -26,6 +26,7 @@ namespace Nodetool.SDK.VL.Nodes
         public const string RestartOnChangeInputName = "RestartOnChange";
         public const string ExecutionTimeoutSecondsInputName = "ExecutionTimeoutSeconds";
         public const string IsRunningOutputName = "IsRunning";
+        public const string ExecutionTimeOutputName = "Execution Time";
         public const string ErrorOutputName = "Error";
         public const string DebugOutputName = "Debug";
 
@@ -121,6 +122,15 @@ namespace Nodetool.SDK.VL.Nodes
             outputPins.Add(new PinDescription(IsRunningOutputName, typeof(bool), false,
                 "⏳ Execution status",
                 "True while the workflow is processing, false when complete or idle"));
+
+            outputPins.Add(new PinDescription(
+                ExecutionTimeOutputName,
+                typeof(TimeSpan),
+                TimeSpan.Zero,
+                "Last execution time",
+                "End-to-end elapsed time of the last finished workflow run, measured by the SDK client.",
+                isVisible: ExecutionPinVisibility.IsOutputVisible(
+                    ExecutionTimeOutputName)));
 
             outputPins.Add(new PinDescription(ErrorOutputName, typeof(string), "",
                 "❌ Error message",

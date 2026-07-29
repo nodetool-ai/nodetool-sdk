@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Reactive.Subjects;
@@ -41,6 +42,7 @@ namespace Nodetool.SDK.VL.Nodes
         // Execution state
         private volatile bool _isRunning = false;
         private string _lastError = "";
+        private TimeSpan _lastExecutionTime = TimeSpan.Zero;
         private readonly Dictionary<string, NodeToolValue> _lastOutputs = new(StringComparer.Ordinal);
         private bool _lastExecuteState = false;
         private bool _lastCancelState = false;
@@ -111,6 +113,10 @@ namespace Nodetool.SDK.VL.Nodes
             // Add standard status outputs
             _outputPins["IsRunning"] = new InternalPin("IsRunning", typeof(bool), false);
             _outputPins["On Update"] = new InternalPin("On Update", typeof(bool), false);
+            _outputPins["Execution Time"] = new InternalPin(
+                "Execution Time",
+                typeof(TimeSpan),
+                TimeSpan.Zero);
             _outputPins["Error"] = new InternalPin("Error", typeof(string), "");
             _outputPins["Debug"] = new InternalPin("Debug", typeof(string), "");
 
@@ -275,6 +281,7 @@ namespace Nodetool.SDK.VL.Nodes
             if (_isDisposed)
                 return;
 
+            var executionTimer = Stopwatch.StartNew();
             lock (_lock)
             {
                 _isRunning = true;
@@ -526,8 +533,10 @@ namespace Nodetool.SDK.VL.Nodes
             }
             finally
             {
+                executionTimer.Stop();
                 lock (_lock)
                 {
+                    _lastExecutionTime = executionTimer.Elapsed;
                     _isRunning = false;
                 }
                 FireOnUpdatePulse();
@@ -813,6 +822,7 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 bool isRunning;
                 string lastError;
+                TimeSpan lastExecutionTime;
                 Dictionary<string, NodeToolValue> outputsSnapshot;
                 string debugText;
 
@@ -820,6 +830,7 @@ namespace Nodetool.SDK.VL.Nodes
                 {
                     isRunning = _isRunning;
                     lastError = _lastError;
+                    lastExecutionTime = _lastExecutionTime;
                     outputsSnapshot = new Dictionary<string, NodeToolValue>(_lastOutputs, StringComparer.Ordinal);
                     debugText = string.Join(Environment.NewLine, _debugLines);
                 }
@@ -829,6 +840,12 @@ namespace Nodetool.SDK.VL.Nodes
                     isRunningPin.Value = isRunning;
                 if (_outputPins.TryGetValue("On Update", out var onUpdatePin))
                     onUpdatePin.Value = _onUpdatePulse;
+                if (_outputPins.TryGetValue(
+                    "Execution Time",
+                    out var executionTimePin))
+                {
+                    executionTimePin.Value = lastExecutionTime;
+                }
                 if (_outputPins.TryGetValue("Error", out var errorPin))
                     errorPin.Value = lastError;
                 if (_outputPins.TryGetValue("Debug", out var debugPin))
@@ -1161,6 +1178,12 @@ namespace Nodetool.SDK.VL.Nodes
                 
                 pins.Add(new SimplePinDescription("IsRunning", typeof(bool), false));
                 pins.Add(new SimplePinDescription("On Update", typeof(bool), false));
+                pins.Add(new SimplePinDescription(
+                    "Execution Time",
+                    typeof(TimeSpan),
+                    TimeSpan.Zero,
+                    ExecutionPinVisibility.IsOutputVisible(
+                        "Execution Time")));
                 pins.Add(new SimplePinDescription(
                     "Error",
                     typeof(string),

@@ -280,6 +280,14 @@ namespace Nodetool.SDK.VL.Factories
                                         "Pulse: goes true briefly when the node run finishes (success/failed/cancelled).\n\n"
                                         + "This does not mean the values actually changed—only that the node executed.\n"
                                         + "Use it to trigger downstream logic."));
+                                    outputPins.Add(new VlPinDescription(
+                                        "Execution Time",
+                                        typeof(TimeSpan),
+                                        TimeSpan.Zero,
+                                        "Last execution time",
+                                        "End-to-end elapsed time of the last finished node run, measured by the SDK client.",
+                                        isVisible: ExecutionPinVisibility.IsOutputVisible(
+                                            "Execution Time")));
                                     outputPins.Add(new VlPinDescription("Error", typeof(string), "",
                                         "❌ Error message", 
                                         "Contains error details if execution fails, empty string if successful",

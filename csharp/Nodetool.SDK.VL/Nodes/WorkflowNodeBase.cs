@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.IO;
 using System.Globalization;
 using System.Linq;
@@ -89,6 +90,10 @@ namespace Nodetool.SDK.VL.Nodes
             
             // Add standard output pins
             _outputPins["IsRunning"] = new InternalPin("IsRunning", typeof(bool), false);
+            _outputPins["Execution Time"] = new InternalPin(
+                "Execution Time",
+                typeof(TimeSpan),
+                TimeSpan.Zero);
             _outputPins["Error"] = new InternalPin("Error", typeof(string), "");
             _outputPins["Debug"] = new InternalPin("Debug", typeof(string), "");
             // Add workflow output pins
@@ -230,6 +235,7 @@ namespace Nodetool.SDK.VL.Nodes
         {
             if (_isRunning) return;
             _isRunning = true;
+            var executionTimer = Stopwatch.StartNew();
             var timeoutSeconds = NodeToolClientProvider.ResolveExecutionTimeoutSeconds(
                 _inputPins.TryGetValue("ExecutionTimeoutSeconds", out var timeoutPin) && timeoutPin.Value is int value ? value : 0);
             try
@@ -306,6 +312,8 @@ namespace Nodetool.SDK.VL.Nodes
             }
             finally
             {
+                executionTimer.Stop();
+                SetExecutionTime(executionTimer.Elapsed);
                 _isRunning = false;
             }
         }
@@ -687,6 +695,15 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 SetOutputPinValue("Error", pin, error);
             }
+        }
+
+        private void SetExecutionTime(TimeSpan executionTime)
+        {
+            EnqueueStateUpdate(() =>
+            {
+                if (_outputPins.TryGetValue("Execution Time", out var pin))
+                    SetOutputPinValue("Execution Time", pin, executionTime);
+            });
         }
 
         /// <summary>
