@@ -158,4 +158,51 @@ public class MessagePackWebSocketClientContractTests
         Assert.Equal("node-1", update.node_id);
         Assert.Equal("hello", update.value);
     }
+
+    [Fact]
+    public void ClientDeserializer_RoutesTypedMessageThroughSmallEnvelope()
+    {
+        var options = MessagePackSerializerOptions.Standard.WithResolver(
+            CompositeResolver.Create(
+                ContractlessStandardResolver.Instance,
+                StandardResolver.Instance));
+        var payload = MessagePackSerializer.Serialize(
+            new Dictionary<string, object?>
+            {
+                ["type"] = "job_update",
+                ["job_id"] = "job-1",
+                ["status"] = "completed",
+                ["future_server_field"] = true,
+            },
+            options);
+        using var client = new MessagePackWebSocketClient();
+
+        var update = Assert.IsType<JobUpdate>(client.DeserializeMessagePack(payload));
+
+        Assert.Equal("job-1", update.job_id);
+        Assert.Equal("completed", update.status);
+    }
+
+    [Fact]
+    public void ClientDeserializer_PreservesUnknownMessagesAsDictionary()
+    {
+        var options = MessagePackSerializerOptions.Standard.WithResolver(
+            CompositeResolver.Create(
+                ContractlessStandardResolver.Instance,
+                StandardResolver.Instance));
+        var payload = MessagePackSerializer.Serialize(
+            new Dictionary<string, object?>
+            {
+                ["type"] = "future_message",
+                ["value"] = 42,
+            },
+            options);
+        using var client = new MessagePackWebSocketClient();
+
+        var message = Assert.IsType<Dictionary<string, object?>>(
+            client.DeserializeMessagePack(payload));
+
+        Assert.Equal("future_message", message["type"]);
+        Assert.Equal(42, message["value"]);
+    }
 }

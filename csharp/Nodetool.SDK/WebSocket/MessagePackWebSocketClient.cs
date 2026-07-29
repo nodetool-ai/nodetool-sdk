@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
@@ -23,7 +24,9 @@ public class MessagePackWebSocketClient : INodeToolWebSocketTransport
     private readonly SemaphoreSlim _sendSemaphore = new(1, 1);
     private bool _disposed = false;
     private readonly MessagePackSerializerOptions _options;
-    private readonly ConcurrentDictionary<string, TaskCompletionSource<byte[]>> _pendingRequests = new();
+    private readonly ConcurrentDictionary<
+        string,
+        TaskCompletionSource<Dictionary<string, object?>>> _pendingRequests = new();
     private string? _bearerToken;
 
     /// <summary>
@@ -266,7 +269,8 @@ public class MessagePackWebSocketClient : INodeToolWebSocketTransport
     {
         requestId ??= Guid.NewGuid().ToString("N");
 
-        var tcs = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var tcs = new TaskCompletionSource<Dictionary<string, object?>>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         _pendingRequests[requestId] = tcs;
 
         var envelope = CreateRequestEnvelope(
@@ -285,8 +289,7 @@ public class MessagePackWebSocketClient : INodeToolWebSocketTransport
 
         try
         {
-            var rawBytes = await tcs.Task;
-            return MessagePackSerializer.Deserialize<Dictionary<string, object?>>(rawBytes, _options);
+            return await tcs.Task.ConfigureAwait(false);
         }
         finally
         {
@@ -309,50 +312,69 @@ public class MessagePackWebSocketClient : INodeToolWebSocketTransport
     /// </summary>
     private async Task ReceiveLoop(CancellationToken cancellationToken)
     {
-        var buffer = new byte[1024 * 16]; // 16KB buffer
-        var messageBuffer = new List<byte>();
-
-        while (!cancellationToken.IsCancellationRequested && IsConnected)
+        var buffer = ArrayPool<byte>.Shared.Rent(16 * 1024);
+        ArrayBufferWriter<byte>? fragments = null;
+        try
         {
-            try
+            while (!cancellationToken.IsCancellationRequested && IsConnected)
             {
-                var result = await _webSocket!.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
-                
-                if (result.MessageType == WebSocketMessageType.Close)
+                try
                 {
-                    _logger.LogInformation("WebSocket closed by server");
+                    var result = await _webSocket!.ReceiveAsync(
+                        buffer.AsMemory(),
+                        cancellationToken).ConfigureAwait(false);
+
+                    if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        _logger.LogInformation("WebSocket closed by server");
+                        break;
+                    }
+
+                    if (fragments == null && result.EndOfMessage)
+                    {
+                        await ProcessMessage(
+                            buffer.AsSpan(0, result.Count).ToArray(),
+                            result.MessageType).ConfigureAwait(false);
+                        continue;
+                    }
+
+                    fragments ??= new ArrayBufferWriter<byte>(
+                        Math.Max(16 * 1024, result.Count * 2));
+                    fragments.Write(buffer.AsSpan(0, result.Count));
+                    if (result.EndOfMessage)
+                    {
+                        await ProcessMessage(
+                            fragments.WrittenSpan.ToArray(),
+                            result.MessageType).ConfigureAwait(false);
+                        // Restore the allocation-light single-frame path after
+                        // a large fragmented message (for example media data).
+                        fragments = null;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogDebug("WebSocket receive loop cancelled");
                     break;
                 }
-
-                // Accumulate message data
-                messageBuffer.AddRange(buffer.Take(result.Count));
-
-                if (result.EndOfMessage)
+                catch (WebSocketException ex)
                 {
-                    // Process complete message
-                    await ProcessMessage(messageBuffer.ToArray(), result.MessageType);
-                    messageBuffer.Clear();
+                    _logger.LogError(
+                        "WebSocket error in receive loop: {Error}",
+                        SafeError(ex));
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        "Unexpected error in WebSocket receive loop: {Error}",
+                        SafeError(ex));
+                    break;
                 }
             }
-            catch (OperationCanceledException)
-            {
-                _logger.LogDebug("WebSocket receive loop cancelled");
-                break;
-            }
-            catch (WebSocketException ex)
-            {
-                _logger.LogError(
-                    "WebSocket error in receive loop: {Error}",
-                    SafeError(ex));
-                break;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(
-                    "Unexpected error in WebSocket receive loop: {Error}",
-                    SafeError(ex));
-                break;
-            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
         }
 
         OnConnectionStatusChanged(new ConnectionStatusEventArgs 
@@ -374,8 +396,7 @@ public class MessagePackWebSocketClient : INodeToolWebSocketTransport
 
             if (messageType == WebSocketMessageType.Binary)
             {
-                // Try MessagePack first
-                message = await TryDeserializeMessagePack(data);
+                message = DeserializeMessagePack(data);
             }
             else if (messageType == WebSocketMessageType.Text)
             {
@@ -432,27 +453,28 @@ public class MessagePackWebSocketClient : INodeToolWebSocketTransport
     }
 
     /// <summary>
-    /// Try to deserialize MessagePack data by detecting message type.
+    /// Deserialize MessagePack data through a small routing envelope.
     /// </summary>
-    private Task<object?> TryDeserializeMessagePack(byte[] data)
+    internal object? DeserializeMessagePack(byte[] data)
     {
         try
         {
-            // Peek at "type" and "request_id" first
-            var tempDict = MessagePackSerializer.Deserialize<Dictionary<string, object?>>(data, _options);
+            var envelope = MessagePackSerializer.Deserialize<MessageEnvelope>(data, _options);
+            Dictionary<string, object?>? dictionary = null;
 
             // Complete a pending request-reply correlation before continuing.
-            if (tempDict.TryGetValue("request_id", out var reqIdObj) && reqIdObj is string reqId &&
-                _pendingRequests.TryGetValue(reqId, out var pendingTcs))
+            if (envelope.RequestId is string requestId &&
+                _pendingRequests.TryGetValue(requestId, out var pendingTcs))
             {
-                pendingTcs.TrySetResult(data);
+                dictionary = MessagePackSerializer.Deserialize<Dictionary<string, object?>>(data, _options);
+                pendingTcs.TrySetResult(dictionary);
                 // Fall through — still fire MessageReceived so callers can observe the response.
             }
 
-            if (tempDict.TryGetValue("type", out var typeObj) && typeObj is string typeStr)
+            if (envelope.Type is string type)
             {
                 object? message;
-                switch (typeStr)
+                switch (type)
                 {
                     case "job_update":
                         message = MessagePackSerializer.Deserialize<JobUpdate>(data, _options);
@@ -479,13 +501,15 @@ public class MessagePackWebSocketClient : INodeToolWebSocketTransport
                         message = MessagePackSerializer.Deserialize<ErrorMessage>(data, _options);
                         break;
                     default:
-                        message = tempDict;
+                        message = dictionary ??
+                            MessagePackSerializer.Deserialize<Dictionary<string, object?>>(data, _options);
                         break;
                 }
-                return Task.FromResult<object?>(message);
+                return message;
             }
 
-            return Task.FromResult<object?>(tempDict);
+            return dictionary ??
+                MessagePackSerializer.Deserialize<Dictionary<string, object?>>(data, _options);
         }
         catch (Exception ex)
         {
@@ -493,7 +517,7 @@ public class MessagePackWebSocketClient : INodeToolWebSocketTransport
                 "Failed to deserialize MessagePack data ({Size} bytes): {Error}",
                 data.Length,
                 SafeError(ex));
-            return Task.FromResult<object?>(null);
+            return null;
         }
     }
 
@@ -547,6 +571,16 @@ public class MessagePackWebSocketClient : INodeToolWebSocketTransport
         _sendSemaphore.Dispose();
         GC.SuppressFinalize(this);
     }
+}
+
+[MessagePackObject(AllowPrivate = true)]
+internal sealed class MessageEnvelope
+{
+    [Key("type")]
+    public string? Type { get; set; }
+
+    [Key("request_id")]
+    public string? RequestId { get; set; }
 }
 
 /// <summary>
