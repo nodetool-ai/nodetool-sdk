@@ -111,6 +111,46 @@ public class WorkflowExecutionControllerTests
     }
 
     [Fact]
+    public async Task MatchingTerminalMediaDoesNotRetriggerHostMaterialization()
+    {
+        using var session = new ExecutionSession("job-1", "workflow-1");
+        using var client = new FakeExecutionClient(session);
+        await using var controller = CreateController(client);
+        var tracker = new WorkflowOutputUpdateTracker();
+        var image = new Dictionary<string, object?>
+        {
+            ["type"] = "image",
+            ["uri"] = "/api/storage/temp/roundtrip.png",
+            ["data"] = null
+        };
+
+        await controller.StartAsync(new WorkflowInvocation("workflow-1"));
+        session.ProcessOutputUpdate(Output("output-node", image));
+        var streamed = controller.Snapshot.Outputs["answer"];
+        Assert.Single(tracker.SelectChanges(controller.Snapshot));
+
+        session.ProcessJobUpdate(new JobUpdate
+        {
+            job_id = "job-1",
+            status = "completed",
+            result = new Dictionary<string, object>
+            {
+                ["outputs"] = new Dictionary<string, object>
+                {
+                    ["answer"] = new object[] { image }
+                }
+            }
+        });
+        await controller.WaitForTerminalAsync();
+
+        var terminal = controller.Snapshot.Outputs["answer"];
+        Assert.Equal(streamed.UpdatedAt, terminal.UpdatedAt);
+        Assert.False(terminal.IsStreaming);
+        Assert.True(terminal.Done);
+        Assert.Empty(tracker.SelectChanges(controller.Snapshot));
+    }
+
+    [Fact]
     public async Task RejectsOverlappingRunsAndCancelsRemoteSessionOnce()
     {
         using var session = new ExecutionSession("job-1", "workflow-1");

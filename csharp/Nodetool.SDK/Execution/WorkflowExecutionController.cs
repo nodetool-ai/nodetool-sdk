@@ -512,6 +512,20 @@ public sealed class WorkflowExecutionController : IDisposable, IAsyncDisposable
                 if (!_routes.ContainsKey($"output:{publicName}"))
                     continue;
                 var value = UnwrapTerminalEnvelope(pair.Value);
+                if (
+                    outputs.TryGetValue(publicName, out var existing) &&
+                    HasSameMaterializedReference(existing.Value, value))
+                {
+                    // output_update and the authoritative terminal snapshot
+                    // commonly carry the same temp URL. Preserve UpdatedAt so
+                    // hosts do not download and decode large media twice.
+                    outputs[publicName] = existing with
+                    {
+                        IsStreaming = false,
+                        Done = true
+                    };
+                    continue;
+                }
                 outputs[publicName] = new(
                     publicName,
                     value,
@@ -521,6 +535,45 @@ public sealed class WorkflowExecutionController : IDisposable, IAsyncDisposable
             }
             return current with { Outputs = ReadOnly(outputs) };
         });
+    }
+
+    private static bool HasSameMaterializedReference(
+        NodeToolValue first,
+        NodeToolValue second)
+    {
+        if (
+            first.Kind != NodeToolValueKind.Map ||
+            second.Kind != NodeToolValueKind.Map)
+        {
+            return false;
+        }
+
+        var firstMap = first.AsMapOrEmpty();
+        var secondMap = second.AsMapOrEmpty();
+        if (
+            !firstMap.TryGetValue("uri", out var firstUriValue) ||
+            !secondMap.TryGetValue("uri", out var secondUriValue))
+        {
+            return false;
+        }
+
+        var firstUri = firstUriValue.AsString();
+        var secondUri = secondUriValue.AsString();
+        if (
+            string.IsNullOrWhiteSpace(firstUri) ||
+            !string.Equals(firstUri, secondUri, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var firstType = first.TypeDiscriminator;
+        var secondType = second.TypeDiscriminator;
+        return string.IsNullOrWhiteSpace(firstType) ||
+            string.IsNullOrWhiteSpace(secondType) ||
+            string.Equals(
+                firstType,
+                secondType,
+                StringComparison.OrdinalIgnoreCase);
     }
 
     private static NodeToolValue UnwrapTerminalEnvelope(NodeToolValue value)
