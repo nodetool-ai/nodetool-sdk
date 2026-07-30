@@ -551,6 +551,27 @@ asset/output inspection.
 - [x] Full offline model runner integration.
 - [x] Web/mobile/console transports not required by the initial Unity target.
 
+### Future local fast-media transport
+
+This is an optional same-machine optimization. Remote/cloud execution must
+continue to use ordinary encoded media, upload, and referenced-asset paths.
+
+- [ ] Define negotiated media transport modes such as `auto`, `encoded`,
+      `shared_memory`, and `shared_texture`, with safe automatic fallback.
+- [ ] Start with encoded-byte and existing-file passthrough so hosts can avoid
+      re-encoding media they already hold in a portable form.
+- [ ] Evaluate a cross-process shared-memory descriptor for raw pixels
+      (mapping identity, dimensions, stride, format, generation, ownership,
+      and lifetime) as the first broadly reusable local fast path.
+- [ ] Treat shared Direct3D textures as a later host/platform adapter:
+      exchange an OS-supported shared handle plus synchronization and lifetime
+      metadata, never a process-local pointer.
+- [ ] Keep transport negotiation and descriptors in the server/C# contract;
+      keep vvvv texture creation, graphics-device interop, and disposal in the
+      VL adapter.
+- [ ] Benchmark 2K and 4K passthrough before selecting defaults, including
+      encode, transfer, server materialization, download, and host decode time.
+
 ## 0.1.6 release snapshot - 2026-07-26
 
 - [x] NodeTool WebSocket SDK preflight/capability tests: 51 passed.
