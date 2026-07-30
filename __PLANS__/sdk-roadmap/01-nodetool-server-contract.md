@@ -175,6 +175,12 @@ ambiguous submission.
       through TypeScript node metadata, Python bridge metadata, graph-derived
       workflow interfaces, and generated discovery schemas. Keep it
       descriptive: no runner, persistence, or ordinary output-routing changes.
+- [x] Runtime-validate static and dynamic `stream_kind` metadata. Omit unknown
+      third-party values with a warning instead of invalidating the complete
+      workflow interface.
+- [x] Keep semantic audio kinds independent from codec support. Canonicalize
+      ElevenLabs raw PCM metadata to `pcm16le` without changing its existing
+      encoded-audio default.
 - [x] Audit reconnect and confirm that completed persisted jobs currently lose
       their terminal output map.
 - [x] Capture the current successful REST, JSON-text WebSocket, and MessagePack

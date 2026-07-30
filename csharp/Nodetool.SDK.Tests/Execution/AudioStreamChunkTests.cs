@@ -36,8 +36,10 @@ public sealed class AudioStreamChunkTests
             chunk.DecodeInterleavedSamples());
     }
 
-    [Fact]
-    public void Pcm16Audio_DecodesToNormalizedSamples()
+    [Theory]
+    [InlineData("pcm16le")]
+    [InlineData("pcm")]
+    public void Pcm16Audio_DecodesToNormalizedSamples(string encoding)
     {
         var bytes = new byte[sizeof(short) * 3];
         BinaryPrimitives.WriteInt16LittleEndian(bytes.AsSpan(0, 2), short.MinValue);
@@ -45,7 +47,7 @@ public sealed class AudioStreamChunkTests
         BinaryPrimitives.WriteInt16LittleEndian(bytes.AsSpan(4, 2), short.MaxValue);
         var update = AudioUpdate(
             Convert.ToBase64String(bytes),
-            "pcm16le",
+            encoding,
             sampleRate: 24_000,
             channels: 1);
 

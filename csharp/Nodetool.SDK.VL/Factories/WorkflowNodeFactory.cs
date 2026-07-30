@@ -47,6 +47,7 @@ namespace Nodetool.SDK.VL.Factories
         private static CancellationTokenSource _refreshCancellation = new();
         private static Task? _refreshTask;
         private static long _refreshRequestVersion;
+        private static bool _forceRefreshRequested;
         private static long _resetGeneration;
         private static bool _hasSuccessfulSnapshot;
         private static bool _factoryWasRequested;
@@ -85,6 +86,7 @@ namespace Nodetool.SDK.VL.Factories
                 _apiStatusMessage = _fetchedWorkflows.Count > 0
                     ? "Workflow refresh requested; current nodes remain available."
                     : "Workflow refresh requested.";
+                _forceRefreshRequested = true;
                 _refreshRequestVersion++;
                 if (_factoryWasRequested)
                     StartRefreshLoopLocked();
@@ -113,6 +115,9 @@ namespace Nodetool.SDK.VL.Factories
                 _refreshCancellation = new CancellationTokenSource();
                 _refreshTask = null;
                 _refreshRequestVersion = 0;
+                // A connection reset may target a restarted server at the same
+                // URL. Do not reuse process-wide descriptors from that server.
+                _forceRefreshRequested = true;
                 _resetGeneration++;
                 _hasSuccessfulSnapshot = false;
                 _factoryWasRequested = false;
@@ -364,6 +369,7 @@ namespace Nodetool.SDK.VL.Factories
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     long requestedVersion;
+                    bool forceRefresh;
                     lock (_lock)
                     {
                         if (generation != _resetGeneration)
@@ -381,11 +387,15 @@ namespace Nodetool.SDK.VL.Factories
                         if (generation != _resetGeneration)
                             return;
                         processedVersion = _refreshRequestVersion;
+                        forceRefresh = _forceRefreshRequested;
+                        _forceRefreshRequested = false;
                     }
 
                     try
                     {
-                        var result = await FetchWorkflowMetadataAsync(cancellationToken)
+                        var result = await FetchWorkflowMetadataAsync(
+                                forceRefresh,
+                                cancellationToken)
                             .ConfigureAwait(false);
                         bool retainForConfirmation;
                         var hadPublishedFactory = false;
@@ -545,6 +555,7 @@ namespace Nodetool.SDK.VL.Factories
         /// Fetches workflow metadata without blocking the VL factory thread.
         /// </summary>
         private static async Task<WorkflowFetchResult> FetchWorkflowMetadataAsync(
+            bool forceRefresh,
             CancellationToken cancellationToken)
         {
             var apiBase = NodeToolClientProvider.CurrentApiBaseUrl?.ToString().TrimEnd('/')
@@ -595,7 +606,9 @@ namespace Nodetool.SDK.VL.Factories
                 try
                 {
                     workflows = await metadataService
-                        .FetchWorkflowMetadataAsync(timeout.Token)
+                        .FetchWorkflowMetadataAsync(
+                            timeout.Token,
+                            forceRefresh)
                         .ConfigureAwait(false);
                 }
                 catch (ObjectDisposedException)
@@ -609,7 +622,9 @@ namespace Nodetool.SDK.VL.Factories
                         options,
                         webSocketClient);
                     workflows = await metadataService
-                        .FetchWorkflowMetadataAsync(timeout.Token)
+                        .FetchWorkflowMetadataAsync(
+                            timeout.Token,
+                            forceRefresh)
                         .ConfigureAwait(false);
                 }
                 return new WorkflowFetchResult(

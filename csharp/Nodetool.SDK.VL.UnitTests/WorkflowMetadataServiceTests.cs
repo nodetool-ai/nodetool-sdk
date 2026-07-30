@@ -44,11 +44,17 @@ public class WorkflowMetadataServiceTests
         await service.FetchWorkflowMetadataAsync();
 
         Assert.Equal(1, handler.WorkflowSummaryRequestCount);
+
+        await service.FetchWorkflowMetadataAsync(forceRefresh: true);
+
+        Assert.Equal(2, handler.WorkflowSummaryRequestCount);
+        Assert.Equal(2, handler.WorkflowInterfaceRequestCount);
     }
 
     private sealed class DiscoveryHandler : HttpMessageHandler
     {
         public int WorkflowSummaryRequestCount { get; private set; }
+        public int WorkflowInterfaceRequestCount { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
@@ -59,6 +65,11 @@ public class WorkflowMetadataServiceTests
                 path == "/api/sdk/v1/workflows")
             {
                 WorkflowSummaryRequestCount++;
+            }
+            if (request.Method == HttpMethod.Post &&
+                path == "/api/sdk/v1/workflow-interfaces")
+            {
+                WorkflowInterfaceRequestCount++;
             }
             var json = (request.Method.Method, path) switch
             {

@@ -146,6 +146,13 @@ The adapter is not generated for text, control, unspecified, or future stream
 kinds. This keeps audio pins authoritative and avoids treating every generic
 `chunk` output as PCM audio.
 
+The current adapter plays raw `pcm16le`/`pcm` and `f32le` chunks. Semantic
+audio streams using MP3, Opus, A-law, or mu-law remain valid ordinary workflow
+outputs but are not decoded by the companion Audio Source. Select a PCM output
+format on configurable realtime-audio nodes when direct VL.Audio playback is
+required. An unsupported encoding is reported once without failing the
+workflow itself.
+
 The adapter implements the `IAudioSource` contract already provided by
 `VL.Core`; `Nodetool.SDK.VL` therefore does not add a hard dependency on
 VL.Audio or change its portable `net8.0` target. The first audio chunk sets the

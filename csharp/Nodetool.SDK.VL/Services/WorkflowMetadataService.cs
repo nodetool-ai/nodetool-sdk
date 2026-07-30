@@ -136,7 +136,8 @@ public class WorkflowMetadataService : IDisposable
     /// Fetch workflow metadata from the API with caching
     /// </summary>
     public async Task<List<WorkflowDetail>> FetchWorkflowMetadataAsync(
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool forceRefresh = false)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         StatusMessage = "Fetching workflow metadata...";
@@ -144,6 +145,7 @@ public class WorkflowMetadataService : IDisposable
 
         var healthTask = FetchHealthSafelyAsync(cancellationToken);
         var snapshot = await _catalog.RefreshAsync(
+            force: forceRefresh,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         if (snapshot.LastSuccessfulRefreshUtc is null &&
             !string.IsNullOrWhiteSpace(snapshot.LastError))

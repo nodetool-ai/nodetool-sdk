@@ -185,7 +185,8 @@ Workflow discovery preserves the server's optional `stream_kind` on
 host-specific adapters instead of inferring semantics from the generic
 `chunk` type.
 
-`AudioStreamChunk` validates NodeTool's `pcm16le` and `f32le` audio metadata and
+`AudioStreamChunk` validates NodeTool's `pcm16le` (`pcm` is accepted as an
+alias) and `f32le` audio metadata and
 payload alignment. `AudioStreamBuffer` is a fixed-capacity, thread-safe
 interleaved-sample ring buffer with explicit `DropOldest` or `DropNewest`
 overflow behavior.

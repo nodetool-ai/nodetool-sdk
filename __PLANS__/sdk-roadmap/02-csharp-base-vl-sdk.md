@@ -442,6 +442,9 @@ and reverse-proxy deployment subpaths, including storage asset URLs.
   spread projections with focused adapter tests.
 - [x] Keep rising-edge trigger/cancel handling in the frame `Update()` surface.
 - [x] Keep AppHost synchronization-context invalidation and factory refresh.
+- [x] Make explicit `RefreshDiscovery` requests and connection resets bypass
+      the process-wide workflow descriptor cache, including when a restarted
+      server reuses the same graph and registry revision numbers.
 - [x] Keep reapplication of latched outputs across live recompilation.
 - [x] Keep `SKImage` creation/disposal and VL image presentation.
 - [x] Move asset URI/media payload parsing, authenticated asset
@@ -670,6 +673,9 @@ Ordinary final workflow outputs must continue to work unchanged.
       callbacks reuse frame storage; underruns and reconnect gaps produce
       silence, runs reset stale audio, buffered tails drain after
       completion/cancellation, and overflow drops newest frames.
+- [x] Accept `pcm` as an alias for `pcm16le`. Keep unsupported semantic-audio
+      encodings local to the companion Audio Source, report each distinct
+      decoder error once, and do not fail an otherwise valid workflow run.
 - [ ] Verify sustained playback against VL.Audio 1.9.3 in vvvv gamma 7.1,
       including first-chunk startup, cancellation, reconnect gaps, completion,
       sample-rate conversion, and a deliberately induced underrun/overflow.

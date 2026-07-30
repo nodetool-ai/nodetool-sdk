@@ -81,7 +81,7 @@ public sealed class AudioStreamChunk
         var encodingName = ReadString(metadata, "encoding") ?? "pcm16le";
         var encoding = encodingName.ToLowerInvariant() switch
         {
-            "pcm16le" => AudioStreamEncoding.Pcm16LittleEndian,
+            "pcm" or "pcm16le" => AudioStreamEncoding.Pcm16LittleEndian,
             "f32le" => AudioStreamEncoding.Float32LittleEndian,
             _ => (AudioStreamEncoding?)null
         };

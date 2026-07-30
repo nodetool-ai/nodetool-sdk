@@ -410,12 +410,16 @@ namespace Nodetool.SDK.VL.Nodes
                 return;
             }
 
-            if (!source.TryPush(update, out var error))
+            var previousError = source.LastError;
+            if (!source.TryPush(update, out var error) &&
+                !string.Equals(
+                    previousError,
+                    error,
+                    StringComparison.Ordinal))
             {
-                EnqueueStateUpdate(() =>
-                    SetErrorCore(
-                        $"Audio stream '{update.OutputName ?? update.NodeId}' " +
-                        $"could not be decoded: {error}"));
+                VlLog.Error(
+                    $"Audio stream '{update.OutputName ?? update.NodeId}' " +
+                    $"could not be decoded: {error}");
             }
         }
 
