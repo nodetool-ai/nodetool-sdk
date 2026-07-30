@@ -569,6 +569,16 @@ continue to use ordinary encoded media, upload, and referenced-asset paths.
 - [ ] Keep transport negotiation and descriptors in the server/C# contract;
       keep vvvv texture creation, graphics-device interop, and disposal in the
       VL adapter.
+- [ ] Keep generic workflow `image` inputs mapped to `SKImage` so images
+      computed inside vvvv remain first-class; do not change all image inputs
+      to file paths.
+- [ ] Add an optional server-contract representation hint such as `pixels`,
+      `file`, or `asset`; map explicitly file-backed image inputs to VL `Path`.
+- [ ] Evaluate a strongly typed `ImageSource` wrapper plus small `Path`,
+      `SKImage`, and `Texture` adapter nodes if one universal workflow pin is
+      needed. Avoid three competing pins and avoid an untyped `object` pin.
+- [ ] Initially adapt `Texture` through explicit readback; allow the same
+      adapter to select negotiated shared-texture transport later.
 - [ ] Benchmark 2K and 4K passthrough before selecting defaults, including
       encode, transfer, server materialization, download, and host decode time.
 
