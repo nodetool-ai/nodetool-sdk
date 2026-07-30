@@ -19,7 +19,7 @@ internal static class WorkflowAudioSourcePins
 
         foreach (var output in descriptor.Outputs)
         {
-            if (!output.Stream)
+            if (!output.Stream || IsDefinitelyText(output.Type))
                 continue;
 
             var baseName = $"{output.Name} Audio Source";
@@ -33,4 +33,8 @@ internal static class WorkflowAudioSourcePins
 
         return result;
     }
+
+    private static bool IsDefinitelyText(WorkflowTypeDescriptor type)
+        => type.Type.Trim().ToLowerInvariant() is
+            "str" or "string" or "text";
 }

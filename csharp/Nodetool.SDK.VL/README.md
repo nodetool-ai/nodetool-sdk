@@ -135,8 +135,9 @@ Media transport:
 
 ### Realtime audio outputs
 
-Streamed workflow outputs get a hidden `<Output Name> Audio Source` companion
-pin. Expose that pin in vvvv and connect it to VL.Audio's
+Non-text streamed workflow outputs get a hidden
+`<Output Name> Audio Source` companion pin. Expose that pin in vvvv and connect
+it to VL.Audio's
 `AudioSourceToAudioSignal` node. The ordinary workflow output remains unchanged
 and continues to carry its normal accumulated or final value. Connect one
 `AudioSourceToAudioSignal` consumer, then branch its audio-signal outputs when

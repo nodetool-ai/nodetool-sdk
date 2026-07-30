@@ -141,6 +141,81 @@ public sealed class AudioStreamBufferTests
         Assert.Equal(0, allocated);
     }
 
+    [Fact]
+    public void PlaybackBuffer_WraparoundPreservesFrameOrder()
+    {
+        var buffer = new AudioStreamPlaybackBuffer(
+            sampleRate: 48_000,
+            channels: 1,
+            capacityFrames: 4);
+        buffer.Write(
+            AudioChunk(
+                [1f, 2f, 3f, 4f],
+                sampleRate: 48_000));
+        Span<float> first = stackalloc float[2];
+        Assert.Equal(
+            2,
+            buffer.Read(first, 2, 48_000, 1, interleaved: true));
+        buffer.Write(
+            AudioChunk(
+                [5f, 6f],
+                sampleRate: 48_000));
+        Span<float> second = stackalloc float[4];
+
+        Assert.Equal(
+            4,
+            buffer.Read(second, 4, 48_000, 1, interleaved: true));
+        Assert.Equal([1f, 2f], first.ToArray());
+        Assert.Equal([3f, 4f, 5f, 6f], second.ToArray());
+    }
+
+    [Fact]
+    public void PlaybackBuffer_DownsamplingCanAdvancePastCurrentWriteHead()
+    {
+        var buffer = new AudioStreamPlaybackBuffer(
+            sampleRate: 48_000,
+            channels: 1,
+            capacityFrames: 8);
+        buffer.Write(
+            AudioChunk(
+                [0f, 1f, 2f, 3f],
+                sampleRate: 48_000));
+        Span<float> first = stackalloc float[1];
+        Assert.Equal(
+            1,
+            buffer.Read(first, 1, 8_000, 1, interleaved: true));
+        buffer.Write(
+            AudioChunk(
+                [4f, 5f, 6f, 7f],
+                sampleRate: 48_000));
+        Span<float> second = stackalloc float[1];
+
+        Assert.Equal(
+            1,
+            buffer.Read(second, 1, 8_000, 1, interleaved: true));
+        Assert.Equal(0f, first[0]);
+        Assert.Equal(6f, second[0]);
+    }
+
+    [Fact]
+    public void PlaybackBuffer_WriteIsAllocationFree()
+    {
+        var buffer = new AudioStreamPlaybackBuffer(
+            sampleRate: 48_000,
+            channels: 1,
+            capacityFrames: 1024);
+        var chunk = AudioChunk(
+            Enumerable.Repeat(0.25f, 256).ToArray(),
+            sampleRate: 48_000);
+        buffer.Write(chunk);
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        buffer.Write(chunk);
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Equal(0, allocated);
+    }
+
     private static AudioStreamChunk AudioChunk(
         float[] samples,
         int sampleRate = 24_000,

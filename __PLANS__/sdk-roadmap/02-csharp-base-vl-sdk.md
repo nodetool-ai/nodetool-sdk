@@ -661,7 +661,7 @@ Ordinary final workflow outputs must continue to work unchanged.
       allocation-free reads, explicit drop-oldest/drop-newest overflow policy,
       completion, reset, format validation, and unit coverage.
 - [x] Add a thin VL audio adapter over VL.Core's `IAudioSource` contract and
-      expose hidden companion pins only for streamed workflow outputs. Keep
+      expose hidden companion pins only for non-text streamed workflow outputs. Keep
       resampling, channel mapping, and the non-blocking SPSC playback buffer in
       the portable C# SDK. Steady callbacks reuse frame storage; underruns and
       reconnect gaps produce silence, runs reset stale audio, buffered tails

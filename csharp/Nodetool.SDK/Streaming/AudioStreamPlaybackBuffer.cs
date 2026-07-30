@@ -63,8 +63,7 @@ public sealed class AudioStreamPlaybackBuffer
     public bool IsCompleted => Volatile.Read(ref _completed) != 0;
 
     /// <summary>
-    /// Decodes and queues one block. Decoding allocates on the producer thread;
-    /// the host audio callback remains allocation-free.
+    /// Decodes and queues one block without allocating.
     /// </summary>
     public AudioStreamWriteResult Write(AudioStreamChunk chunk)
     {
@@ -75,7 +74,6 @@ public sealed class AudioStreamPlaybackBuffer
                 "Audio stream format changed while the playback buffer was active.");
         }
 
-        var decoded = chunk.DecodeInterleavedSamples();
         var readFrame = Volatile.Read(ref _consumedFrame);
         var writeFrame = Volatile.Read(ref _writeFrame);
         var bufferedFrames = Math.Clamp(
@@ -97,8 +95,11 @@ public sealed class AudioStreamPlaybackBuffer
                 (int)((writeFrame + frameOffset) % CapacityFrames);
             var sourceSample = frameOffset * Channels;
             var targetSample = targetFrame * Channels;
-            decoded.AsSpan(sourceSample, Channels)
-                .CopyTo(_samples.AsSpan(targetSample, Channels));
+            for (var channel = 0; channel < Channels; channel++)
+            {
+                _samples[targetSample + channel] =
+                    chunk.ReadSample(sourceSample + channel);
+            }
         }
 
         Volatile.Write(

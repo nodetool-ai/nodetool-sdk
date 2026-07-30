@@ -103,7 +103,24 @@ public sealed class NodeToolAudioSourceTests
     }
 
     [Fact]
-    public void WorkflowAudioSourcePins_AreHiddenCompanionsOnlyForStreams()
+    public void TryPush_ReturnsExtremeFormatErrors()
+    {
+        var source = new NodeToolAudioSource();
+
+        var accepted = source.TryPush(
+            AudioUpdate(
+                [0f],
+                sampleRate: int.MaxValue,
+                channels: 1),
+            out var error);
+
+        Assert.False(accepted);
+        Assert.False(string.IsNullOrWhiteSpace(error));
+        Assert.Equal(error, source.LastError);
+    }
+
+    [Fact]
+    public void WorkflowAudioSourcePins_ExcludeTextOnlyStreams()
     {
         var descriptor = new WorkflowDescriptor(
             "workflow-1",
@@ -118,7 +135,7 @@ public sealed class NodeToolAudioSourceTests
             [],
             [
                 Output("audio-out", "Audio", "audio", stream: true),
-                Output("text-out", "Text", "str", stream: false),
+                Output("text-out", "Text", "str", stream: true),
                 Output(
                     "collision-out",
                     "Audio Audio Source",

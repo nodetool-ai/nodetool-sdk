@@ -63,30 +63,42 @@ public sealed class NodeToolAudioSource : IAudioSource
             return false;
         }
 
-        var audioChunk = chunk!;
-        var current = Volatile.Read(ref _state);
-        if (current == null ||
-            current.SampleRate != audioChunk.SampleRate ||
-            current.Channels != audioChunk.Channels ||
-            string.Equals(
-                update.Disposition,
-                "replace",
-                StringComparison.OrdinalIgnoreCase))
+        try
         {
-            if (current != null)
-                Interlocked.Increment(ref _formatChangeCount);
+            var audioChunk = chunk!;
+            var current = Volatile.Read(ref _state);
+            if (current == null ||
+                current.SampleRate != audioChunk.SampleRate ||
+                current.Channels != audioChunk.Channels ||
+                string.Equals(
+                    update.Disposition,
+                    "replace",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                if (current != null)
+                    Interlocked.Increment(ref _formatChangeCount);
 
-            current = new AudioStreamPlaybackBuffer(
-                audioChunk.SampleRate,
-                audioChunk.Channels,
-                checked(audioChunk.SampleRate * _capacitySeconds));
-            Volatile.Write(ref _state, current);
+                current = new AudioStreamPlaybackBuffer(
+                    audioChunk.SampleRate,
+                    audioChunk.Channels,
+                    checked(audioChunk.SampleRate * _capacitySeconds));
+                Volatile.Write(ref _state, current);
+            }
+
+            current.Write(audioChunk);
+            Volatile.Write(ref _lastError, null);
+            error = null;
+            return true;
         }
-
-        current.Write(audioChunk);
-        Volatile.Write(ref _lastError, null);
-        error = null;
-        return true;
+        catch (Exception exception) when (
+            exception is ArgumentException or
+            InvalidOperationException or
+            OverflowException)
+        {
+            error = exception.Message;
+            Volatile.Write(ref _lastError, error);
+            return false;
+        }
     }
 
     /// <summary>
