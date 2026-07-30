@@ -50,8 +50,10 @@ The C# base normalizes NodeTool's `output_update` chunk values and standalone
 job-scoped `chunk` messages as `ExecutionStreamUpdate`. Active execution
 sessions can stream inputs, end an input stream, and update running-node
 properties. Realtime audio can be validated as `AudioStreamChunk` and fed into
-the fixed-capacity `AudioStreamBuffer`; VL and future Unity integrations only
-need to provide their host-specific audio-clock adapters.
+either the general-purpose `AudioStreamBuffer` or the single-producer,
+single-consumer `AudioStreamPlaybackBuffer`. The latter performs non-blocking,
+allocation-free playback reads with sample-rate and channel conversion, so VL
+and future Unity integrations only provide their host audio-frame projection.
 
 Realtime consumers must use `WorkflowEventDetail.Outputs`.
 `WorkflowEventDetail.Terminal` intentionally withholds intermediate chunks.

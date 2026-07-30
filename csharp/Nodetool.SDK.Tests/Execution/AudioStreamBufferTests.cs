@@ -82,6 +82,65 @@ public sealed class AudioStreamBufferTests
             () => buffer.Write(AudioChunk([0f, 0f], channels: 2)));
     }
 
+    [Fact]
+    public void PlaybackBuffer_ResamplesAndMapsPlanarChannels()
+    {
+        var buffer = new AudioStreamPlaybackBuffer(
+            sampleRate: 24_000,
+            channels: 1,
+            capacityFrames: 16);
+        buffer.Write(AudioChunk([0f, 1f, 0f, -1f], done: true));
+        Span<float> planar = stackalloc float[12];
+        planar.Clear();
+
+        var frames = buffer.Read(
+            planar,
+            requestedFrames: 6,
+            requestedSampleRate: 48_000,
+            requestedChannels: 2,
+            interleaved: false);
+
+        Assert.Equal(6, frames);
+        Assert.Equal(
+            [0f, 0.5f, 1f, 0.5f, 0f, -0.5f],
+            planar[..6].ToArray());
+        Assert.Equal(planar[..6].ToArray(), planar[6..].ToArray());
+        Assert.True(buffer.IsCompleted);
+    }
+
+    [Fact]
+    public void PlaybackBuffer_ReadIsAllocationFreeAndDropsNewest()
+    {
+        var buffer = new AudioStreamPlaybackBuffer(
+            sampleRate: 48_000,
+            channels: 1,
+            capacityFrames: 128);
+        var write = buffer.Write(
+            AudioChunk(
+                Enumerable.Repeat(0.25f, 256).ToArray(),
+                sampleRate: 48_000));
+        var destination = new float[32];
+
+        _ = buffer.Read(
+            destination,
+            requestedFrames: 32,
+            requestedSampleRate: 48_000,
+            requestedChannels: 1,
+            interleaved: true);
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        _ = buffer.Read(
+            destination,
+            requestedFrames: 32,
+            requestedSampleRate: 48_000,
+            requestedChannels: 1,
+            interleaved: true);
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Equal(128, write.WrittenFrames);
+        Assert.Equal(128, write.DroppedFrames);
+        Assert.Equal(0, allocated);
+    }
+
     private static AudioStreamChunk AudioChunk(
         float[] samples,
         int sampleRate = 24_000,

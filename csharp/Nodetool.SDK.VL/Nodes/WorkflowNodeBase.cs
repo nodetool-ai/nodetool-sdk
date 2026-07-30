@@ -20,7 +20,9 @@ using Nodetool.SDK.Types.Assets;
 using Nodetool.SDK.Utilities.Execution;
 using Nodetool.SDK.VL.Models;
 using Nodetool.SDK.VL.Services;
+using Nodetool.SDK.VL.Streaming;
 using Nodetool.SDK.VL.Utilities;
+using VL.Lib.Basics.Audio;
 
 namespace Nodetool.SDK.VL.Nodes
 {
@@ -51,6 +53,10 @@ namespace Nodetool.SDK.VL.Nodes
         private readonly ConcurrentQueue<Action> _pendingStateUpdates = new();
         private readonly WorkflowOutputUpdateTracker _outputUpdateTracker = new();
         private readonly Dictionary<string, SKImage> _latestImages = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, NodeToolAudioSource> _audioSourcesByNodeId =
+            new(StringComparer.Ordinal);
+        private readonly Dictionary<string, NodeToolAudioSource> _audioSourcesByOutputName =
+            new(StringComparer.Ordinal);
         private readonly Dictionary<string, object?> _latchedOutputValues = new(StringComparer.Ordinal);
         private readonly ConcurrentDictionary<string, long> _imageLoadVersions = new(StringComparer.Ordinal);
         private readonly CancellationTokenSource _disposeCts = new();
@@ -102,6 +108,18 @@ namespace Nodetool.SDK.VL.Nodes
                 // Get consistent VL type and default value
                 var (vlType, defaultValue) = WorkflowVlTypeMapping.GetTypeAndDefault(property.Type);
                 _outputPins[property.Name] = new InternalPin(property.Name, vlType, defaultValue);
+            }
+            foreach (var audioPin in WorkflowAudioSourcePins.Create(
+                         _workflow.Descriptor,
+                         _outputPins.Keys))
+            {
+                var source = new NodeToolAudioSource();
+                _outputPins[audioPin.PinName] = new InternalPin(
+                    audioPin.PinName,
+                    typeof(IAudioSource),
+                    source);
+                _audioSourcesByNodeId[audioPin.Output.NodeId] = source;
+                _audioSourcesByOutputName[audioPin.Output.Name] = source;
             }
 
             foreach (var output in _outputPins)
@@ -258,6 +276,8 @@ namespace Nodetool.SDK.VL.Nodes
                 SetError("");
 
                 var runtime = GetOrCreateExecutionRuntime();
+                foreach (var source in _audioSourcesByNodeId.Values.Distinct())
+                    source.Reset();
                 runtime.InlineMediaLimitBytes =
                     NodeToolClientProvider.InlineMediaLimitBytes;
                 var result = await runtime.ExecuteAsync(
@@ -359,6 +379,7 @@ namespace Nodetool.SDK.VL.Nodes
                 adaptHostMediaValue:
                     VlMediaInputAdapter.AdaptValueAsync);
             _executionRuntime.SnapshotChanged += OnExecutionSnapshotChanged;
+            _executionRuntime.StreamReceived += OnExecutionStreamReceived;
             return _executionRuntime;
         }
 
@@ -366,6 +387,36 @@ namespace Nodetool.SDK.VL.Nodes
             WorkflowExecutionSnapshot snapshot)
         {
             EnqueueStateUpdate(() => ApplyExecutionSnapshot(snapshot));
+        }
+
+        private void OnExecutionStreamReceived(ExecutionStreamUpdate update)
+        {
+            NodeToolAudioSource? source = null;
+            if (!string.IsNullOrWhiteSpace(update.NodeId))
+                _audioSourcesByNodeId.TryGetValue(update.NodeId, out source);
+            if (source == null &&
+                !string.IsNullOrWhiteSpace(update.OutputName))
+            {
+                _audioSourcesByOutputName.TryGetValue(
+                    update.OutputName,
+                    out source);
+            }
+            if (source == null ||
+                !string.Equals(
+                    update.ContentType,
+                    "audio",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            if (!source.TryPush(update, out var error))
+            {
+                EnqueueStateUpdate(() =>
+                    SetErrorCore(
+                        $"Audio stream '{update.OutputName ?? update.NodeId}' " +
+                        $"could not be decoded: {error}"));
+            }
         }
 
         private void ApplyExecutionSnapshot(WorkflowExecutionSnapshot snapshot)
@@ -834,6 +885,7 @@ namespace Nodetool.SDK.VL.Nodes
                 if (_executionRuntime is { } runtime)
                 {
                     runtime.SnapshotChanged -= OnExecutionSnapshotChanged;
+                    runtime.StreamReceived -= OnExecutionStreamReceived;
                     _executionRuntime = null;
                     _ = DisposeRuntimeAsync(runtime);
                 }

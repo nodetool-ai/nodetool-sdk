@@ -167,7 +167,7 @@ session.StreamReceived += update =>
 
     if (AudioStreamChunk.TryCreate(update, out var audio, out _))
     {
-        // Copy into a host audio adapter, or use AudioStreamBuffer.
+        // Copy into a host audio adapter, or use one of the SDK buffers.
         Console.WriteLine(
             $"{audio!.FrameCount} frames at {audio.SampleRate} Hz");
     }
@@ -182,8 +182,14 @@ and are not concatenated as base64 text.
 `AudioStreamChunk` validates NodeTool's `pcm16le` and `f32le` audio metadata and
 payload alignment. `AudioStreamBuffer` is a fixed-capacity, thread-safe
 interleaved-sample ring buffer with explicit `DropOldest` or `DropNewest`
-overflow behavior. A host-specific audio callback can read into caller-owned
-memory without allocating.
+overflow behavior.
+
+`AudioStreamPlaybackBuffer` is the lower-latency single-producer,
+single-consumer variant for a transport callback feeding one host audio
+callback. It drops newest frames on overflow and resamples, duplicates mono,
+or downmixes to mono while reading into caller-owned interleaved or planar
+memory. Its `Read` path does not lock or allocate; chunk decoding remains on
+the producer thread.
 
 Active streaming workflows also accept live values and parameter changes:
 

@@ -6,8 +6,10 @@ using VL.Core;
 using VL.Core.CompilerServices;
 using VL.Core.Diagnostics;
 using Nodetool.SDK.VL.Models;
+using Nodetool.SDK.VL.Streaming;
 using Nodetool.SDK.VL.Utilities;
 using SkiaSharp;
+using VL.Lib.Basics.Audio;
 
 namespace Nodetool.SDK.VL.Nodes
 {
@@ -152,6 +154,18 @@ namespace Nodetool.SDK.VL.Nodes
                 var (vlType, defaultValue) = WorkflowVlTypeMapping.GetTypeAndDefault(property.Type);
 
                 outputPins.Add(new PinDescription(property.Name, vlType, defaultValue, summary, remarks));
+            }
+            foreach (var audioPin in WorkflowAudioSourcePins.Create(
+                         _workflow.Descriptor,
+                         outputPins.Select(pin => pin.Name)))
+            {
+                outputPins.Add(new PinDescription(
+                    audioPin.PinName,
+                    typeof(IAudioSource),
+                    null,
+                    $"Realtime audio source for {audioPin.Output.Name}",
+                    "Optional streamed-audio adapter. Expose this pin and connect it to VL.Audio's AudioSourceToAudioSignal node.",
+                    isVisible: false));
             }
 
             Outputs = outputPins.AsReadOnly();

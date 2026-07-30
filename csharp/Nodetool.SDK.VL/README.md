@@ -133,6 +133,29 @@ Media transport:
 - Workflow outputs are latched and reapplied on each VL update so event-driven scalar and media results remain visible after the execution frame.
 - Structured workflow pins use generated `Nodetool.Types` DTOs when the interface discriminator or `type_name` resolves in the SDK registry. Unknown structures remain explicit `Object` fallback pins.
 
+### Realtime audio outputs
+
+Streamed workflow outputs get a hidden `<Output Name> Audio Source` companion
+pin. Expose that pin in vvvv and connect it to VL.Audio's
+`AudioSourceToAudioSignal` node. The ordinary workflow output remains unchanged
+and continues to carry its normal accumulated or final value. Connect one
+`AudioSourceToAudioSignal` consumer, then branch its audio-signal outputs when
+multiple downstream consumers are needed.
+
+The adapter implements the `IAudioSource` contract already provided by
+`VL.Core`; `Nodetool.SDK.VL` therefore does not add a hard dependency on
+VL.Audio or change its portable `net8.0` target. The first audio chunk sets the
+native sample rate and channel count. Playback converts to the audio engine's
+requested rate and channel layout, returns silence on underrun, drops newest
+frames when its fixed four-second buffer is full, and resets at the start of
+each workflow run. Cancellation, reconnect gaps, and completion drain any
+already buffered samples and then produce silence.
+
+Use `EventDetail = Outputs` on the Connect node. `Terminal` deliberately
+withholds intermediate chunks and cannot drive realtime playback. The steady
+audio callback reuses its frame storage and does not lock or allocate; a
+one-time allocation occurs when the callback block shape changes.
+
 ### Workflow nodes
 
 Generated from the authoritative workflow-interface v1 contract, over compact HTTP by default or correlated WebSocket RPC when enabled on the Connect node.

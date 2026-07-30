@@ -660,10 +660,15 @@ Ordinary final workflow outputs must continue to work unchanged.
 - [x] Add a portable fixed-capacity audio buffer/reader with caller-owned
       allocation-free reads, explicit drop-oldest/drop-newest overflow policy,
       completion, reset, format validation, and unit coverage.
-- [ ] Add a thin VL audio adapter that feeds the vvvv audio clock without
-      allocating or blocking in its callback. First select and document the
-      supported VL.Audio contract; then define underrun, cancellation, and
-      reconnect behavior and test sustained playback.
+- [x] Add a thin VL audio adapter over VL.Core's `IAudioSource` contract and
+      expose hidden companion pins only for streamed workflow outputs. Keep
+      resampling, channel mapping, and the non-blocking SPSC playback buffer in
+      the portable C# SDK. Steady callbacks reuse frame storage; underruns and
+      reconnect gaps produce silence, runs reset stale audio, buffered tails
+      drain after completion/cancellation, and overflow drops newest frames.
+- [ ] Verify sustained playback against VL.Audio 1.9.3 in vvvv gamma 7.1,
+      including first-chunk startup, cancellation, reconnect gaps, completion,
+      sample-rate conversion, and a deliberately induced underrun/overflow.
 - [x] Confirm the current live-input baseline: NodeTool already accepts
       `stream_input`, `end_input_stream`, and `update_node_properties` for
       active jobs; the runner normalizes external input values, routes them
