@@ -31,7 +31,8 @@ public sealed record WorkflowOutputDescriptor(
     string Name,
     string Description,
     WorkflowTypeDescriptor Type,
-    bool Stream)
+    bool Stream,
+    string? StreamKind = null)
     : WorkflowPinDescriptor(NodeId, Name, Description, Type);
 
 public sealed record WorkflowDiagnosticDescriptor(

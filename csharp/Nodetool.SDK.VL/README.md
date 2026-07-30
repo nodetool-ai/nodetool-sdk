@@ -135,13 +135,16 @@ Media transport:
 
 ### Realtime audio outputs
 
-Non-text streamed workflow outputs get a hidden
-`<Output Name> Audio Source` companion pin. Expose that pin in vvvv and connect
-it to VL.Audio's
+Workflow outputs that the server declares with `stream_kind: "audio"` get a
+visible `<Output Name> Audio Source` companion pin. Connect it to VL.Audio's
 `AudioSourceToAudioSignal` node. The ordinary workflow output remains unchanged
 and continues to carry its normal accumulated or final value. Connect one
 `AudioSourceToAudioSignal` consumer, then branch its audio-signal outputs when
 multiple downstream consumers are needed.
+
+The adapter is not generated for text, control, unspecified, or future stream
+kinds. This keeps audio pins authoritative and avoids treating every generic
+`chunk` output as PCM audio.
 
 The adapter implements the `IAudioSource` contract already provided by
 `VL.Core`; `Nodetool.SDK.VL` therefore does not add a hard dependency on

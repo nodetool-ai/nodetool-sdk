@@ -331,7 +331,8 @@ public sealed class WorkflowCatalog : IWorkflowCatalog, IDisposable
             output.Name,
             output.Description,
             ConvertType(output.Type),
-            output.Stream);
+            output.Stream,
+            output.StreamKind);
 
     private static WorkflowDiagnosticDescriptor ConvertDiagnostic(
         WorkflowInterfaceDiagnostic diagnostic)

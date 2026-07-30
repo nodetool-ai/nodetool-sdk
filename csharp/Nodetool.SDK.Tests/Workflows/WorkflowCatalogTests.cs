@@ -25,7 +25,10 @@ public class WorkflowCatalogTests
         Assert.Equal("prompt", input.Name);
         Assert.True(input.Required);
         Assert.Equal("hello", input.DefaultValue?.GetString());
-        Assert.Equal("image", Assert.Single(workflow.Outputs).Type.Type);
+        var output = Assert.Single(workflow.Outputs);
+        Assert.Equal("image", output.Type.Type);
+        Assert.True(output.Stream);
+        Assert.Equal("image", output.StreamKind);
         Assert.False(snapshot.IsStale);
     }
 
@@ -157,7 +160,9 @@ public class WorkflowCatalogTests
                     NodeId = "output-1",
                     Name = "image",
                     Description = "Image",
-                    Type = new NodeTypeDefinition { Type = "image" }
+                    Type = new NodeTypeDefinition { Type = "image" },
+                    Stream = true,
+                    StreamKind = "image"
                 }
             ],
             Diagnostics = diagnostics ?? []

@@ -85,6 +85,9 @@ public sealed class WorkflowInterfaceOutput : WorkflowInterfacePin
 {
     [JsonPropertyName("stream")]
     public bool Stream { get; set; }
+
+    [JsonPropertyName("stream_kind")]
+    public string? StreamKind { get; set; }
 }
 
 public sealed class WorkflowInterfaceResponse

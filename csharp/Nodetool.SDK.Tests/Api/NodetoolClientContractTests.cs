@@ -495,7 +495,8 @@ public class NodetoolClientContractTests
                 "node_id": "output-1",
                 "name": "image",
                 "description": "Result",
-                "stream": false,
+                "stream": true,
+                "stream_kind": "image",
                 "type": { "type": "image", "optional": false, "type_args": [], "type_name": "ImageRef" }
               }],
               "diagnostics": []
@@ -515,6 +516,8 @@ public class NodetoolClientContractTests
         Assert.Equal("hello", result.Inputs[0].Default.GetString());
         Assert.Equal("image", Assert.Single(result.Outputs).Type.Type);
         Assert.Equal("ImageRef", result.Outputs[0].Type.TypeName);
+        Assert.True(result.Outputs[0].Stream);
+        Assert.Equal("image", result.Outputs[0].StreamKind);
     }
 
     [Fact]

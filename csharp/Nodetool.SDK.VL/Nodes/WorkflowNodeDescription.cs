@@ -164,8 +164,7 @@ namespace Nodetool.SDK.VL.Nodes
                     typeof(IAudioSource),
                     null,
                     $"Realtime audio source for {audioPin.Output.Name}",
-                    "Optional streamed-audio adapter. Expose this pin and connect it to VL.Audio's AudioSourceToAudioSignal node.",
-                    isVisible: false));
+                    "Streamed-audio adapter. Connect it to VL.Audio's AudioSourceToAudioSignal node."));
             }
 
             Outputs = outputPins.AsReadOnly();

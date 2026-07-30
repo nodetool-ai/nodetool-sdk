@@ -120,7 +120,7 @@ public sealed class NodeToolAudioSourceTests
     }
 
     [Fact]
-    public void WorkflowAudioSourcePins_ExcludeTextOnlyStreams()
+    public void WorkflowAudioSourcePins_IncludeOnlyDeclaredAudioStreams()
     {
         var descriptor = new WorkflowDescriptor(
             "workflow-1",
@@ -134,8 +134,23 @@ public sealed class NodeToolAudioSourceTests
             "server",
             [],
             [
-                Output("audio-out", "Audio", "audio", stream: true),
-                Output("text-out", "Text", "str", stream: true),
+                Output(
+                    "audio-out",
+                    "Audio",
+                    "chunk",
+                    stream: true,
+                    streamKind: "audio"),
+                Output(
+                    "text-out",
+                    "Text",
+                    "chunk",
+                    stream: true,
+                    streamKind: "text"),
+                Output(
+                    "unspecified-out",
+                    "Unspecified",
+                    "chunk",
+                    stream: true),
                 Output(
                     "collision-out",
                     "Audio Audio Source",
@@ -157,7 +172,8 @@ public sealed class NodeToolAudioSourceTests
         string nodeId,
         string name,
         string type,
-        bool stream)
+        bool stream,
+        string? streamKind = null)
         => new(
             nodeId,
             name,
@@ -168,7 +184,8 @@ public sealed class NodeToolAudioSourceTests
                 null,
                 [],
                 []),
-            stream);
+            stream,
+            streamKind);
 
     private static ExecutionStreamUpdate AudioUpdate(
         float[] samples,

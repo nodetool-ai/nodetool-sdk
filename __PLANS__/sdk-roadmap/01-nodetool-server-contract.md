@@ -170,6 +170,11 @@ ambiguous submission.
 - [x] Verify REST, tRPC, JSON-text WebSocket, and MessagePack workflow-interface
       parity in the existing integration tests.
 - [x] Verify static graph validation and cost-estimation unit coverage.
+- [x] Add optional per-output `stream_kind` metadata (`text`, `audio`,
+      `control`, `image`, `video`, `document`, or `binary`) and propagate it
+      through TypeScript node metadata, Python bridge metadata, graph-derived
+      workflow interfaces, and generated discovery schemas. Keep it
+      descriptive: no runner, persistence, or ordinary output-routing changes.
 - [x] Audit reconnect and confirm that completed persisted jobs currently lose
       their terminal output map.
 - [x] Capture the current successful REST, JSON-text WebSocket, and MessagePack

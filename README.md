@@ -54,6 +54,9 @@ either the general-purpose `AudioStreamBuffer` or the single-producer,
 single-consumer `AudioStreamPlaybackBuffer`. The latter performs non-blocking,
 allocation-free playback reads with sample-rate and channel conversion, so VL
 and future Unity integrations only provide their host audio-frame projection.
+Workflow discovery also preserves the server-declared output `stream_kind`, so
+host adapters do not need to guess whether a generic chunk contains text,
+audio, control data, or future media.
 
 Realtime consumers must use `WorkflowEventDetail.Outputs`.
 `WorkflowEventDetail.Terminal` intentionally withholds intermediate chunks.

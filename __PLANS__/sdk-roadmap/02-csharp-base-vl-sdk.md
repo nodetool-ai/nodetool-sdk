@@ -645,6 +645,9 @@ Ordinary final workflow outputs must continue to work unchanged.
 - [x] Keep the normal text output pin as the latest accumulated string. Add a
       separate optional helper/event surface for consumers that need each
       delta; avoid adding chunk pins to every generated node and workflow.
+- [x] Preserve the server's optional semantic output `stream_kind` in the
+      portable workflow descriptor. Do not infer audio merely from `chunk`,
+      a streaming flag, or a non-text output type.
 - [x] Add typed C# parsing for both streaming wire shapes. Preserve the working
       `output_update` chunk path and route standalone protocol `chunk` messages
       by `job_id` rather than leaving them as generic dictionaries.
@@ -661,11 +664,12 @@ Ordinary final workflow outputs must continue to work unchanged.
       allocation-free reads, explicit drop-oldest/drop-newest overflow policy,
       completion, reset, format validation, and unit coverage.
 - [x] Add a thin VL audio adapter over VL.Core's `IAudioSource` contract and
-      expose hidden companion pins only for non-text streamed workflow outputs. Keep
-      resampling, channel mapping, and the non-blocking SPSC playback buffer in
-      the portable C# SDK. Steady callbacks reuse frame storage; underruns and
-      reconnect gaps produce silence, runs reset stale audio, buffered tails
-      drain after completion/cancellation, and overflow drops newest frames.
+      expose a normal visible companion pin only for outputs authoritatively
+      declared as `stream_kind: "audio"`. Keep resampling, channel mapping,
+      and the non-blocking SPSC playback buffer in the portable C# SDK. Steady
+      callbacks reuse frame storage; underruns and reconnect gaps produce
+      silence, runs reset stale audio, buffered tails drain after
+      completion/cancellation, and overflow drops newest frames.
 - [ ] Verify sustained playback against VL.Audio 1.9.3 in vvvv gamma 7.1,
       including first-chunk startup, cancellation, reconnect gaps, completion,
       sample-rate conversion, and a deliberately induced underrun/overflow.

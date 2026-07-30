@@ -179,6 +179,12 @@ standalone job-scoped `chunk` messages. Text workflow output snapshots remain
 the latest accumulated string. Non-text chunks remain individual typed blocks
 and are not concatenated as base64 text.
 
+Workflow discovery preserves the server's optional `stream_kind` on
+`WorkflowOutputDescriptor.StreamKind` (`text`, `audio`, `control`, `image`,
+`video`, `document`, or `binary`). Consumers should use that declaration for
+host-specific adapters instead of inferring semantics from the generic
+`chunk` type.
+
 `AudioStreamChunk` validates NodeTool's `pcm16le` and `f32le` audio metadata and
 payload alignment. `AudioStreamBuffer` is a fixed-capacity, thread-safe
 interleaved-sample ring buffer with explicit `DropOldest` or `DropNewest`
