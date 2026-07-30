@@ -582,6 +582,33 @@ continue to use ordinary encoded media, upload, and referenced-asset paths.
 - [ ] Benchmark 2K and 4K passthrough before selecting defaults, including
       encode, transfer, server materialization, download, and host decode time.
 
+### Future asset-output actions
+
+Keep workflow output pins focused on typed results. Saving and persistence are
+explicit consumer actions rather than side effects or extra pins repeated on
+every generated workflow node.
+
+- [ ] Keep typed `ImageRef`, `AudioRef`, `VideoRef`, and `AssetRef` values as
+      the portable asset result and preserve temporary/durable identity,
+      content type, metadata, URI, and optional inline data.
+- [ ] Retain `Asset As File` for cached local materialization without implying
+      user-selected storage or durable server persistence.
+- [ ] Add a separate `Save Asset` node with asset, destination `Path`, trigger,
+      and overwrite policy inputs plus resulting path, success, and error
+      outputs.
+- [ ] Keep generic download, atomic copy, extension/MIME handling, overwrite
+      policy, and cancellation in the portable C# SDK; keep VL `Path`, trigger,
+      and frame projection in the VL adapter.
+- [ ] Add `Persist Asset` only after NodeTool exposes an authoritative
+      temporary-to-durable promotion operation; return the resulting durable
+      asset reference.
+- [ ] Add host-native conversion nodes such as `Asset As Image` or
+      `Asset As Texture` only where they improve common workflows, using the
+      same cached materializer and explicit resource ownership.
+- [ ] Do not add `Save To`, overwrite, or persistence pins to every generated
+      workflow node, and do not make persistence an accidental connection
+      side effect.
+
 ## 0.1.6 release snapshot - 2026-07-26
 
 - [x] NodeTool WebSocket SDK preflight/capability tests: 51 passed.
