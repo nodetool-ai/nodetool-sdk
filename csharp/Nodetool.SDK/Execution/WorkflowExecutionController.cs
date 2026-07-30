@@ -50,6 +50,12 @@ public sealed class WorkflowExecutionController : IDisposable, IAsyncDisposable
 
     public event Action<WorkflowExecutionSnapshot>? SnapshotChanged;
 
+    /// <summary>
+    /// Raw streamed content from the active execution. Callbacks run on the
+    /// transport receive path; hosts must marshal to their own main thread.
+    /// </summary>
+    public event Action<ExecutionStreamUpdate>? StreamReceived;
+
     public WorkflowExecutionSnapshot Snapshot
     {
         get
@@ -270,6 +276,44 @@ public sealed class WorkflowExecutionController : IDisposable, IAsyncDisposable
     public async Task CancelAsync(CancellationToken cancellationToken = default)
         => await CancelCurrentAsync(clearPending: true, cancellationToken);
 
+    /// <summary>
+    /// Streams one value into the active workflow.
+    /// </summary>
+    public Task StreamInputAsync(
+        string inputName,
+        object? value,
+        string? sourceHandle = null,
+        CancellationToken cancellationToken = default)
+        => GetActiveSession().StreamInputAsync(
+            inputName,
+            value,
+            sourceHandle,
+            cancellationToken);
+
+    /// <summary>
+    /// Marks one active workflow input stream as complete.
+    /// </summary>
+    public Task EndInputStreamAsync(
+        string inputName,
+        string? sourceHandle = null,
+        CancellationToken cancellationToken = default)
+        => GetActiveSession().EndInputStreamAsync(
+            inputName,
+            sourceHandle,
+            cancellationToken);
+
+    /// <summary>
+    /// Applies properties to a node executor in the active workflow.
+    /// </summary>
+    public Task UpdateNodePropertiesAsync(
+        string nodeId,
+        IReadOnlyDictionary<string, object?> properties,
+        CancellationToken cancellationToken = default)
+        => GetActiveSession().UpdateNodePropertiesAsync(
+            nodeId,
+            properties,
+            cancellationToken);
+
     private async Task CancelCurrentAsync(
         bool clearPending,
         CancellationToken cancellationToken)
@@ -446,6 +490,25 @@ public sealed class WorkflowExecutionController : IDisposable, IAsyncDisposable
         });
     }
 
+    private void OnStreamReceived(ExecutionStreamUpdate update)
+    {
+        var subscribers = StreamReceived;
+        if (subscribers == null)
+            return;
+        foreach (Action<ExecutionStreamUpdate> subscriber in
+                 subscribers.GetInvocationList())
+        {
+            try
+            {
+                subscriber(update);
+            }
+            catch
+            {
+                // A host callback must not break protocol/session processing.
+            }
+        }
+    }
+
     private string? ResolvePublicName(ExecutionOutputUpdate update)
     {
         if (!string.IsNullOrWhiteSpace(update.NodeId))
@@ -474,6 +537,20 @@ public sealed class WorkflowExecutionController : IDisposable, IAsyncDisposable
             return update.Value;
         }
 
+        var map = update.Value.AsMapOrEmpty();
+        if (map.TryGetValue("content_type", out var contentType) &&
+            contentType.AsString() is { Length: > 0 } modality &&
+            !string.Equals(
+                modality,
+                "text",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            // Binary/realtime modalities are individual blocks, not text
+            // deltas. Keep the latest typed chunk until a modality-specific
+            // adapter consumes the raw StreamReceived events.
+            return update.Value;
+        }
+
         lock (_gate)
         {
             if (!_chunkBuffers.TryGetValue(publicName, out var buffer))
@@ -488,7 +565,6 @@ public sealed class WorkflowExecutionController : IDisposable, IAsyncDisposable
             {
                 buffer.Clear();
             }
-            var map = update.Value.AsMapOrEmpty();
             if (map.TryGetValue("content", out var content))
                 buffer.Append(content.AsString() ?? "");
             return NodeToolValue.From(buffer.ToString());
@@ -652,6 +728,7 @@ public sealed class WorkflowExecutionController : IDisposable, IAsyncDisposable
         session.ProgressChanged += OnProgressChanged;
         session.NodeUpdated += OnNodeUpdated;
         session.OutputReceived += OnOutputReceived;
+        session.StreamReceived += OnStreamReceived;
     }
 
     private void Detach(IExecutionSession session)
@@ -659,6 +736,18 @@ public sealed class WorkflowExecutionController : IDisposable, IAsyncDisposable
         session.ProgressChanged -= OnProgressChanged;
         session.NodeUpdated -= OnNodeUpdated;
         session.OutputReceived -= OnOutputReceived;
+        session.StreamReceived -= OnStreamReceived;
+    }
+
+    private IExecutionSession GetActiveSession()
+    {
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            return _session ??
+                throw new InvalidOperationException(
+                    "No workflow execution is currently active.");
+        }
     }
 
     private static Dictionary<string, string> BuildRoutes(

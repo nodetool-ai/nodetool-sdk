@@ -184,6 +184,42 @@ public class MessagePackWebSocketClientContractTests
     }
 
     [Fact]
+    public void ClientDeserializer_ModelsStandaloneAudioChunk()
+    {
+        var options = MessagePackSerializerOptions.Standard.WithResolver(
+            CompositeResolver.Create(
+                ContractlessStandardResolver.Instance,
+                StandardResolver.Instance));
+        var payload = MessagePackSerializer.Serialize(
+            new Dictionary<string, object?>
+            {
+                ["type"] = "chunk",
+                ["job_id"] = "job-1",
+                ["workflow_id"] = "workflow-1",
+                ["content_type"] = "audio",
+                ["content"] = "AAECAw==",
+                ["content_metadata"] = new Dictionary<string, object?>
+                {
+                    ["encoding"] = "f32le",
+                    ["sample_rate"] = 24_000,
+                    ["channels"] = 1
+                },
+                ["done"] = false
+            },
+            options);
+        using var client = new MessagePackWebSocketClient();
+
+        var chunk = Assert.IsType<ChunkMessage>(
+            client.DeserializeMessagePack(payload));
+
+        Assert.Equal("job-1", chunk.job_id);
+        Assert.Equal("audio", chunk.content_type);
+        Assert.Equal("AAECAw==", chunk.content);
+        Assert.Equal("f32le", chunk.content_metadata?["encoding"]);
+        Assert.False(chunk.done);
+    }
+
+    [Fact]
     public void ClientDeserializer_PreservesUnknownMessagesAsDictionary()
     {
         var options = MessagePackSerializerOptions.Standard.WithResolver(

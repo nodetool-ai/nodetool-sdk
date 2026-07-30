@@ -64,6 +64,11 @@ public sealed class WorkflowExecutionRuntime : IAsyncDisposable, IDisposable
 
     public event Action<WorkflowExecutionSnapshot>? SnapshotChanged;
 
+    /// <summary>
+    /// Raw streamed content from the active execution.
+    /// </summary>
+    public event Action<ExecutionStreamUpdate>? StreamReceived;
+
     public WorkflowExecutionSnapshot Snapshot
     {
         get
@@ -261,6 +266,35 @@ public sealed class WorkflowExecutionRuntime : IAsyncDisposable, IDisposable
             await controller.CancelAsync(cancellationToken);
     }
 
+    public Task StreamInputAsync(
+        string inputName,
+        object? value,
+        string? sourceHandle = null,
+        CancellationToken cancellationToken = default)
+        => GetController().StreamInputAsync(
+            inputName,
+            value,
+            sourceHandle,
+            cancellationToken);
+
+    public Task EndInputStreamAsync(
+        string inputName,
+        string? sourceHandle = null,
+        CancellationToken cancellationToken = default)
+        => GetController().EndInputStreamAsync(
+            inputName,
+            sourceHandle,
+            cancellationToken);
+
+    public Task UpdateNodePropertiesAsync(
+        string nodeId,
+        IReadOnlyDictionary<string, object?> properties,
+        CancellationToken cancellationToken = default)
+        => GetController().UpdateNodePropertiesAsync(
+            nodeId,
+            properties,
+            cancellationToken);
+
     private async Task<WorkflowExecutionController>
         GetOrReplaceControllerAsync(INodeToolExecutionClient client)
     {
@@ -277,7 +311,10 @@ public sealed class WorkflowExecutionRuntime : IAsyncDisposable, IDisposable
 
             previous = _controller;
             if (previous != null)
+            {
                 previous.SnapshotChanged -= OnSnapshotChanged;
+                previous.StreamReceived -= OnStreamReceived;
+            }
 
             controller = WorkflowExecutionControllerFactory.Create(
                 client,
@@ -287,6 +324,7 @@ public sealed class WorkflowExecutionRuntime : IAsyncDisposable, IDisposable
                 _httpClient,
                 _connection.GetSdkCapabilitiesAsync);
             controller.SnapshotChanged += OnSnapshotChanged;
+            controller.StreamReceived += OnStreamReceived;
             _controller = controller;
             _controllerClient = client;
         }
@@ -312,6 +350,36 @@ public sealed class WorkflowExecutionRuntime : IAsyncDisposable, IDisposable
             {
                 // Host callbacks cannot break protocol processing.
             }
+        }
+    }
+
+    private void OnStreamReceived(ExecutionStreamUpdate update)
+    {
+        var subscribers = StreamReceived;
+        if (subscribers == null)
+            return;
+        foreach (Action<ExecutionStreamUpdate> subscriber in
+                 subscribers.GetInvocationList())
+        {
+            try
+            {
+                subscriber(update);
+            }
+            catch
+            {
+                // Host callbacks cannot break protocol processing.
+            }
+        }
+    }
+
+    private WorkflowExecutionController GetController()
+    {
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            return _controller ??
+                throw new InvalidOperationException(
+                    "No workflow execution controller is active.");
         }
     }
 
@@ -341,7 +409,10 @@ public sealed class WorkflowExecutionRuntime : IAsyncDisposable, IDisposable
             _controller = null;
             _controllerClient = null;
             if (controller != null)
+            {
                 controller.SnapshotChanged -= OnSnapshotChanged;
+                controller.StreamReceived -= OnStreamReceived;
+            }
         }
 
         if (controller != null)

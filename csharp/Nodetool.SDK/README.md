@@ -152,6 +152,55 @@ during the run are withheld until the final result snapshot, so it should be
 used only when delayed, final-only output delivery is acceptable. `Full`
 remains the default for complete execution visibility.
 
+### Realtime streams
+
+Use `WorkflowEventDetail.Outputs` for streamed text or audio. A session exposes
+ordinary `OutputReceived` events and normalized raw `StreamReceived` events:
+
+```csharp
+using Nodetool.SDK.Streaming;
+
+session.StreamReceived += update =>
+{
+    if (update.ContentType == "text")
+        Console.Write(update.Content.AsString());
+
+    if (AudioStreamChunk.TryCreate(update, out var audio, out _))
+    {
+        // Copy into a host audio adapter, or use AudioStreamBuffer.
+        Console.WriteLine(
+            $"{audio!.FrameCount} frames at {audio.SampleRate} Hz");
+    }
+};
+```
+
+`StreamReceived` normalizes both chunk values carried by `output_update` and
+standalone job-scoped `chunk` messages. Text workflow output snapshots remain
+the latest accumulated string. Non-text chunks remain individual typed blocks
+and are not concatenated as base64 text.
+
+`AudioStreamChunk` validates NodeTool's `pcm16le` and `f32le` audio metadata and
+payload alignment. `AudioStreamBuffer` is a fixed-capacity, thread-safe
+interleaved-sample ring buffer with explicit `DropOldest` or `DropNewest`
+overflow behavior. A host-specific audio callback can read into caller-owned
+memory without allocating.
+
+Active streaming workflows also accept live values and parameter changes:
+
+```csharp
+await session.StreamInputAsync("prompt", "next text delta");
+await session.UpdateNodePropertiesAsync(
+    "gain-node",
+    new Dictionary<string, object?> { ["gain"] = 0.5f });
+await session.EndInputStreamAsync("prompt");
+```
+
+These methods complete when the command has been written to the WebSocket.
+They do not currently provide a correlated server acknowledgement. Execution
+errors continue to arrive through normal job/node updates. Controller users
+can call the same methods and subscribe to
+`WorkflowExecutionController.StreamReceived`.
+
 Connection sessions cache the server capability document for their current
 connection generation, so repeated negotiated runs do not add one HTTP
 discovery request per execution. A successful reconnect, profile replacement,
@@ -162,7 +211,7 @@ The execution client supports:
 
 - workflow execution by ID or case-insensitive name;
 - single-node and explicit-graph execution;
-- output, preview, node, progress, and completion events;
+- output, raw stream, preview, node, progress, and completion events;
 - queued and running job cancellation;
 - reconnecting the transport and asking the server to reattach active sessions;
   interrupted runs fail explicitly when event replay is unavailable;

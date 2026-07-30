@@ -96,6 +96,101 @@ public class ExecutionSessionContractTests
     }
 
     [Fact]
+    public void ChunkValuedOutput_RaisesTypedStreamEventAndReadsInnerDone()
+    {
+        using var session = new ExecutionSession("job-1", "workflow-1");
+        ExecutionStreamUpdate? received = null;
+        ExecutionOutputUpdate? output = null;
+        session.StreamReceived += update => received = update;
+        session.OutputReceived += update => output = update;
+
+        session.ProcessOutputUpdate(new OutputUpdate
+        {
+            job_id = "job-1",
+            workflow_id = "workflow-1",
+            node_id = "output-1",
+            node_name = "Text Output",
+            output_name = "text",
+            output_type = "chunk",
+            value = new Dictionary<string, object?>
+            {
+                ["type"] = "chunk",
+                ["content_type"] = "text",
+                ["content"] = "hello",
+                ["content_metadata"] = new Dictionary<string, object?>
+                {
+                    ["model"] = "test"
+                },
+                ["done"] = true
+            },
+            disposition = "replace"
+        });
+
+        Assert.NotNull(received);
+        Assert.Equal(ExecutionStreamSource.OutputUpdate, received.Source);
+        Assert.Equal("job-1", received.JobId);
+        Assert.Equal("text", received.ContentType);
+        Assert.Equal("hello", received.Content.AsString());
+        Assert.Equal("test", received.ContentMetadata["model"].AsString());
+        Assert.Equal("replace", received.Disposition);
+        Assert.True(received.Done);
+        Assert.NotNull(output);
+        Assert.True(output.Done);
+    }
+
+    [Fact]
+    public void StandaloneChunk_IsRoutedAsTypedStreamWithoutCreatingOutput()
+    {
+        using var session = new ExecutionSession("job-1", "workflow-1");
+        ExecutionStreamUpdate? received = null;
+        session.StreamReceived += update => received = update;
+
+        session.ProcessStreamChunk(new ChunkMessage
+        {
+            job_id = "job-1",
+            workflow_id = "workflow-1",
+            node_id = "audio-output",
+            content_type = "audio",
+            content = "AAAAAA==",
+            content_metadata = new Dictionary<string, object>
+            {
+                ["encoding"] = "f32le",
+                ["sample_rate"] = 24_000,
+                ["channels"] = 1
+            },
+            done = true
+        });
+
+        Assert.NotNull(received);
+        Assert.Equal(ExecutionStreamSource.StandaloneChunk, received.Source);
+        Assert.Equal("audio", received.ContentType);
+        Assert.Equal("f32le", received.ContentMetadata["encoding"].AsString());
+        Assert.True(received.Done);
+        Assert.Empty(session.GetLatestOutputs());
+    }
+
+    [Fact]
+    public void StandaloneChunk_RequiresMatchingJobIdentity()
+    {
+        using var session = new ExecutionSession("job-1", "workflow-1");
+        var received = 0;
+        session.StreamReceived += _ => received++;
+
+        session.ProcessStreamChunk(new ChunkMessage
+        {
+            thread_id = "chat-1",
+            content = "chat"
+        });
+        session.ProcessStreamChunk(new ChunkMessage
+        {
+            job_id = "job-2",
+            content = "foreign"
+        });
+
+        Assert.Equal(0, received);
+    }
+
+    [Fact]
     public void OutputUpdate_DefaultsMissingDispositionToAppend()
     {
         using var session = new ExecutionSession("job-1", "workflow-1");
@@ -127,6 +222,7 @@ public class ExecutionSessionContractTests
         session.NodeUpdated += _ => nodeCount++;
         session.ProgressChanged += _ => progressCount++;
         session.PreviewReceived += _ => previewCount++;
+        session.StreamReceived += _ => outputCount++;
 
         session.ProcessOutputUpdate(new OutputUpdate
         {
@@ -142,6 +238,11 @@ public class ExecutionSessionContractTests
             total = 2
         });
         session.ProcessPreviewUpdate(new PreviewUpdate { job_id = "job-2" });
+        session.ProcessStreamChunk(new ChunkMessage
+        {
+            job_id = "job-2",
+            content = "foreign"
+        });
 
         Assert.Equal(0, outputCount);
         Assert.Equal(0, nodeCount);
@@ -209,6 +310,37 @@ public class ExecutionSessionContractTests
 
         Assert.Equal("first", first.GetLatestOutput("output", "value")?.AsString());
         Assert.Null(second.GetLatestOutput("output", "value"));
+    }
+
+    [Fact]
+    public void StandaloneChunks_AreRoutedOnlyByJobIdentity()
+    {
+        using var client = new NodeToolExecutionClient(new NodeToolClientOptions
+        {
+            WorkerWebSocketUrl = new Uri("ws://127.0.0.1:7777/ws")
+        });
+        var first = client.CreateSession("job-1", "workflow-1");
+        var second = client.CreateSession("job-2", "workflow-2");
+        ExecutionStreamUpdate? received = null;
+        first.StreamReceived += update => received = update;
+
+        client.RouteExecutionMessage(new ChunkMessage
+        {
+            job_id = "job-1",
+            content_type = "text",
+            content = "first"
+        });
+        client.RouteExecutionMessage(new ChunkMessage
+        {
+            thread_id = "chat-1",
+            content_type = "text",
+            content = "chat"
+        });
+
+        Assert.NotNull(received);
+        Assert.Equal("job-1", received.JobId);
+        Assert.Equal("first", received.Content.AsString());
+        Assert.Empty(second.GetLatestOutputs());
     }
 
     [Fact]

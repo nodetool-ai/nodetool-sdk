@@ -60,6 +60,9 @@ public class ExecutionSession : IExecutionSession
     /// <inheritdoc/>
     public event Action<ExecutionOutputUpdate>? OutputReceived;
 
+    /// <inheritdoc/>
+    public event Action<ExecutionStreamUpdate>? StreamReceived;
+
     public event Action<ExecutionPreviewUpdate>? PreviewReceived;
 
     /// <inheritdoc/>
@@ -72,6 +75,15 @@ public class ExecutionSession : IExecutionSession
     /// Cancel action delegate - set by the execution client.
     /// </summary>
     internal Func<string, string?, CancellationToken, Task>? CancelAction { get; set; }
+
+    internal Func<StreamInputData, CancellationToken, Task>?
+        StreamInputAction { get; set; }
+
+    internal Func<EndInputStreamData, CancellationToken, Task>?
+        EndInputStreamAction { get; set; }
+
+    internal Func<UpdateNodePropertiesData, CancellationToken, Task>?
+        UpdateNodePropertiesAction { get; set; }
 
     /// <inheritdoc/>
     public NodeToolValue? GetLatestOutput(string nodeId, string outputName)
@@ -109,6 +121,74 @@ public class ExecutionSession : IExecutionSession
         }
         if (cancelAction != null && jobId != null)
             await cancelAction(jobId, _workflowId, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task StreamInputAsync(
+        string inputName,
+        object? value,
+        string? sourceHandle = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(inputName);
+        var action = GetActiveAction(
+            StreamInputAction,
+            "Streaming input is unavailable for this execution session.");
+        return action(
+            new StreamInputData
+            {
+                job_id = _jobId,
+                workflow_id = _workflowId,
+                input = inputName,
+                handle = NormalizeOptional(sourceHandle),
+                value = value
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task EndInputStreamAsync(
+        string inputName,
+        string? sourceHandle = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(inputName);
+        var action = GetActiveAction(
+            EndInputStreamAction,
+            "Ending an input stream is unavailable for this execution session.");
+        return action(
+            new EndInputStreamData
+            {
+                job_id = _jobId,
+                workflow_id = _workflowId,
+                input = inputName,
+                handle = NormalizeOptional(sourceHandle)
+            },
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task UpdateNodePropertiesAsync(
+        string nodeId,
+        IReadOnlyDictionary<string, object?> properties,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nodeId);
+        ArgumentNullException.ThrowIfNull(properties);
+        var action = GetActiveAction(
+            UpdateNodePropertiesAction,
+            "Live property updates are unavailable for this execution session.");
+        return action(
+            new UpdateNodePropertiesData
+            {
+                job_id = _jobId,
+                workflow_id = _workflowId,
+                node_id = nodeId,
+                properties = new Dictionary<string, object?>(
+                    properties,
+                    StringComparer.Ordinal)
+            },
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -241,6 +321,10 @@ public class ExecutionSession : IExecutionSession
             return;
         var receivedAt = DateTimeOffset.UtcNow;
         var value = NodeToolValue.From(update.value);
+        var stream = ExecutionStreamUpdate.FromOutputUpdate(
+            _jobId,
+            update,
+            receivedAt);
         var metadata = (update.metadata ?? new Dictionary<string, object>())
             .ToDictionary(kvp => kvp.Key, kvp => NodeToolValue.From(kvp.Value), StringComparer.Ordinal);
         var key = OutputKey(update.node_id, update.output_name);
@@ -258,14 +342,25 @@ public class ExecutionSession : IExecutionSession
             Value: value,
             Metadata: metadata,
             ReceivedAt: receivedAt,
-            Disposition: string.Equals(
-                update.disposition,
-                "replace",
-                StringComparison.OrdinalIgnoreCase)
-                    ? "replace"
-                    : "append",
-            Done: update.done ?? false
+            Disposition: stream?.Disposition ??
+                ExecutionStreamUpdate.NormalizeDisposition(update.disposition),
+            Done: stream?.Done ?? update.done ?? false
         ));
+        if (stream != null)
+            StreamReceived?.Invoke(stream);
+    }
+
+    internal void ProcessStreamChunk(ChunkMessage message)
+    {
+        if (!MatchesJob(message.job_id) ||
+            string.IsNullOrWhiteSpace(message.job_id))
+        {
+            return;
+        }
+        StreamReceived?.Invoke(
+            ExecutionStreamUpdate.FromChunkMessage(
+                message,
+                DateTimeOffset.UtcNow));
     }
 
     internal void ProcessPreviewUpdate(PreviewUpdate update)
@@ -284,6 +379,28 @@ public class ExecutionSession : IExecutionSession
         return string.IsNullOrWhiteSpace(jobId)
             || string.Equals(jobId, _jobId, StringComparison.Ordinal);
     }
+
+    private TAction GetActiveAction<TAction>(
+        TAction? action,
+        string unavailableMessage)
+        where TAction : Delegate
+    {
+        lock (_lock)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (IsCompleted)
+            {
+                throw new InvalidOperationException(
+                    "The execution session has already completed.");
+            }
+            return action ?? throw new NotSupportedException(unavailableMessage);
+        }
+    }
+
+    private static string? NormalizeOptional(string? value)
+        => string.IsNullOrWhiteSpace(value)
+            ? null
+            : value;
 
     /// <inheritdoc/>
     public void Dispose()

@@ -65,6 +65,12 @@ public interface IExecutionSession : IDisposable
     event Action<ExecutionOutputUpdate>? OutputReceived;
 
     /// <summary>
+    /// Event fired for streamed chunk content carried by an output update or a
+    /// standalone job-scoped chunk message.
+    /// </summary>
+    event Action<ExecutionStreamUpdate>? StreamReceived;
+
+    /// <summary>
     /// Event fired when a preview update is received.
     /// </summary>
     event Action<ExecutionPreviewUpdate>? PreviewReceived;
@@ -83,6 +89,34 @@ public interface IExecutionSession : IDisposable
     /// Cancel the running execution.
     /// </summary>
     Task CancelAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Streams one value into a named input of this active workflow.
+    /// Completion means the command was written to the connection. The current
+    /// protocol does not correlate command acknowledgements.
+    /// </summary>
+    Task StreamInputAsync(
+        string inputName,
+        object? value,
+        string? sourceHandle = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Marks a named workflow input stream as complete.
+    /// </summary>
+    Task EndInputStreamAsync(
+        string inputName,
+        string? sourceHandle = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Applies properties to one node executor while this workflow is active.
+    /// Completion means the command was written to the connection.
+    /// </summary>
+    Task UpdateNodePropertiesAsync(
+        string nodeId,
+        IReadOnlyDictionary<string, object?> properties,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Wait for the execution to complete.

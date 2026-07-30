@@ -388,6 +388,50 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
         await _webSocketClient.SendMessageAsync(command, cancellationToken);
     }
 
+    private Task StreamInputAsync(
+        StreamInputData data,
+        CancellationToken cancellationToken)
+        => SendLiveExecutionCommandAsync(
+            "stream_input",
+            data,
+            cancellationToken);
+
+    private Task EndInputStreamAsync(
+        EndInputStreamData data,
+        CancellationToken cancellationToken)
+        => SendLiveExecutionCommandAsync(
+            "end_input_stream",
+            data,
+            cancellationToken);
+
+    private Task UpdateNodePropertiesAsync(
+        UpdateNodePropertiesData data,
+        CancellationToken cancellationToken)
+        => SendLiveExecutionCommandAsync(
+            "update_node_properties",
+            data,
+            cancellationToken);
+
+    private async Task SendLiveExecutionCommandAsync(
+        string commandName,
+        object data,
+        CancellationToken cancellationToken)
+    {
+        var command = new WebSocketCommand
+        {
+            command = commandName,
+            type = commandName,
+            data = data
+        };
+        if (!await _webSocketClient
+                .SendMessageAsync(command, cancellationToken)
+                .ConfigureAwait(false))
+        {
+            throw new InvalidOperationException(
+                $"Failed to send '{commandName}' for the active execution.");
+        }
+    }
+
     internal static WebSocketCommand CreateReconnectCommand(string jobId, string? workflowId)
         => new()
         {
@@ -442,7 +486,10 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
     {
         var session = new ExecutionSession(jobId, workflowId)
         {
-            CancelAction = CancelJobAsync
+            CancelAction = CancelJobAsync,
+            StreamInputAction = StreamInputAsync,
+            EndInputStreamAction = EndInputStreamAsync,
+            UpdateNodePropertiesAction = UpdateNodePropertiesAsync
         };
         _sessions[jobId] = session;
         return session;
@@ -956,6 +1003,14 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
                 else
                 {
                     GetOnlyBoundSession()?.ProcessOutputUpdate(outputUpdate);
+                }
+                break;
+
+            case ChunkMessage chunk:
+                if (chunk.job_id != null &&
+                    _sessions.TryGetValue(chunk.job_id, out var streamSession))
+                {
+                    streamSession.ProcessStreamChunk(chunk);
                 }
                 break;
 

@@ -81,6 +81,81 @@ public sealed class NodeToolExecutionClientTransportTests
     }
 
     [Fact]
+    public async Task ActiveSession_SendsLiveInputEndAndPropertyCommands()
+    {
+        var transport = new FakeTransport();
+        await using var client = new NodeToolExecutionClient(
+            new NodeToolClientOptions
+            {
+                WorkerWebSocketUrl =
+                    new Uri("ws://localhost:7777/ws"),
+                AutoReconnect = false
+            },
+            webSocketTransport: transport);
+        await client.ConnectAsync();
+        var session = await client.ExecuteWorkflowAsync("workflow-1");
+
+        await session.StreamInputAsync("prompt", "hello", "value");
+        await session.EndInputStreamAsync("prompt", "value");
+        await session.UpdateNodePropertiesAsync(
+            "synth-1",
+            new Dictionary<string, object?> { ["frequency"] = 440f });
+
+        var commands = transport.SentMessages
+            .OfType<WebSocketCommand>()
+            .ToArray();
+        var stream = Assert.Single(
+            commands,
+            command => command.command == "stream_input");
+        var end = Assert.Single(
+            commands,
+            command => command.command == "end_input_stream");
+        var properties = Assert.Single(
+            commands,
+            command => command.command == "update_node_properties");
+
+        var streamData = Assert.IsType<StreamInputData>(stream.data);
+        Assert.Equal(session.JobId, streamData.job_id);
+        Assert.Equal("workflow-1", streamData.workflow_id);
+        Assert.Equal("prompt", streamData.input);
+        Assert.Equal("value", streamData.handle);
+        Assert.Equal("hello", streamData.value);
+
+        var endData = Assert.IsType<EndInputStreamData>(end.data);
+        Assert.Equal(session.JobId, endData.job_id);
+        Assert.Equal("prompt", endData.input);
+        Assert.Equal("value", endData.handle);
+
+        var propertyData = Assert.IsType<UpdateNodePropertiesData>(
+            properties.data);
+        Assert.Equal(session.JobId, propertyData.job_id);
+        Assert.Equal("synth-1", propertyData.node_id);
+        Assert.Equal(440f, propertyData.properties["frequency"]);
+    }
+
+    [Fact]
+    public async Task LiveCommandSendFailure_IsReportedToCaller()
+    {
+        var transport = new FakeTransport();
+        await using var client = new NodeToolExecutionClient(
+            new NodeToolClientOptions
+            {
+                WorkerWebSocketUrl =
+                    new Uri("ws://localhost:7777/ws"),
+                AutoReconnect = false
+            },
+            webSocketTransport: transport);
+        await client.ConnectAsync();
+        var session = await client.ExecuteWorkflowAsync("workflow-1");
+        transport.SendResult = false;
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => session.StreamInputAsync("prompt", "hello"));
+
+        Assert.Contains("stream_input", error.Message);
+    }
+
+    [Fact]
     public async Task SingleNodeRun_ProjectsNegotiatedExecutionOptions()
     {
         var transport = new FakeTransport();

@@ -485,6 +485,9 @@ public class MessagePackWebSocketClient : INodeToolWebSocketTransport
                     case "output_update":
                         message = MessagePackSerializer.Deserialize<OutputUpdate>(data, _options);
                         break;
+                    case "chunk":
+                        message = MessagePackSerializer.Deserialize<ChunkMessage>(data, _options);
+                        break;
                     case "preview_update":
                         message = MessagePackSerializer.Deserialize<PreviewUpdate>(data, _options);
                         break;
@@ -531,6 +534,7 @@ public class MessagePackWebSocketClient : INodeToolWebSocketTransport
         if (message is JobUpdate ju) return ju.type;
         if (message is NodeUpdate nu) return nu.type;
         if (message is OutputUpdate ou) return ou.type;
+        if (message is ChunkMessage chunk) return chunk.type;
         if (message is PreviewUpdate pru) return pru.type;
         if (message is ProgressUpdate pu) return pu.type;
         if (message is NodeProgress np) return np.type;

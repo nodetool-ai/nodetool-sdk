@@ -43,3 +43,15 @@ Portable asset services live in `Nodetool.SDK.Assets`:
 
 These services contain no vvvv or Unity types. Host adapters should project
 their own path, image, texture, audio, and trigger types around this layer.
+
+## Portable realtime streaming
+
+The C# base normalizes NodeTool's `output_update` chunk values and standalone
+job-scoped `chunk` messages as `ExecutionStreamUpdate`. Active execution
+sessions can stream inputs, end an input stream, and update running-node
+properties. Realtime audio can be validated as `AudioStreamChunk` and fed into
+the fixed-capacity `AudioStreamBuffer`; VL and future Unity integrations only
+need to provide their host-specific audio-clock adapters.
+
+Realtime consumers must use `WorkflowEventDetail.Outputs`.
+`WorkflowEventDetail.Terminal` intentionally withholds intermediate chunks.

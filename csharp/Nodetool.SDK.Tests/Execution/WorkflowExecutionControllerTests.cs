@@ -111,6 +111,56 @@ public class WorkflowExecutionControllerTests
     }
 
     [Fact]
+    public async Task PublishesRawStreamUpdatesAlongsideAccumulatedText()
+    {
+        using var session = new ExecutionSession("job-1", "workflow-1");
+        using var client = new FakeExecutionClient(session);
+        await using var controller = CreateController(client);
+        ExecutionStreamUpdate? received = null;
+        controller.StreamReceived += _ =>
+            throw new InvalidOperationException("host failure");
+        controller.StreamReceived += update => received = update;
+
+        await controller.StartAsync(new WorkflowInvocation("workflow-1"));
+        session.ProcessOutputUpdate(Output(
+            nodeId: "output-node",
+            value: new Dictionary<string, object>
+            {
+                ["type"] = "chunk",
+                ["content_type"] = "text",
+                ["content"] = "delta",
+                ["done"] = true
+            }));
+
+        Assert.NotNull(received);
+        Assert.Equal("delta", received.Content.AsString());
+        Assert.True(received.Done);
+        Assert.Equal(
+            "delta",
+            controller.Snapshot.Outputs["answer"].Value.AsString());
+    }
+
+    [Fact]
+    public async Task NonTextChunksRemainIndividualBlocks()
+    {
+        using var session = new ExecutionSession("job-1", "workflow-1");
+        using var client = new FakeExecutionClient(session);
+        await using var controller = CreateController(client);
+
+        await controller.StartAsync(new WorkflowInvocation("workflow-1"));
+        session.ProcessOutputUpdate(Output(
+            nodeId: "output-node",
+            value: AudioChunk("first")));
+        session.ProcessOutputUpdate(Output(
+            nodeId: "output-node",
+            value: AudioChunk("second")));
+
+        var latest = controller.Snapshot.Outputs["answer"].Value.AsMapOrEmpty();
+        Assert.Equal("audio", latest["content_type"].AsString());
+        Assert.Equal("second", latest["content"].AsString());
+    }
+
+    [Fact]
     public async Task MatchingTerminalMediaDoesNotRetriggerHostMaterialization()
     {
         using var session = new ExecutionSession("job-1", "workflow-1");
@@ -235,21 +285,46 @@ public class WorkflowExecutionControllerTests
     public async Task RuntimeConnectsPreparesAndExecutesWithinOneLifecycle()
     {
         using var session = new ExecutionSession("job-runtime", "workflow-1");
+        StreamInputData? streamedInput = null;
+        session.StreamInputAction = (data, _) =>
+        {
+            streamedInput = data;
+            return Task.CompletedTask;
+        };
         using var client = new FakeExecutionClient(session);
         var connection = new FakeConnection(client);
         await using var runtime = new WorkflowExecutionRuntime(
             connection,
             CreateDescriptor());
+        ExecutionStreamUpdate? streamedOutput = null;
+        runtime.StreamReceived += update => streamedOutput = update;
 
         var run = runtime.ExecuteAsync(
             new Dictionary<string, object?> { ["prompt"] = "hello" },
             TimeSpan.FromSeconds(2));
         await WaitUntilAsync(() => client.Invocations.Count == 1);
+        await runtime.StreamInputAsync("prompt", "live");
+        session.ProcessOutputUpdate(new OutputUpdate
+        {
+            job_id = "job-runtime",
+            node_id = "output-node",
+            node_name = "answer",
+            output_name = "answer",
+            output_type = "chunk",
+            value = new Dictionary<string, object>
+            {
+                ["type"] = "chunk",
+                ["content_type"] = "text",
+                ["content"] = "streamed"
+            }
+        });
         session.ProcessJobUpdate(Completed("job-runtime", "done"));
         var result = await run;
 
         Assert.Equal(1, connection.ConnectCalls);
         Assert.Equal("hello", client.Invocations[0].Inputs["prompt"]);
+        Assert.Equal("live", streamedInput?.value);
+        Assert.Equal("streamed", streamedOutput?.Content.AsString());
         Assert.Equal(
             WorkflowExecutionState.Completed,
             result.Snapshot.State);
@@ -528,7 +603,7 @@ public class WorkflowExecutionControllerTests
         string nodeId,
         object value,
         string disposition = "append",
-        bool done = false)
+        bool? done = null)
         => new()
         {
             job_id = "job-1",
@@ -545,6 +620,14 @@ public class WorkflowExecutionControllerTests
         => new()
         {
             ["type"] = "chunk",
+            ["content"] = content
+        };
+
+    private static Dictionary<string, object> AudioChunk(string content)
+        => new()
+        {
+            ["type"] = "chunk",
+            ["content_type"] = "audio",
             ["content"] = content
         };
 

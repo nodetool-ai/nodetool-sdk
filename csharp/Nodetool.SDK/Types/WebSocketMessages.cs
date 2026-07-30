@@ -91,6 +91,41 @@ public class OutputUpdate
 }
 
 /// <summary>
+/// Standalone streamed content frame.
+///
+/// Workflow output streams usually carry the same chunk shape inside
+/// <see cref="OutputUpdate.value"/>. NodeTool also emits standalone chunk
+/// messages for workflow and chat streaming, so both wire shapes are modeled.
+/// </summary>
+[MessagePackObject(true)]
+public sealed class ChunkMessage
+{
+    public string type { get; set; } = "chunk";
+
+    public string? job_id { get; set; }
+
+    public string? workflow_id { get; set; }
+
+    public string? node_id { get; set; }
+
+    public string? thread_id { get; set; }
+
+    public string? content_type { get; set; }
+
+    public object? content { get; set; }
+
+    public Dictionary<string, object>? content_metadata { get; set; }
+
+    public bool? done { get; set; }
+
+    public bool? thinking { get; set; }
+
+    public string? parent_tool_call_id { get; set; }
+
+    public int? subtask_depth { get; set; }
+}
+
+/// <summary>
 /// WebSocket message for streaming preview values during execution.
 ///
 /// Note: value is intentionally untyped (OpenAPI uses unknown).
@@ -359,4 +394,51 @@ public class ReconnectJobData
     public string job_id { get; set; } = "";
 
     public string? workflow_id { get; set; }
+}
+
+/// <summary>
+/// Streams one value into a named input of an active workflow.
+/// </summary>
+[MessagePackObject(true)]
+public sealed class StreamInputData
+{
+    public string job_id { get; set; } = "";
+
+    public string? workflow_id { get; set; }
+
+    public string input { get; set; } = "";
+
+    public string? handle { get; set; }
+
+    public object? value { get; set; }
+}
+
+/// <summary>
+/// Marks a named active-workflow input stream as complete.
+/// </summary>
+[MessagePackObject(true)]
+public sealed class EndInputStreamData
+{
+    public string job_id { get; set; } = "";
+
+    public string? workflow_id { get; set; }
+
+    public string input { get; set; } = "";
+
+    public string? handle { get; set; }
+}
+
+/// <summary>
+/// Applies property changes to one node executor in an active workflow.
+/// </summary>
+[MessagePackObject(true)]
+public sealed class UpdateNodePropertiesData
+{
+    public string job_id { get; set; } = "";
+
+    public string? workflow_id { get; set; }
+
+    public string node_id { get; set; } = "";
+
+    public Dictionary<string, object?> properties { get; set; } = new();
 }

@@ -631,20 +631,21 @@ Ordinary final workflow outputs must continue to work unchanged.
       `IExecutionSession`, `WorkflowExecutionController`, and VL. Verify raw
       chunks, accumulated text, replace semantics, completion, cancellation,
       reconnection, and terminal reconciliation without duplicated content.
-- [ ] Document and adopt NodeTool's existing language-neutral chunk contract
+- [x] Document and adopt NodeTool's existing language-neutral chunk contract
       instead of introducing a competing envelope. Distinguish a standalone
       protocol `chunk` from a chunk value carried by `output_update`, and
       record job/output identity, content type, encoding, metadata,
       disposition, and `done`. Add sequence, timestamp, or discontinuity fields
       to the server contract only if concrete consumers require them.
-- [ ] Expose raw stream updates in portable C# alongside accumulated snapshots,
-      using events and/or `IAsyncEnumerable` with bounded buffering,
-      cancellation, and an explicit overflow policy. Do not force hosts to
-      parse protocol dictionaries.
-- [ ] Keep the normal text output pin as the latest accumulated string. Add a
+- [x] Expose raw `ExecutionStreamUpdate` events from the portable session,
+      controller, and runtime alongside accumulated snapshots. The event path
+      has no hidden queue or overflow behavior; add a bounded
+      `IAsyncEnumerable` adapter only if a concrete non-callback consumer needs
+      one. Hosts do not parse protocol dictionaries.
+- [x] Keep the normal text output pin as the latest accumulated string. Add a
       separate optional helper/event surface for consumers that need each
       delta; avoid adding chunk pins to every generated node and workflow.
-- [ ] Add typed C# parsing for both streaming wire shapes. Preserve the working
+- [x] Add typed C# parsing for both streaming wire shapes. Preserve the working
       `output_update` chunk path and route standalone protocol `chunk` messages
       by `job_id` rather than leaving them as generic dictionaries.
 - [x] Confirm the current realtime-audio baseline: NodeTool already emits
@@ -652,24 +653,29 @@ Ordinary final workflow outputs must continue to work unchanged.
       count, format, duration, and `done`; native `Float32Array` content is
       converted once at the WebSocket boundary. Durable encoded audio remains
       a normal asset output.
-- [ ] Represent the existing audio chunk contract as a portable typed C# value
+- [x] Represent the existing audio chunk contract as a portable typed C# value
       and validate metadata, payload length, completion, and malformed input.
       Extend the server metadata only when playback tests demonstrate a need
       for frame count, channel layout, sequence/timestamp, or discontinuity.
-- [ ] Add a portable bounded audio buffer/reader and a thin VL audio adapter
-      that feeds the vvvv audio clock without allocating or blocking in the
-      frame callback. Define underrun, overflow, cancellation, and reconnect
-      behavior and test sustained playback.
+- [x] Add a portable fixed-capacity audio buffer/reader with caller-owned
+      allocation-free reads, explicit drop-oldest/drop-newest overflow policy,
+      completion, reset, format validation, and unit coverage.
+- [ ] Add a thin VL audio adapter that feeds the vvvv audio clock without
+      allocating or blocking in its callback. First select and document the
+      supported VL.Audio contract; then define underrun, cancellation, and
+      reconnect behavior and test sustained playback.
 - [x] Confirm the current live-input baseline: NodeTool already accepts
       `stream_input`, `end_input_stream`, and `update_node_properties` for
       active jobs; the runner normalizes external input values, routes them
       through node inboxes, and propagates end-of-stream.
-- [ ] Bind those existing live-input and property-update commands in the
+- [x] Bind those existing live-input and property-update commands in the
       portable C# execution session before exposing microphone, live text, or
-      parameter-control helpers in VL. Surface server errors and cancellation;
-      add acknowledgement or capability fields only where the current protocol
-      cannot report a required state.
-- [ ] Document that live output consumers should request `EventDetail=Outputs`.
+      parameter-control helpers in VL. Session, controller, and runtime methods
+      report local validation and WebSocket-send failures.
+- [ ] Add correlated server acknowledgement only if live-control consumers
+      require confirmation beyond normal job/node error updates; the current
+      server responses do not consistently identify the originating command.
+- [x] Document that live output consumers should request `EventDetail=Outputs`.
       `Terminal` intentionally suppresses intermediate updates and is suitable
       only when delayed final outputs are sufficient.
 - [ ] Treat video streaming as a later negotiated transport. First define
