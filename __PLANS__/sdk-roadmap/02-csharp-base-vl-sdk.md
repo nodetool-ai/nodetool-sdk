@@ -618,18 +618,25 @@ Treat streaming as a portable execution capability first. VL should project
 the stream into frame/audio host types without owning the wire contract.
 Ordinary final workflow outputs must continue to work unchanged.
 
+- [x] Audit the existing NodeTool realtime path before designing new SDK
+      abstractions. The server already supports buffered, streamed, and
+      controlled node execution; `run()`/`genProcess()` streaming; correlation
+      and end-of-stream handling; output throttling; and bounded message
+      retention.
 - [x] Confirm the current text baseline: `output_update` already carries
-      append/replace disposition and completion state; the portable workflow
-      controller accumulates typed text chunks and publishes growing immutable
-      snapshots that VL can apply while a run is active.
+      chunk values plus append/replace disposition and completion state. The
+      portable workflow controller accumulates typed text chunks and publishes
+      growing immutable snapshots that VL can apply while a run is active.
 - [ ] Add focused end-to-end tests for text streaming through NodeTool,
       `IExecutionSession`, `WorkflowExecutionController`, and VL. Verify raw
       chunks, accumulated text, replace semantics, completion, cancellation,
       reconnection, and terminal reconciliation without duplicated content.
-- [ ] Define a language-neutral streamed-output envelope with run/output
-      identity, modality/content type, sequence or timestamp, encoding,
-      metadata, disposition, and `done`; negotiate supported stream modes in
-      capabilities rather than inferring them from payload shape.
+- [ ] Document and adopt NodeTool's existing language-neutral chunk contract
+      instead of introducing a competing envelope. Distinguish a standalone
+      protocol `chunk` from a chunk value carried by `output_update`, and
+      record job/output identity, content type, encoding, metadata,
+      disposition, and `done`. Add sequence, timestamp, or discontinuity fields
+      to the server contract only if concrete consumers require them.
 - [ ] Expose raw stream updates in portable C# alongside accumulated snapshots,
       using events and/or `IAsyncEnumerable` with bounded buffering,
       cancellation, and an explicit overflow policy. Do not force hosts to
@@ -637,26 +644,40 @@ Ordinary final workflow outputs must continue to work unchanged.
 - [ ] Keep the normal text output pin as the latest accumulated string. Add a
       separate optional helper/event surface for consumers that need each
       delta; avoid adding chunk pins to every generated node and workflow.
-- [ ] Route protocol `chunk` messages by `job_id` in the C# transport. The
-      NodeTool protocol already describes text plus base64 or `f32le` audio,
-      but the C# client currently deserializes and routes only
-      `output_update`/preview/progress/node events.
-- [ ] Specify audio stream metadata before host integration: sample rate,
-      channel count/layout, sample format, frame count, timestamp/sequence,
-      discontinuity, and end-of-stream. Prefer PCM blocks for realtime playback
-      and retain encoded audio assets for final/durable outputs.
+- [ ] Add typed C# parsing for both streaming wire shapes. Preserve the working
+      `output_update` chunk path and route standalone protocol `chunk` messages
+      by `job_id` rather than leaving them as generic dictionaries.
+- [x] Confirm the current realtime-audio baseline: NodeTool already emits
+      `audio` chunks with base64 `pcm16le` or `f32le`, sample rate, channel
+      count, format, duration, and `done`; native `Float32Array` content is
+      converted once at the WebSocket boundary. Durable encoded audio remains
+      a normal asset output.
+- [ ] Represent the existing audio chunk contract as a portable typed C# value
+      and validate metadata, payload length, completion, and malformed input.
+      Extend the server metadata only when playback tests demonstrate a need
+      for frame count, channel layout, sequence/timestamp, or discontinuity.
 - [ ] Add a portable bounded audio buffer/reader and a thin VL audio adapter
       that feeds the vvvv audio clock without allocating or blocking in the
       frame callback. Define underrun, overflow, cancellation, and reconnect
       behavior and test sustained playback.
-- [ ] Add portable input-stream commands over NodeTool's existing
-      `stream_input` and `end_input_stream` protocol before exposing microphone
-      or live text input nodes in VL; include backpressure and remote-close
-      acknowledgement.
+- [x] Confirm the current live-input baseline: NodeTool already accepts
+      `stream_input`, `end_input_stream`, and `update_node_properties` for
+      active jobs; the runner normalizes external input values, routes them
+      through node inboxes, and propagates end-of-stream.
+- [ ] Bind those existing live-input and property-update commands in the
+      portable C# execution session before exposing microphone, live text, or
+      parameter-control helpers in VL. Surface server errors and cancellation;
+      add acknowledgement or capability fields only where the current protocol
+      cannot report a required state.
+- [ ] Document that live output consumers should request `EventDetail=Outputs`.
+      `Terminal` intentionally suppresses intermediate updates and is suitable
+      only when delayed final outputs are sufficient.
 - [ ] Treat video streaming as a later negotiated transport. First define
       timestamps, dimensions, pixel/codec format, keyframes, and ownership;
       benchmark encoded frames versus a local shared-memory/shared-texture path
-      before choosing WebSocket transport as a default.
+      before choosing WebSocket transport as a default. Do not assume the
+      repository's WebRTC components already provide workflow video streaming
+      until that path has been audited end to end.
 - [ ] Measure first-chunk latency, steady-state throughput, allocations,
       buffering delay, and memory bounds for text and audio before enabling
       streaming defaults.
