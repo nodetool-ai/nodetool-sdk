@@ -9,6 +9,391 @@ namespace Nodetool.SDK.VL.Factories;
 
 internal static class AssetNodeFactory
 {
+    internal static IVLNodeDescription? CreateUploadAssetNode(
+        IVLNodeDescriptionFactory vlSelfFactory)
+    {
+        return vlSelfFactory.NewNodeDescription(
+            name: "UploadAsset",
+            category: "Nodetool.Assets",
+            fragmented: false,
+            bc =>
+            {
+                var pathPin = bc.Pin(
+                    "Path",
+                    typeof(VlPath),
+                    new VlPath(""),
+                    "Local asset file",
+                    "The file is uploaded only when Upload receives a rising edge.");
+                var uploadPin = bc.Pin(
+                    "Upload",
+                    typeof(bool),
+                    false,
+                    "Upload file",
+                    "Trigger on a rising edge.");
+                var temporaryPin = bc.Pin(
+                    "Temporary",
+                    typeof(bool),
+                    true,
+                    "Temporary upload",
+                    "Temporary assets avoid database and thumbnail work and are intended for execution inputs.");
+                var contentTypePin = new VlPinDescription(
+                    "ContentType",
+                    typeof(string),
+                    "",
+                    "MIME type override",
+                    "Leave empty to infer the MIME type from the file extension.",
+                    isVisible: false);
+                var assetPin = bc.Pin(
+                    "Asset",
+                    typeof(AssetRef),
+                    default(AssetRef),
+                    "Uploaded asset",
+                    "A temporary or persistent typed NodeTool asset reference.");
+                var uploadingPin = bc.Pin(
+                    "IsUploading",
+                    typeof(bool),
+                    false,
+                    "Upload in progress",
+                    "True until the current upload completes.");
+                var successPin = bc.Pin(
+                    "Success",
+                    typeof(bool),
+                    false,
+                    "Upload succeeded",
+                    "Remains true for the latest successful upload.");
+                var errorPin = new VlPinDescription(
+                    "Error",
+                    typeof(string),
+                    "",
+                    "Upload error",
+                    "Empty after a successful upload.",
+                    isVisible: false);
+
+                return bc.Node(
+                    inputs: new[]
+                    {
+                        pathPin, temporaryPin, contentTypePin, uploadPin
+                    },
+                    outputs: new[]
+                    {
+                        assetPin, uploadingPin, successPin, errorPin
+                    },
+                    newNode: ibc =>
+                    {
+                        var stateLock = new object();
+                        string localPath = "";
+                        string contentType = "";
+                        bool temporary = true;
+                        bool lastUpload = false;
+                        AssetRef? asset = null;
+                        bool isUploading = false;
+                        bool success = false;
+                        string error = "";
+                        long requestVersion = 0;
+                        CancellationTokenSource? requestCancellation = null;
+
+                        void StartUpload()
+                        {
+                            var requestedPath = localPath;
+                            var requestedContentType = contentType;
+                            var requestedTemporary = temporary;
+                            requestCancellation?.Cancel();
+                            requestCancellation?.Dispose();
+                            requestCancellation = new CancellationTokenSource();
+                            var cancellationToken = requestCancellation.Token;
+                            var version = Interlocked.Increment(
+                                ref requestVersion);
+                            lock (stateLock)
+                            {
+                                isUploading = true;
+                                success = false;
+                                error = "";
+                            }
+
+                            _ = RunUploadAsync();
+                            async Task RunUploadAsync()
+                            {
+                                try
+                                {
+                                    var result =
+                                        await AssetTransferService.UploadAsync(
+                                            requestedPath,
+                                            requestedContentType,
+                                            requestedTemporary,
+                                            cancellationToken);
+                                    if (version != Interlocked.Read(
+                                        ref requestVersion))
+                                    {
+                                        return;
+                                    }
+                                    lock (stateLock)
+                                    {
+                                        asset = result;
+                                        isUploading = false;
+                                        success = true;
+                                    }
+                                }
+                                catch (OperationCanceledException)
+                                    when (cancellationToken
+                                        .IsCancellationRequested)
+                                {
+                                    // A newer upload superseded this request.
+                                }
+                                catch (Exception ex)
+                                {
+                                    if (version != Interlocked.Read(
+                                        ref requestVersion))
+                                    {
+                                        return;
+                                    }
+                                    lock (stateLock)
+                                    {
+                                        asset = null;
+                                        isUploading = false;
+                                        success = false;
+                                        error = VlLog.SafeError(ex);
+                                    }
+                                }
+                            }
+                        }
+
+                        return ibc.Node(
+                            inputs: new IVLPin[]
+                            {
+                                ibc.Input<VlPath>(value =>
+                                    localPath = value?.ToString() ?? ""),
+                                ibc.Input<bool>(value => temporary = value),
+                                ibc.Input<string>(value =>
+                                    contentType = value ?? ""),
+                                ibc.Input<bool>(value =>
+                                {
+                                    if (value && !lastUpload)
+                                        StartUpload();
+                                    lastUpload = value;
+                                })
+                            },
+                            outputs: new IVLPin[]
+                            {
+                                ibc.Output<AssetRef?>(() =>
+                                {
+                                    lock (stateLock) return asset;
+                                }),
+                                ibc.Output<bool>(() =>
+                                {
+                                    lock (stateLock) return isUploading;
+                                }),
+                                ibc.Output<bool>(() =>
+                                {
+                                    lock (stateLock) return success;
+                                }),
+                                ibc.Output<string>(() =>
+                                {
+                                    lock (stateLock) return error;
+                                })
+                            });
+                    },
+                    summary: "Upload a local file as a NodeTool asset",
+                    remarks:
+                        "Temporary mode is the fast default for reusable execution inputs. "
+                        + "Disable it only when the upload should become a durable NodeTool library asset.");
+            });
+    }
+
+    internal static IVLNodeDescription? CreateSaveAssetNode(
+        IVLNodeDescriptionFactory vlSelfFactory)
+    {
+        return vlSelfFactory.NewNodeDescription(
+            name: "SaveAsset",
+            category: "Nodetool.Assets",
+            fragmented: false,
+            bc =>
+            {
+                var assetPin = bc.Pin(
+                    "Asset",
+                    typeof(AssetRef),
+                    default(AssetRef),
+                    "Typed NodeTool asset",
+                    "Accepts temporary, persistent, inline, local, or remote asset references.");
+                var destinationPin = bc.Pin(
+                    "Destination",
+                    typeof(VlPath),
+                    new VlPath(""),
+                    "Destination file or directory",
+                    "A missing extension is copied from the materialized source. A directory uses the asset name.");
+                var savePin = bc.Pin(
+                    "Save",
+                    typeof(bool),
+                    false,
+                    "Save asset",
+                    "Trigger on a rising edge.");
+                var overwritePin = bc.Pin(
+                    "Overwrite",
+                    typeof(bool),
+                    false,
+                    "Replace existing file",
+                    "When false, saving fails if the destination already exists.");
+                var pathPin = bc.Pin(
+                    "Path",
+                    typeof(VlPath),
+                    new VlPath(""),
+                    "Saved file",
+                    "The resulting local file path.");
+                var savingPin = bc.Pin(
+                    "IsSaving",
+                    typeof(bool),
+                    false,
+                    "Save in progress",
+                    "True while the asset is downloading or copying.");
+                var successPin = bc.Pin(
+                    "Success",
+                    typeof(bool),
+                    false,
+                    "Save succeeded",
+                    "Remains true for the latest successful save.");
+                var errorPin = new VlPinDescription(
+                    "Error",
+                    typeof(string),
+                    "",
+                    "Save error",
+                    "Empty after a successful save.",
+                    isVisible: false);
+
+                return bc.Node(
+                    inputs: new[]
+                    {
+                        assetPin, destinationPin, overwritePin, savePin
+                    },
+                    outputs: new[]
+                    {
+                        pathPin, savingPin, successPin, errorPin
+                    },
+                    newNode: ibc =>
+                    {
+                        var stateLock = new object();
+                        AssetRef? currentAsset = null;
+                        string destination = "";
+                        bool overwrite = false;
+                        bool lastSave = false;
+                        VlPath path = new("");
+                        bool isSaving = false;
+                        bool success = false;
+                        string error = "";
+                        long requestVersion = 0;
+                        CancellationTokenSource? requestCancellation = null;
+
+                        void StartSave()
+                        {
+                            var requestedAsset = currentAsset;
+                            var requestedDestination = destination;
+                            var requestedOverwrite = overwrite;
+                            requestCancellation?.Cancel();
+                            requestCancellation?.Dispose();
+                            requestCancellation = new CancellationTokenSource();
+                            var cancellationToken = requestCancellation.Token;
+                            var version = Interlocked.Increment(
+                                ref requestVersion);
+                            lock (stateLock)
+                            {
+                                isSaving = true;
+                                success = false;
+                                error = "";
+                            }
+
+                            _ = RunSaveAsync();
+                            async Task RunSaveAsync()
+                            {
+                                try
+                                {
+                                    if (requestedAsset == null ||
+                                        requestedAsset.IsEmpty())
+                                    {
+                                        throw new InvalidOperationException(
+                                            "Asset is empty.");
+                                    }
+                                    var result =
+                                        await AssetTransferService.SaveAsync(
+                                            requestedAsset,
+                                            requestedDestination,
+                                            requestedOverwrite,
+                                            cancellationToken);
+                                    if (version != Interlocked.Read(
+                                        ref requestVersion))
+                                    {
+                                        return;
+                                    }
+                                    lock (stateLock)
+                                    {
+                                        path = new VlPath(result.Path);
+                                        isSaving = false;
+                                        success = true;
+                                    }
+                                }
+                                catch (OperationCanceledException)
+                                    when (cancellationToken
+                                        .IsCancellationRequested)
+                                {
+                                    // A newer save superseded this request.
+                                }
+                                catch (Exception ex)
+                                {
+                                    if (version != Interlocked.Read(
+                                        ref requestVersion))
+                                    {
+                                        return;
+                                    }
+                                    lock (stateLock)
+                                    {
+                                        path = new VlPath("");
+                                        isSaving = false;
+                                        success = false;
+                                        error = VlLog.SafeError(ex);
+                                    }
+                                }
+                            }
+                        }
+
+                        return ibc.Node(
+                            inputs: new IVLPin[]
+                            {
+                                ibc.Input<AssetRef?>(value =>
+                                    currentAsset = value),
+                                ibc.Input<VlPath>(value =>
+                                    destination =
+                                        value?.ToString() ?? ""),
+                                ibc.Input<bool>(value => overwrite = value),
+                                ibc.Input<bool>(value =>
+                                {
+                                    if (value && !lastSave)
+                                        StartSave();
+                                    lastSave = value;
+                                })
+                            },
+                            outputs: new IVLPin[]
+                            {
+                                ibc.Output<VlPath>(() =>
+                                {
+                                    lock (stateLock) return path;
+                                }),
+                                ibc.Output<bool>(() =>
+                                {
+                                    lock (stateLock) return isSaving;
+                                }),
+                                ibc.Output<bool>(() =>
+                                {
+                                    lock (stateLock) return success;
+                                }),
+                                ibc.Output<string>(() =>
+                                {
+                                    lock (stateLock) return error;
+                                })
+                            });
+                    },
+                    summary: "Save a NodeTool asset to a local file",
+                    remarks:
+                        "Materializes through the shared SDK cache and atomically copies to the selected destination.");
+            });
+    }
+
     internal static IVLNodeDescription? CreateAssetAsFileNode(
         IVLNodeDescriptionFactory vlSelfFactory)
     {

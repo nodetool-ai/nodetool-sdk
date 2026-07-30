@@ -35,7 +35,7 @@ internal static class AssetFileMaterializer
     internal static Uri? ResolveStoredAssetUri(string value)
         => CreateMaterializer().ResolveStoredAssetUri(value);
 
-    private static AssetMaterializer CreateMaterializer(
+    internal static AssetMaterializer CreateMaterializer(
         string? cacheDirectory = null)
         => new(
             resolveAsset: NodeToolClientProvider.IsConnected

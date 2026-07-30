@@ -29,3 +29,17 @@ When using the NodeTool Electron app, backend binds to localhost and selects por
 
 - WebSocket: `ws://127.0.0.1:<port>/ws`
 - HTTP API: `http://127.0.0.1:<port>`
+
+## C# asset I/O
+
+Portable asset services live in `Nodetool.SDK.Assets`:
+
+- `AssetUploader` uploads local files, streams, or bytes as temporary
+  execution inputs or persistent NodeTool assets.
+- `AssetMaterializer` resolves typed `AssetRef` values to identity-addressed
+  local cache files.
+- `AssetSaver` materializes and atomically copies an asset to a
+  caller-selected destination, with explicit overwrite behavior.
+
+These services contain no vvvv or Unity types. Host adapters should project
+their own path, image, texture, audio, and trigger types around this layer.

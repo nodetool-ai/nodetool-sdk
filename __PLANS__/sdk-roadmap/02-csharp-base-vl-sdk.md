@@ -588,17 +588,20 @@ Keep workflow output pins focused on typed results. Saving and persistence are
 explicit consumer actions rather than side effects or extra pins repeated on
 every generated workflow node.
 
-- [ ] Keep typed `ImageRef`, `AudioRef`, `VideoRef`, and `AssetRef` values as
+- [x] Keep typed `ImageRef`, `AudioRef`, `VideoRef`, and `AssetRef` values as
       the portable asset result and preserve temporary/durable identity,
       content type, metadata, URI, and optional inline data.
-- [ ] Retain `Asset As File` for cached local materialization without implying
+- [x] Retain `Asset As File` for cached local materialization without implying
       user-selected storage or durable server persistence.
-- [ ] Add a separate `Save Asset` node with asset, destination `Path`, trigger,
+- [x] Add a separate `Save Asset` node with asset, destination `Path`, trigger,
       and overwrite policy inputs plus resulting path, success, and error
       outputs.
-- [ ] Keep generic download, atomic copy, extension/MIME handling, overwrite
+- [x] Keep generic download, atomic copy, extension/MIME handling, overwrite
       policy, and cancellation in the portable C# SDK; keep VL `Path`, trigger,
       and frame projection in the VL adapter.
+- [x] Add a separate `Upload Asset` VL action over the portable uploader for
+      pre-uploading and reusing file-backed inputs; default to temporary
+      storage and keep persistent library uploads explicit.
 - [ ] Add `Persist Asset` only after NodeTool exposes an authoritative
       temporary-to-durable promotion operation; return the resulting durable
       asset reference.

@@ -207,36 +207,9 @@ public sealed class MediaInputPreparer
         };
 
     private static string GetContentType(string path, string mediaType)
-        => Path.GetExtension(path).ToLowerInvariant() switch
-        {
-            ".png" => "image/png",
-            ".jpg" or ".jpeg" => "image/jpeg",
-            ".webp" => "image/webp",
-            ".gif" => "image/gif",
-            ".wav" => "audio/wav",
-            ".mp3" => "audio/mpeg",
-            ".ogg" => "audio/ogg",
-            ".flac" => "audio/flac",
-            ".aac" => "audio/aac",
-            ".m4a" => "audio/mp4",
-            ".mp4" => "video/mp4",
-            ".webm" => "video/webm",
-            ".mov" => "video/quicktime",
-            ".mkv" => "video/x-matroska",
-            ".pdf" => "application/pdf",
-            ".txt" => "text/plain",
-            ".csv" => "text/csv",
-            ".json" => "application/json",
-            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            ".glb" => "model/gltf-binary",
-            ".gltf" => "model/gltf+json",
-            ".obj" => "text/plain",
-            ".ttf" => "font/ttf",
-            ".otf" => "font/otf",
-            ".woff" => "font/woff",
-            ".woff2" => "font/woff2",
-            _ => GetDefaultContentType(mediaType)
-        };
+        => AssetContentType.FromPath(
+            path,
+            GetDefaultContentType(mediaType));
 
     private static string GetDefaultContentType(string mediaType)
         => mediaType == "image"

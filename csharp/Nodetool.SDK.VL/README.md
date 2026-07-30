@@ -120,6 +120,11 @@ Media transport:
 - `InlineMediaLimitBytes` defaults to 10 MiB. With the default `AssetPersistence = Temporary`, larger local media uses the advertised SDK temporary-upload route and is represented by a storage URI. This skips persistent asset metadata and thumbnail work. Selecting `Auto`, or connecting to a server without that profile, uses the normal asset API and `asset_id`.
 - Set the limit to `0` to upload all binary media, or raise it up to 64 MiB when inline transport is preferable.
 - Workflow and individual-node inputs for file-backed audio, video, document, generic asset, folder, font, and model values use vvvv's native `Path` type (and `Spread<Path>` for lists). The SDK reads or uploads those files and constructs the NodeTool asset payload only while preparing execution.
+- Use `Nodetool.Assets -> UploadAsset` when a file should be uploaded once
+  and reused as an asset reference across runs. `Temporary` defaults to true
+  and avoids database/thumbnail work; disable it only to add the upload to the
+  persistent NodeTool asset library. MIME type is inferred from the extension,
+  with a hidden `ContentType` override for uncommon formats.
 - Media outputs remain typed SDK asset references (`AudioRef`, `VideoRef`, `DocumentRef`, `GenericAssetRef`, and the other specialized reference types), preserving URI, IDs, inline data, metadata, and media-specific properties.
 - Individual NodeTool image and text-reference pins remain typed references where the node metadata identifies those types. Namespaced `type_name` values retain their native shape.
 - Image pins use `SKImage`. A workflow node owns images it produces and disposes them when replaced or when the node is disposed; downstream patches should treat output images as borrowed and must not dispose them. Input images remain owned by the caller.
@@ -162,9 +167,11 @@ Category:
 - `Nodetool -> DecodeImageRef`
 - `Nodetool.Images -> DecodeImageRefToSKImage`
 
-### Asset file helper
+### Asset helpers
 
 - `Nodetool.Assets -> AssetAsFile`
+- `Nodetool.Assets -> UploadAsset`
+- `Nodetool.Assets -> SaveAsset`
 
 `AssetAsFile` accepts a typed NodeTool asset reference and asynchronously
 produces a native vvvv `Path`. Existing local files pass through unchanged.
@@ -182,3 +189,15 @@ The default cache is:
 The helper is intended for file-backed image, audio, video, document, text,
 font, model, and generic assets. Folder references do not materialize as a
 single file.
+
+`UploadAsset` explicitly uploads a local `Path` and returns a reusable typed
+asset reference. It does not replace ordinary workflow media pins: file-backed
+audio/video/document/model inputs can still receive `Path` directly, while
+computed workflow images remain `SKImage`. Use a normal vvvv image loader when
+an image file should feed an `SKImage` pin.
+
+`SaveAsset` materializes an asset through the same cache and atomically copies
+it to a selected file or directory. It never persists the asset on the
+NodeTool server. Missing filename extensions are copied from the materialized
+source; directory destinations use the asset's reported name. Existing files
+are protected unless `Overwrite` is enabled.

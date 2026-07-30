@@ -274,5 +274,17 @@ internal static class DiagnosticsNodeFactory
         {
             nodeDescriptions.Add(assetAsFileNode);
         }
+
+        var uploadAssetNode = AssetNodeFactory.CreateUploadAssetNode(vlSelfFactory);
+        if (uploadAssetNode != null)
+        {
+            nodeDescriptions.Add(uploadAssetNode);
+        }
+
+        var saveAssetNode = AssetNodeFactory.CreateSaveAssetNode(vlSelfFactory);
+        if (saveAssetNode != null)
+        {
+            nodeDescriptions.Add(saveAssetNode);
+        }
     }
 }
