@@ -35,7 +35,7 @@ namespace Nodetool.SDK.VL.Nodes
         private readonly Dictionary<string, IVLPin> _inputPins;
         private readonly Dictionary<string, IVLPin> _outputPins;
 
-        private bool _lastTriggerState = false;
+        private bool _lastRunState = false;
         private bool _lastCancelState = false;
         private bool _autoRunEnabled = false;
         private bool _restartOnChangeEnabled = false;
@@ -67,8 +67,8 @@ namespace Nodetool.SDK.VL.Nodes
             // Create input pins
             _inputPins = new Dictionary<string, IVLPin>();
             
-            // Add trigger pin
-            _inputPins["Trigger"] = new InternalPin("Trigger", typeof(bool), false);
+            // Add run pin
+            _inputPins["Run"] = new InternalPin("Run", typeof(bool), false);
             _inputPins["Cancel"] = new InternalPin("Cancel", typeof(bool), false);
             _inputPins["AutoRun"] = new InternalPin("AutoRun", typeof(bool), false);
             _inputPins["RestartOnChange"] = new InternalPin("RestartOnChange", typeof(bool), false);
@@ -143,9 +143,9 @@ namespace Nodetool.SDK.VL.Nodes
 
             try
             {
-                // Check for trigger edge (false → true)
-                var triggerPin = _inputPins["Trigger"];
-                bool currentTriggerState = (bool)(triggerPin.Value ?? false);
+                // Check for run edge (false → true)
+                var runPin = _inputPins["Run"];
+                bool currentRunState = (bool)(runPin.Value ?? false);
 
                 var cancelPin = _inputPins["Cancel"];
                 bool currentCancelState = (bool)(cancelPin.Value ?? false);
@@ -156,7 +156,7 @@ namespace Nodetool.SDK.VL.Nodes
                 // IMPORTANT: first evaluation after load/save/rewire should not trigger execution.
                 if (!_hasInitialized)
                 {
-                    _lastTriggerState = currentTriggerState;
+                    _lastRunState = currentRunState;
                     _lastCancelState = currentCancelState;
                     _inputChangeScheduler.Reset(ComputeInputSignature());
                     _prevAutoRunEnabled = _autoRunEnabled;
@@ -172,14 +172,14 @@ namespace Nodetool.SDK.VL.Nodes
                 }
                 _lastCancelState = currentCancelState;
 
-                if (currentTriggerState && !_lastTriggerState)
+                if (currentRunState && !_lastRunState)
                 {
                     // Rising edge detected - execute workflow
                     _inputChangeScheduler.Reset(ComputeInputSignature());
                     StartExecution();
                 }
 
-                _lastTriggerState = currentTriggerState;
+                _lastRunState = currentRunState;
 
                 // When AutoRun is turned on, just "arm" it (capture current signature) instead of running immediately.
                 if (_autoRunEnabled && !_prevAutoRunEnabled)
@@ -407,11 +407,11 @@ namespace Nodetool.SDK.VL.Nodes
 
         private string ComputeInputSignature()
         {
-            // Cheap stable signature to detect input changes; excludes Trigger/AutoRun.
+            // Cheap stable signature to detect input changes; excludes Run/AutoRun.
             var sb = new StringBuilder();
             foreach (var kvp in _inputPins.OrderBy(k => k.Key, StringComparer.Ordinal))
             {
-                if (kvp.Key is "Trigger" or "Cancel" or "AutoRun" or "RestartOnChange" or "ExecutionTimeoutSeconds")
+                if (kvp.Key is "Run" or "Cancel" or "AutoRun" or "RestartOnChange" or "ExecutionTimeoutSeconds")
                     continue;
 
                 sb.Append(kvp.Key);
@@ -810,7 +810,7 @@ namespace Nodetool.SDK.VL.Nodes
                 StringComparer.Ordinal);
             foreach (var pin in _inputPins)
             {
-                if (pin.Key is "Trigger" or "Cancel" or "AutoRun" or
+                if (pin.Key is "Run" or "Cancel" or "AutoRun" or
                     "RestartOnChange" or "ExecutionTimeoutSeconds")
                 {
                     continue;

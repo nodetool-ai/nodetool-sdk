@@ -44,7 +44,7 @@ namespace Nodetool.SDK.VL.Nodes
         private string _lastError = "";
         private TimeSpan _lastExecutionTime = TimeSpan.Zero;
         private readonly Dictionary<string, NodeToolValue> _lastOutputs = new(StringComparer.Ordinal);
-        private bool _lastExecuteState = false;
+        private bool _lastRunState = false;
         private bool _lastCancelState = false;
         private volatile bool _onUpdatePulse = false;
         private bool _onUpdateHoldArmed = false;
@@ -78,8 +78,8 @@ namespace Nodetool.SDK.VL.Nodes
             _outputPins = new Dictionary<string, IVLPin>();
 
             // Create input pins - VL's factory already created the pin descriptions
-            // Add Execute pin
-            _inputPins["Execute"] = new InternalPin("Execute", typeof(bool), false);
+            // Add Run pin
+            _inputPins["Run"] = new InternalPin("Run", typeof(bool), false);
             _inputPins["Cancel"] = new InternalPin("Cancel", typeof(bool), false);
             _inputPins["AutoRun"] = new InternalPin("AutoRun", typeof(bool), false);
             _inputPins["RestartOnChange"] = new InternalPin("RestartOnChange", typeof(bool), false);
@@ -182,16 +182,17 @@ namespace Nodetool.SDK.VL.Nodes
                 }
 
                 // Read current control pin states first.
-                var currentExecuteState = _inputPins.TryGetValue("Execute", out var executePin) && executePin.Value is bool bExec && bExec;
+                var currentRunState = _inputPins.TryGetValue("Run", out var runPin) &&
+                    runPin.Value is bool run && run;
                 var currentCancelState = _inputPins.TryGetValue("Cancel", out var cancelPin) && cancelPin.Value is bool bCancel && bCancel;
                 _autoRunEnabled = _inputPins.TryGetValue("AutoRun", out var autoRunPin) && autoRunPin.Value is bool bAuto && bAuto;
                 _restartOnChangeEnabled = _inputPins.TryGetValue("RestartOnChange", out var restartPin) && restartPin.Value is bool bRestart && bRestart;
 
                 // IMPORTANT: first evaluation after load/save/rewire should not trigger execution.
-                // VL can replay stored pin values (e.g. Execute=true) on a fresh instance, which would look like a rising edge.
+                // VL can replay stored pin values (e.g. Run=true) on a fresh instance, which would look like a rising edge.
                 if (!_hasInitialized)
                 {
-                    _lastExecuteState = currentExecuteState;
+                    _lastRunState = currentRunState;
                     _lastCancelState = currentCancelState;
                     _lastInputSignature = ComputeInputSignature();
                     _prevAutoRunEnabled = _autoRunEnabled;
@@ -208,15 +209,15 @@ namespace Nodetool.SDK.VL.Nodes
                 }
                 _lastCancelState = currentCancelState;
 
-                // Check for Execute trigger on rising edge
-                if (currentExecuteState && !_lastExecuteState && !_isRunning)
+                // Check for Run on rising edge
+                if (currentRunState && !_lastRunState && !_isRunning)
                 {
                     // Rising edge detected - execute the node
                     // Keep auto-run signature in sync to avoid immediate duplicate run.
                     _lastInputSignature = ComputeInputSignature();
                     _ = ExecuteNodeAsync();
                 }
-                _lastExecuteState = currentExecuteState;
+                _lastRunState = currentRunState;
 
                 // When AutoRun is turned on, just "arm" it (capture current signature) instead of running immediately.
                 if (_autoRunEnabled && !_prevAutoRunEnabled)
@@ -753,7 +754,7 @@ namespace Nodetool.SDK.VL.Nodes
 
             foreach (var kvp in _inputPins.OrderBy(k => k.Key, StringComparer.Ordinal))
             {
-                if (kvp.Key is "Execute" or "Cancel" or "AutoRun" or "RestartOnChange" or "ExecutionTimeoutSeconds")
+                if (kvp.Key is "Run" or "Cancel" or "AutoRun" or "RestartOnChange" or "ExecutionTimeoutSeconds")
                     continue;
 
                 sb.Append(kvp.Key);
@@ -1116,7 +1117,7 @@ namespace Nodetool.SDK.VL.Nodes
             private IReadOnlyList<IVLPinDescription> CreateInputDescriptions()
             {
                 var pins = new List<IVLPinDescription>();
-                pins.Add(new SimplePinDescription("Execute", typeof(bool), false));
+                pins.Add(new SimplePinDescription("Run", typeof(bool), false));
                 pins.Add(new SimplePinDescription(
                     "Cancel",
                     typeof(bool),

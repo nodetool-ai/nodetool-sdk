@@ -20,7 +20,7 @@ namespace Nodetool.SDK.VL.Nodes
         private readonly IVLNodeDescriptionFactory _factory;
 
         // Standard pin names
-        public const string TriggerInputName = "Trigger";
+        public const string RunInputName = "Run";
         public const string CancelInputName = "Cancel";
         public const string AutoRunInputName = "AutoRun";
         public const string RestartOnChangeInputName = "RestartOnChange";
@@ -52,7 +52,7 @@ namespace Nodetool.SDK.VL.Nodes
             }
             else
             {
-                Summary = $"Execute {title} workflow";
+                Summary = $"Run {title} workflow";
             }
 
             // Build comprehensive remarks
@@ -61,10 +61,10 @@ namespace Nodetool.SDK.VL.Nodes
             // Create input pin descriptions
             var inputPins = new List<IVLPinDescription>();
 
-            // Add trigger pin
-            inputPins.Add(new PinDescription(TriggerInputName, typeof(bool), false,
-                "🚀 Trigger workflow execution on rising edge",
-                "Boolean input - set to true to execute the Nodetool workflow"));
+            // Add run pin
+            inputPins.Add(new PinDescription(RunInputName, typeof(bool), false,
+                "🚀 Run workflow on rising edge",
+                "Boolean input - set to true to run the Nodetool workflow"));
 
             inputPins.Add(new PinDescription(CancelInputName, typeof(bool), false,
                 "🛑 Cancel execution",
@@ -75,7 +75,7 @@ namespace Nodetool.SDK.VL.Nodes
                 isVisible: ExecutionPinVisibility.IsInputVisible(CancelInputName)));
 
             inputPins.Add(new PinDescription(AutoRunInputName, typeof(bool), false,
-                "🔁 Execute on input change",
+                "🔁 Run on input change",
                 "When enabled, this workflow automatically executes whenever any *workflow input pin* changes.\n\n"
                 + "- This watches workflow data pins (not execution-control pins).\n"
                 + "- Useful for chaining workflows and building autorun patches.\n"

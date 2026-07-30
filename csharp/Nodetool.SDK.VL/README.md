@@ -137,6 +137,11 @@ Media transport:
 
 Generated from the authoritative workflow-interface v1 contract, over compact HTTP by default or correlated WebSocket RPC when enabled on the Connect node.
 
+Generated workflow and individual-node execution inputs are consistently
+named `Run`. The pin fires on a rising edge; `AutoRun` remains the separate
+input-change mode. Patches created against the former `Trigger` or `Execute`
+pin names must reconnect that control link once.
+
 Category:
 
 - `Nodetool Workflows`

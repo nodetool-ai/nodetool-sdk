@@ -14,11 +14,16 @@ public sealed class ExecutionPinVisibilityTests
         => Assert.False(ExecutionPinVisibility.IsInputVisible(name));
 
     [Theory]
-    [InlineData("Trigger")]
-    [InlineData("Execute")]
+    [InlineData("Run")]
     [InlineData("prompt")]
     public void PrimaryAndDataInputs_RemainVisible(string name)
         => Assert.True(ExecutionPinVisibility.IsInputVisible(name));
+
+    [Fact]
+    public void WorkflowPrimaryInput_IsNamedRun()
+        => Assert.Equal(
+            "Run",
+            Nodetool.SDK.VL.Nodes.WorkflowNodeDescription.RunInputName);
 
     [Theory]
     [InlineData("Error")]

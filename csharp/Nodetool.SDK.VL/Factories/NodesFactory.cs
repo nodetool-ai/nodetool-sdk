@@ -203,10 +203,10 @@ namespace Nodetool.SDK.VL.Factories
                                     // Create input pins with documentation
                                     var inputPins = new List<IVLPinDescription>();
                                     
-                                    // Add trigger pin with documentation
-                                    inputPins.Add(bc.Pin("Execute", typeof(bool), false, 
-                                        "⚡ Execute node", 
-                                        "Boolean input - set to true to execute the Nodetool node"));
+                                    // Add run pin with documentation
+                                    inputPins.Add(bc.Pin("Run", typeof(bool), false,
+                                        "⚡ Run node",
+                                        "Boolean input - set to true to run the Nodetool node"));
 
                                     inputPins.Add(new VlPinDescription("Cancel", typeof(bool), false,
                                         "🛑 Cancel execution",
@@ -217,7 +217,7 @@ namespace Nodetool.SDK.VL.Factories
                                         isVisible: ExecutionPinVisibility.IsInputVisible("Cancel")));
 
                                     inputPins.Add(new VlPinDescription("AutoRun", typeof(bool), false,
-                                        "🔁 Execute on input change",
+                                        "🔁 Run on input change",
                                         "When enabled, this node automatically executes whenever any *data input* changes.\n\n"
                                         + "- This watches data pins, not execution-control pins.\n"
                                         + "- Useful for chaining nodes and building autorun patches.\n"

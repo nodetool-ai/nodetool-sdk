@@ -612,6 +612,60 @@ every generated workflow node.
       workflow node, and do not make persistence an accidental connection
       side effect.
 
+### Future streamed text, audio, and video
+
+Treat streaming as a portable execution capability first. VL should project
+the stream into frame/audio host types without owning the wire contract.
+Ordinary final workflow outputs must continue to work unchanged.
+
+- [x] Confirm the current text baseline: `output_update` already carries
+      append/replace disposition and completion state; the portable workflow
+      controller accumulates typed text chunks and publishes growing immutable
+      snapshots that VL can apply while a run is active.
+- [ ] Add focused end-to-end tests for text streaming through NodeTool,
+      `IExecutionSession`, `WorkflowExecutionController`, and VL. Verify raw
+      chunks, accumulated text, replace semantics, completion, cancellation,
+      reconnection, and terminal reconciliation without duplicated content.
+- [ ] Define a language-neutral streamed-output envelope with run/output
+      identity, modality/content type, sequence or timestamp, encoding,
+      metadata, disposition, and `done`; negotiate supported stream modes in
+      capabilities rather than inferring them from payload shape.
+- [ ] Expose raw stream updates in portable C# alongside accumulated snapshots,
+      using events and/or `IAsyncEnumerable` with bounded buffering,
+      cancellation, and an explicit overflow policy. Do not force hosts to
+      parse protocol dictionaries.
+- [ ] Keep the normal text output pin as the latest accumulated string. Add a
+      separate optional helper/event surface for consumers that need each
+      delta; avoid adding chunk pins to every generated node and workflow.
+- [ ] Route protocol `chunk` messages by `job_id` in the C# transport. The
+      NodeTool protocol already describes text plus base64 or `f32le` audio,
+      but the C# client currently deserializes and routes only
+      `output_update`/preview/progress/node events.
+- [ ] Specify audio stream metadata before host integration: sample rate,
+      channel count/layout, sample format, frame count, timestamp/sequence,
+      discontinuity, and end-of-stream. Prefer PCM blocks for realtime playback
+      and retain encoded audio assets for final/durable outputs.
+- [ ] Add a portable bounded audio buffer/reader and a thin VL audio adapter
+      that feeds the vvvv audio clock without allocating or blocking in the
+      frame callback. Define underrun, overflow, cancellation, and reconnect
+      behavior and test sustained playback.
+- [ ] Add portable input-stream commands over NodeTool's existing
+      `stream_input` and `end_input_stream` protocol before exposing microphone
+      or live text input nodes in VL; include backpressure and remote-close
+      acknowledgement.
+- [ ] Treat video streaming as a later negotiated transport. First define
+      timestamps, dimensions, pixel/codec format, keyframes, and ownership;
+      benchmark encoded frames versus a local shared-memory/shared-texture path
+      before choosing WebSocket transport as a default.
+- [ ] Measure first-chunk latency, steady-state throughput, allocations,
+      buffering delay, and memory bounds for text and audio before enabling
+      streaming defaults.
+
+### Public execution-pin naming
+
+- [x] Use `Run` consistently as the visible rising-edge input for both generated
+      NodeTool nodes and workflows; retain `AutoRun` for input-change execution.
+
 ## 0.1.6 release snapshot - 2026-07-26
 
 - [x] NodeTool WebSocket SDK preflight/capability tests: 51 passed.
