@@ -110,6 +110,7 @@ public static class NodeToolClientProvider
             connectionSession.Configure(settings.CreateProfile());
         }
         NodesFactory.SetEnabled(settings.LoadNodes);
+        NodesFactory.SetShowAllNodes(settings.ShowAllNodes);
         WorkflowNodeFactory.SetEnabled(settings.LoadWorkflows);
     }
 
@@ -172,6 +173,8 @@ public static class NodeToolClientProvider
 
     public static bool LoadNodes => Settings.LoadNodes;
 
+    public static bool ShowAllNodes => Settings.ShowAllNodes;
+
     public static bool LoadWorkflows => Settings.LoadWorkflows;
 
     public static WorkflowExecutionOptions ExecutionOptions =>
@@ -200,6 +203,13 @@ public static class NodeToolClientProvider
     {
         Settings.SetLoadWorkflows(enabled);
         WorkflowNodeFactory.SetEnabled(enabled);
+    }
+
+    public static void SetShowAllNodes(bool enabled)
+    {
+        if (!Settings.SetShowAllNodes(enabled))
+            return;
+        NodesFactory.SetShowAllNodes(enabled);
     }
 
     public static void RefreshDiscovery()

@@ -23,6 +23,7 @@ internal sealed class VlNodeToolHostSettings
     private bool _autoReconnect = true;
     private bool _useWebSocketDiscovery;
     private bool _loadNodes = true;
+    private bool _showAllNodes;
     private bool _loadWorkflows = true;
     private WorkflowExecutionOptions _executionOptions = new();
     private string? _configurationError;
@@ -105,6 +106,15 @@ internal sealed class VlNodeToolHostSettings
         {
             lock (_gate)
                 return _loadWorkflows;
+        }
+    }
+
+    public bool ShowAllNodes
+    {
+        get
+        {
+            lock (_gate)
+                return _showAllNodes;
         }
     }
 
@@ -204,6 +214,17 @@ internal sealed class VlNodeToolHostSettings
             if (_loadWorkflows == enabled)
                 return false;
             _loadWorkflows = enabled;
+            return true;
+        }
+    }
+
+    public bool SetShowAllNodes(bool enabled)
+    {
+        lock (_gate)
+        {
+            if (_showAllNodes == enabled)
+                return false;
+            _showAllNodes = enabled;
             return true;
         }
     }

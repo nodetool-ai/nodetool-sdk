@@ -70,6 +70,9 @@ internal static class DiagnosticsNodeFactory
                 var loadNodesPin = bc.Pin("LoadNodes", typeof(bool), true,
                     "Load individual nodes",
                     "Publish individual NodeTool nodes in the vvvv node browser. Disable this when only workflows are needed.");
+                var showAllNodesPin = bc.Pin("ShowAllNodes", typeof(bool), false,
+                    "Show all individual nodes",
+                    "Include workflow infrastructure, native-vvvv equivalents, hidden nodes, and deprecated nodes. Leave disabled for a curated node menu.");
                 var loadWorkflowsPin = bc.Pin("LoadWorkflows", typeof(bool), true,
                     "Load workflows",
                     "Publish NodeTool workflows in the vvvv node browser. Disable this when only individual nodes are needed.");
@@ -111,7 +114,8 @@ internal static class DiagnosticsNodeFactory
                         baseUrlPin, apiKeyPin, autoReconnectPin,
                         reconnectTriggerPin, executionTimeoutPin,
                         inlineMediaLimitPin, useWebSocketDiscoveryPin,
-                        loadNodesPin, loadWorkflowsPin, refreshDiscoveryPin,
+                        loadNodesPin, showAllNodesPin, loadWorkflowsPin,
+                        refreshDiscoveryPin,
                         persistencePin, eventDetailPin, assetPersistencePin
                     },
                     outputs: new IVLPinDescription[] { isConnectedPin, statusPin, lastErrorPin },
@@ -171,6 +175,7 @@ internal static class DiagnosticsNodeFactory
                                 ibc.Input<int>(NodeToolClientProvider.SetInlineMediaLimitBytes),
                                 ibc.Input<bool>(NodeToolClientProvider.SetUseWebSocketDiscovery),
                                 ibc.Input<bool>(NodeToolClientProvider.SetLoadNodes),
+                                ibc.Input<bool>(NodeToolClientProvider.SetShowAllNodes),
                                 ibc.Input<bool>(NodeToolClientProvider.SetLoadWorkflows),
                                 ibc.Input<bool>(val =>
                                 {
@@ -260,13 +265,6 @@ internal static class DiagnosticsNodeFactory
         if (statusNode != null)
         {
             nodeDescriptions.Add(statusNode);
-        }
-
-        // Image helper nodes (decode ImageRef JSON to bytes/path)
-        var decodeImageRefNode = ImageNodeFactory.CreateDecodeImageRefNode(vlSelfFactory);
-        if (decodeImageRefNode != null)
-        {
-            nodeDescriptions.Add(decodeImageRefNode);
         }
 
         var assetAsFileNode = AssetNodeFactory.CreateAssetAsFileNode(vlSelfFactory);

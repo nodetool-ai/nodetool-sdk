@@ -1079,7 +1079,7 @@ namespace Nodetool.SDK.VL.Nodes
             {
                 _nodeMetadata = nodeMetadata;
                 Name = _nodeMetadata.NodeType ?? "Unknown";
-                Category = "Nodetool Nodes.General";
+                Category = VlNodeMenuCategory.For(_nodeMetadata);
                 Summary = TextCleanup.StripTrailingPeriodsPerLine(_nodeMetadata.Description ?? _nodeMetadata.Title ?? Name);
                 // Keep Remarks consistent with factory tooltips (short; prefer namespace).
                 Remarks = TextCleanup.StripTrailingPeriodsPerLine(

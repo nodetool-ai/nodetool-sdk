@@ -20,6 +20,7 @@ public sealed class VlNodeToolHostSettingsTests
         first.SetInlineMediaLimitBytes(2048);
         first.SetUseWebSocketDiscovery(true);
         first.SetLoadNodes(false);
+        first.SetShowAllNodes(true);
         first.SetLoadWorkflows(false);
         first.SetWorkflowPersistence(WorkflowPersistence.Session);
         first.SetWorkflowEventDetail(WorkflowEventDetail.Outputs);
@@ -37,6 +38,7 @@ public sealed class VlNodeToolHostSettingsTests
         Assert.False(first.AutoReconnect);
         Assert.True(first.UseWebSocketDiscovery);
         Assert.False(first.LoadNodes);
+        Assert.True(first.ShowAllNodes);
         Assert.False(first.LoadWorkflows);
         Assert.Equal(
             new WorkflowExecutionOptions(
@@ -54,6 +56,7 @@ public sealed class VlNodeToolHostSettingsTests
         Assert.True(second.AutoReconnect);
         Assert.False(second.UseWebSocketDiscovery);
         Assert.True(second.LoadNodes);
+        Assert.False(second.ShowAllNodes);
         Assert.True(second.LoadWorkflows);
         Assert.Equal(
             new WorkflowExecutionOptions(),

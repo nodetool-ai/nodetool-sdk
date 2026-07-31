@@ -201,11 +201,6 @@ Category:
 
 - `Nodetool Nodes.*`
 
-### Image helpers
-
-- `Nodetool -> DecodeImageRef`
-- `Nodetool.Images -> DecodeImageRefToSKImage`
-
 ### Asset helpers
 
 - `Nodetool.Assets -> AssetAsFile`

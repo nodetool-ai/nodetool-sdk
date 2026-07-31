@@ -31,19 +31,24 @@ public class NodeToolClientProviderTests
         {
             NodeToolClientProvider.SetLoadNodes(false);
             NodeToolClientProvider.SetLoadNodes(false);
+            NodeToolClientProvider.SetShowAllNodes(true);
+            NodeToolClientProvider.SetShowAllNodes(true);
             NodeToolClientProvider.SetLoadWorkflows(false);
             NodeToolClientProvider.SetLoadWorkflows(false);
 
             Assert.False(NodeToolClientProvider.LoadNodes);
+            Assert.True(NodeToolClientProvider.ShowAllNodes);
             Assert.False(NodeToolClientProvider.LoadWorkflows);
         }
         finally
         {
             NodeToolClientProvider.SetLoadNodes(true);
+            NodeToolClientProvider.SetShowAllNodes(false);
             NodeToolClientProvider.SetLoadWorkflows(true);
         }
 
         Assert.True(NodeToolClientProvider.LoadNodes);
+        Assert.False(NodeToolClientProvider.ShowAllNodes);
         Assert.True(NodeToolClientProvider.LoadWorkflows);
     }
 

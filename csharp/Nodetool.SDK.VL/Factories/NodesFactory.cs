@@ -35,12 +35,14 @@ namespace Nodetool.SDK.VL.Factories
         private static bool _hasSuccessfulSnapshot;
         private static bool _factoryWasRequested;
         private static bool _enabled = true;
+        private static bool _showAllNodes;
         private static SynchronizationContext? _synchronizationContext;
 
         // Cached data from the Nodetool API
         private static ImmutableList<NodeMetadataResponse> _fetchedNodes = ImmutableList<NodeMetadataResponse>.Empty;
         private static string _apiStatusMessage = "API data not fetched.";
         private static string _processingSummary = "Node processing summary not yet available.";
+        private static int _publishedNodeCount;
 
         // Public getters for status/debugging
         public static string CurrentApiStatusMessage => _apiStatusMessage;
@@ -79,6 +81,19 @@ namespace Nodetool.SDK.VL.Factories
             Reset();
         }
 
+        public static void SetShowAllNodes(bool showAllNodes)
+        {
+            lock (_lock)
+            {
+                if (_showAllNodes == showAllNodes)
+                    return;
+                _showAllNodes = showAllNodes;
+                _factoryImpl = null;
+            }
+
+            SignalFactoryInvalidated();
+        }
+
         public static void Reset()
         {
             CancellationTokenSource cancellation;
@@ -95,6 +110,7 @@ namespace Nodetool.SDK.VL.Factories
                 _fetchedNodes = ImmutableList<NodeMetadataResponse>.Empty;
                 _apiStatusMessage = "API data not fetched.";
                 _processingSummary = "Node processing summary not yet available.";
+                _publishedNodeCount = 0;
             }
 
             cancellation.Cancel();
@@ -171,6 +187,9 @@ namespace Nodetool.SDK.VL.Factories
                     var nameCounters = new Dictionary<string, int>();
                     int successfullyProcessedCount = 0;
                     int failedToProcessCount = 0;
+                    var excludedCounts = new Dictionary<
+                        VlNodeMenuExclusion,
+                        int>();
 
                     // Process each node definition from the metadata
                     foreach (var nodeMetadata in _fetchedNodes)
@@ -178,6 +197,16 @@ namespace Nodetool.SDK.VL.Factories
                         if (nodeMetadata == null)
                         {
                             failedToProcessCount++;
+                            continue;
+                        }
+
+                        if (!VlNodeMenuFilter.ShouldPublish(
+                            nodeMetadata,
+                            _showAllNodes,
+                            out var exclusion))
+                        {
+                            excludedCounts[exclusion] =
+                                excludedCounts.GetValueOrDefault(exclusion) + 1;
                             continue;
                         }
 
@@ -190,7 +219,7 @@ namespace Nodetool.SDK.VL.Factories
                                                     // Create VL node description using vlSelfFactory.NewNodeDescription pattern for proper tooltips
                         try
                         {
-                            var category = DetermineNodeCategory(nodeMetadata.NodeType);
+                            var category = VlNodeMenuCategory.For(nodeMetadata);
                             var summary = TextCleanup.StripTrailingPeriodsPerLine(
                                 nodeMetadata.Description ?? nodeMetadata.Title ?? $"Nodetool {nodeMetadata.NodeType}");
                             
@@ -334,7 +363,21 @@ namespace Nodetool.SDK.VL.Factories
                         }
                     }
 
-                    _processingSummary = $"Processed {successfullyProcessedCount} nodes successfully (Failed: {failedToProcessCount}) from {_fetchedNodes.Count} total definitions.";
+                    var excludedCount = excludedCounts.Values.Sum();
+                    var excludedSummary = excludedCount == 0
+                        ? "none"
+                        : string.Join(
+                            ", ",
+                            excludedCounts
+                                .OrderBy(entry => entry.Key)
+                                .Select(entry =>
+                                    $"{entry.Key}: {entry.Value}"));
+                    _processingSummary =
+                        $"Published {successfullyProcessedCount} nodes " +
+                        $"(Excluded: {excludedCount} [{excludedSummary}], " +
+                        $"Failed: {failedToProcessCount}) from " +
+                        $"{_fetchedNodes.Count} total definitions.";
+                    _publishedNodeCount = successfullyProcessedCount;
                     VlLog.Debug(_processingSummary);
 
                     // Add diagnostic status node
@@ -358,7 +401,7 @@ namespace Nodetool.SDK.VL.Factories
                                         outputs: new IVLPin[] {
                                             ibc.Output<string>(() => _apiStatusMessage),
                                             ibc.Output<string>(() => _processingSummary),
-                                            ibc.Output<int>(() => _fetchedNodes.Count)
+                                            ibc.Output<int>(() => _publishedNodeCount)
                                         }
                                     )
                                 );
@@ -706,25 +749,6 @@ namespace Nodetool.SDK.VL.Factories
         private static (Type?, object?) MapNodeType(NodeTypeDefinition? nodeType)
         {
             return VlTypeMapping.MapNodeType(nodeType);
-        }
-
-        /// <summary>
-        /// Determine the VL category for a node based on its type
-        /// </summary>
-        private static string DetermineNodeCategory(string? nodeType)
-        {
-            if (string.IsNullOrEmpty(nodeType))
-                return "Nodetool Nodes.General";
-            
-            // Parse category from node type (e.g., "nodetool.constant.Float" -> "Constant")
-            var parts = nodeType.Split('.');
-            if (parts.Length >= 2)
-            {
-                var category = parts[1]; // e.g., "constant", "image", "audio"
-                return $"Nodetool Nodes.{char.ToUpper(category[0])}{category.Substring(1)}";
-            }
-            
-            return "Nodetool Nodes.General";
         }
 
         /// <summary>

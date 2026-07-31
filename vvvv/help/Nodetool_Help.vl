@@ -74,7 +74,7 @@
             </p:ValueBoxSettings>
           </Pad>
           <Overlay Id="F2Ml506Ub8XP0RLdZqx1UB" Name="EXECUTE A NODETOOL WORKFLOW" Bounds="596,61,381,216" />
-          <Pad Id="GZHNLv7WPwSMnnj1FLAQnF" Bounds="-1,-259,224,32" ShowValueBox="true" isIOBox="true" Value="https://nodetool.ai/">
+          <Pad Id="GZHNLv7WPwSMnnj1FLAQnF" Bounds="-1,-304,224,32" ShowValueBox="true" isIOBox="true" Value="https://nodetool.ai/">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -83,7 +83,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Link</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="UGG7cosmK1yP0qiL8oYPkA" Bounds="-1,-209,419,33" ShowValueBox="true" isIOBox="true" Value="https://github.com/nodetool-ai/nodetool">
+          <Pad Id="UGG7cosmK1yP0qiL8oYPkA" Bounds="-1,-254,419,33" ShowValueBox="true" isIOBox="true" Value="https://github.com/nodetool-ai/nodetool">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -92,7 +92,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Link</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="CMM30ND5uFTN99QKLrlFmJ" Bounds="-1,-329,319,52" ShowValueBox="true" isIOBox="true" Value="Download and install Nodetool">
+          <Pad Id="CMM30ND5uFTN99QKLrlFmJ" Bounds="-1,-374,319,52" ShowValueBox="true" isIOBox="true" Value="Download and install Nodetool">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -101,7 +101,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="VJLBsN1iHQqNkO6axCs1Uq" Bounds="603,135,352,105" ShowValueBox="true" isIOBox="true" Value="The node menu should list all your 'Nodetool Workflows'.&#xD;&#xA;&#xD;&#xA;Changing inputs or outputs in Nodetool currently needs a full vvvv restart.">
+          <Pad Id="VJLBsN1iHQqNkO6axCs1Uq" Bounds="603,135,352,105" ShowValueBox="true" isIOBox="true" Value="The node menu should list all your 'Nodetool Workflows'.&#xD;&#xA;">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>
@@ -171,6 +171,24 @@
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="Integer32" />
             </p:TypeAnnotation>
+          </Pad>
+          <Pad Id="Kt5C8EpFGJbOgxdD5a5l1n" Bounds="603,350,352,105" ShowValueBox="true" isIOBox="true" Value="If enabled in the Nodetool.Connect node, look for 'Nodetool Nodes' in the node menu.">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">9</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
+            </p:ValueBoxSettings>
+          </Pad>
+          <Pad Id="B5WAPQHFf40QBs2AgSGzyc" Bounds="-1,-209,610,29" ShowValueBox="true" isIOBox="true" Value="https://github.com/nodetool-ai/nodetool-sdk/tree/main/vvvv">
+            <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
+              <Choice Kind="TypeFlag" Name="String" />
+            </p:TypeAnnotation>
+            <p:ValueBoxSettings>
+              <p:fontsize p:Type="Int32">14</p:fontsize>
+              <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Link</p:stringtype>
+            </p:ValueBoxSettings>
           </Pad>
         </Canvas>
         <Patch Id="D93Oro2VoNHM9jH7yxrNBx" Name="Create" />
