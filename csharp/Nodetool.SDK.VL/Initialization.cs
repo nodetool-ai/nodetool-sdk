@@ -92,6 +92,8 @@ namespace Nodetool.SDK.VL
                 // Register the workflow node factory
                 WorkflowNodeFactory.Configure(
                     host.SynchronizationContext);
+                DynamicModelEnumFactory.Configure(
+                    host.SynchronizationContext);
                 host.RegisterNodeFactory("Nodetool.Workflows",
                     vlSelfFactory => WorkflowNodeFactory.GetFactory(vlSelfFactory)
                 );

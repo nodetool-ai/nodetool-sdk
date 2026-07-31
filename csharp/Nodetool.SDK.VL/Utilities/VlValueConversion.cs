@@ -64,6 +64,8 @@ internal static class VlValueConversion
             return path.ToString();
         if (DynamicWorkflowEnumFactory.TryToWireValue(value, out var wireValue))
             return wireValue ?? "";
+        if (DynamicModelEnumFactory.TryToWireValue(value, out wireValue))
+            return wireValue ?? "";
 
         return NodeToolValueConverter.NormalizeForTransport(value) ?? "";
     }
@@ -75,6 +77,8 @@ internal static class VlValueConversion
     public static object? NormalizeDynamicEnumsForTransport(object? value)
     {
         if (DynamicWorkflowEnumFactory.TryToWireValue(value, out var wireValue))
+            return wireValue;
+        if (DynamicModelEnumFactory.TryToWireValue(value, out wireValue))
             return wireValue;
 
         if (value is IDictionary dictionary)
@@ -251,6 +255,13 @@ internal static class VlValueConversion
                 targetType,
                 value,
                 out var enumValue))
+        {
+            return enumValue;
+        }
+        if (DynamicModelEnumFactory.TryFromWireValue(
+                targetType,
+                value,
+                out enumValue))
         {
             return enumValue;
         }

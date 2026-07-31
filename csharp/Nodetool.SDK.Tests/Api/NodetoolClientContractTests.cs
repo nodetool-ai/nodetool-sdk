@@ -578,6 +578,57 @@ public class NodetoolClientContractTests
         Assert.Contains("disabled", error.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task GetModelCatalogAsync_SendsFiltersAndPreservesStructuredWireValue()
+    {
+        Uri? requestedUri = null;
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(request =>
+        {
+            requestedUri = request.RequestUri;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    """
+                    {
+                      "version":"1",
+                      "catalog_revision":"revision-1",
+                      "scope":"local",
+                      "entries":[{
+                        "key":"language_model|openai|gpt-test|",
+                        "display_name":"GPT Test",
+                        "compatibility":"language_model",
+                        "availability":"ready_remote",
+                        "recommended":false,
+                        "scope":"local",
+                        "provider":"openai",
+                        "id":"gpt-test",
+                        "repo_id":null,
+                        "path":null,
+                        "supported_tasks":["text_generation"],
+                        "size_on_disk":null,
+                        "wire_value":{"type":"language_model","provider":"openai","id":"gpt-test","name":"GPT Test"}
+                      }],
+                      "next_cursor":null
+                    }
+                    """)
+            };
+        }));
+        var client = new NodetoolClient(httpClient);
+
+        var result = await client.GetModelCatalogAsync(
+            new SdkModelCatalogQuery(
+                Compatibility: "language_model",
+                Availability: SdkModelAvailability.ReadyRemote,
+                Provider: "openai",
+                Limit: 25));
+
+        Assert.Equal(
+            "/api/sdk/v1/models?compatibility=language_model&availability=ready_remote&provider=openai&scope=local&limit=25",
+            requestedUri?.PathAndQuery);
+        var model = Assert.Single(result.Entries);
+        Assert.Equal("openai", model.WireValue.GetProperty("provider").GetString());
+    }
+
     private sealed class StubHttpMessageHandler(
         Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
     {

@@ -578,6 +578,13 @@ namespace Nodetool.SDK.VL.Factories
                 var apiClient = await NodeToolClientProvider
                     .GetApiClientAsync(timeout.Token)
                     .ConfigureAwait(false);
+                using var modelTimeout =
+                    CancellationTokenSource.CreateLinkedTokenSource(
+                        cancellationToken);
+                modelTimeout.CancelAfter(TimeSpan.FromSeconds(5));
+                var modelCatalogTask = VlModelCatalogService.RefreshAsync(
+                    forceRefresh,
+                    modelTimeout.Token);
                 var options = new NodetoolOptions
                 {
                     BaseUrl = apiBase,
@@ -627,6 +634,7 @@ namespace Nodetool.SDK.VL.Factories
                             forceRefresh)
                         .ConfigureAwait(false);
                 }
+                await modelCatalogTask.ConfigureAwait(false);
                 return new WorkflowFetchResult(
                     workflows?.ToImmutableList() ??
                     ImmutableList<WorkflowDetail>.Empty,

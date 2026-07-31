@@ -1,6 +1,6 @@
 # Model Catalog, Dynamic Model Pins, and HDE Model Manager
 
-**Status:** Proposed
+**Status:** In progress
 **Order:** server contract -> portable C# -> VL pins -> optional HDE
 **Scope:** NodeTool server, `Nodetool.SDK`, `Nodetool.SDK.VL`, and
 `VL.Nodetool.HDE`
@@ -57,30 +57,30 @@ new widget toolkit in C#.
       and progress events that can back an SDK abstraction.
 - [x] Confirm that the existing VL dynamic enum implementation can map a
       display entry to an arbitrary structured wire value.
-- [ ] Capture compact fixtures for a provider model, provider-locked model,
+- [x] Capture compact fixtures for a provider model, provider-locked model,
       `llama_model`, `hf.*`, `tjs.*`, and an unknown/unclassified cached model.
-- [ ] Record the exact wire value expected by each representative model input.
+- [x] Record the exact wire value expected by each representative model input.
 
 ### Gate
 
-- [ ] Compatibility and serialization rules are covered by fixtures before
+- [x] Compatibility and serialization rules are covered by fixtures before
       changing generated VL pin types.
 
 ## Phase 1 - Add an SDK-facing server model contract
 
-- [ ] Define a versioned, normalized model catalog DTO in the shared protocol.
-- [ ] Include stable model identity, display name, declared model type,
+- [x] Define a versioned, normalized model catalog DTO in the shared protocol.
+- [x] Include stable model identity, display name, declared model type,
       provider, repository/path data, supported tasks, size, and recommendation
       state where known.
-- [ ] Define explicit availability states such as `ready_local`,
+- [x] Define explicit availability states such as `ready_local`,
       `ready_remote`, `downloadable`, `downloading`, and `unavailable`.
-- [ ] Include an authoritative compatibility key suitable for filtering a
+- [x] Include an authoritative compatibility key suitable for filtering a
       specific node or workflow input.
-- [ ] Include catalog revision and execution scope (`local` or worker/remote)
+- [x] Include catalog revision and execution scope (`local` or worker/remote)
       so clients can cache and refresh safely.
-- [ ] Add a bounded SDK catalog query with filters for compatibility,
+- [x] Add a bounded SDK catalog query with filters for compatibility,
       availability, provider, and scope.
-- [ ] Implement the SDK endpoint over existing model services rather than
+- [x] Implement the SDK endpoint over existing model services rather than
       duplicating provider and Hugging Face classification logic.
 - [ ] Add a versioned download operation and progress contract that reuses the
       existing download manager and worker relay.
@@ -90,7 +90,7 @@ new widget toolkit in C#.
       HDE can recover in-progress downloads before subscribing to new events.
 - [ ] Advertise model-catalog and model-download capabilities through existing
       SDK capability negotiation.
-- [ ] Keep existing tRPC, web, Electron, and execution call sites unchanged.
+- [x] Keep existing tRPC, web, Electron, and execution call sites unchanged.
 - [ ] Add authorization, local/worker scope, bounded-response, and cancellation
       tests.
 
@@ -103,22 +103,22 @@ new widget toolkit in C#.
 
 ## Phase 2 - Implement the portable C# model layer
 
-- [ ] Add immutable model descriptor, compatibility, availability, catalog
+- [x] Add immutable model descriptor, compatibility, availability, catalog
       snapshot, and download-progress types to `Nodetool.SDK`.
-- [ ] Add `IModelCatalog` with filtered lookup, refresh, revision, last-known-
+- [x] Add `IModelCatalog` with filtered lookup, refresh, revision, last-known-
       good snapshot, and structured diagnostics.
-- [ ] Scope catalog caches by endpoint, authenticated user, and execution
+- [x] Scope catalog caches by endpoint, authenticated user, and execution
       target so local and cloud inventories cannot mix.
-- [ ] Preserve the last successful catalog during transient connection or
+- [x] Preserve the last successful catalog during transient connection or
       refresh failures.
-- [ ] Add a model-selection value that preserves the server's complete wire
+- [x] Add a model-selection value that preserves the server's complete wire
       object instead of reducing it to a display string.
-- [ ] Add checked conversion between catalog selections and node/workflow input
+- [x] Add checked conversion between catalog selections and node/workflow input
       values.
 - [ ] Add `IModelDownloadService` with start, cancel, retry, and observable
       progress/state updates.
 - [ ] Refresh the affected catalog scope after a successful download.
-- [ ] Keep the implementation free of VL, HDE, Skia, Stride, and Unity
+- [x] Keep the implementation free of VL, HDE, Skia, Stride, and Unity
       dependencies.
 - [ ] Add tests for cache scoping, refresh failure, structured wire values,
       progress ordering, cancellation, and reconnect behavior.
@@ -130,20 +130,20 @@ new widget toolkit in C#.
 
 ## Phase 3 - Project compatible models as live VL enums
 
-- [ ] Recognize authoritative model types in individual-node and workflow pin
+- [x] Recognize authoritative model types in individual-node and workflow pin
       metadata before falling back to `System.Object`.
-- [ ] Add a dedicated dynamic model enum factory rather than coupling mutable
+- [x] Add a dedicated dynamic model enum factory rather than coupling mutable
       model catalogs to finite workflow option enums.
-- [ ] Give each dynamic model enum a stable CLR identity based on its
+- [x] Give each dynamic model enum a stable CLR identity based on its
       compatibility signature, not on the current list of installed models.
-- [ ] Update enum entries in place when the catalog revision changes so model
+- [x] Update enum entries in place when the catalog revision changes so model
       installation does not require restarting vvvv or rebuilding unrelated
       node descriptions.
-- [ ] Use readable, collision-safe labels that include provider or source only
+- [x] Use readable, collision-safe labels that include provider or source only
       when needed.
-- [ ] Map each enum value to the exact structured model wire object expected by
+- [x] Map each enum value to the exact structured model wire object expected by
       NodeTool.
-- [ ] Show only ready compatible models on execution pins by default.
+- [x] Show only ready compatible models on execution pins by default.
 - [ ] Preserve an existing selection as an explicit unavailable entry if a
       model disappears; never silently switch a patch to another model.
 - [ ] Retain a documented object fallback and diagnostic when compatibility is

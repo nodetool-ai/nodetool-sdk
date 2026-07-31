@@ -5,7 +5,10 @@ namespace Nodetool.SDK.Api;
 /// <summary>
 /// Interface for the Nodetool API client
 /// </summary>
-public interface INodetoolClient : IDisposable, Workflows.IWorkflowDiscoveryClient
+public interface INodetoolClient :
+    IDisposable,
+    Workflows.IWorkflowDiscoveryClient,
+    global::Nodetool.SDK.Models.IModelCatalogClient
 {
     /// <summary>
     /// Get server version and uptime information.

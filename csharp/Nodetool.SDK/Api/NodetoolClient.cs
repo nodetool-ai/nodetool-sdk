@@ -189,6 +189,48 @@ public class NodetoolClient : INodetoolClient
         return result;
     }
 
+    public async Task<SdkModelCatalogResponse> GetModelCatalogAsync(
+        SdkModelCatalogQuery? query = null,
+        CancellationToken cancellationToken = default)
+    {
+        query ??= new SdkModelCatalogQuery();
+        if (query.Limit is < 1 or > 500)
+            throw new ArgumentOutOfRangeException(nameof(query));
+        if (query.Scope is not (SdkModelScopes.Local or SdkModelScopes.Worker))
+            throw new ArgumentException(
+                $"Unsupported model catalog scope '{query.Scope}'.",
+                nameof(query));
+
+        var parameters = new List<string>();
+        AddQueryParameter(parameters, "compatibility", query.Compatibility);
+        AddQueryParameter(parameters, "availability", query.Availability);
+        AddQueryParameter(parameters, "provider", query.Provider);
+        AddQueryParameter(parameters, "scope", query.Scope);
+        AddQueryParameter(parameters, "cursor", query.Cursor);
+        parameters.Add($"limit={query.Limit}");
+        var endpoint =
+            $"{NodetoolConstants.Endpoints.SdkModelsV1}?{string.Join("&", parameters)}";
+        var response = await GetSdkResponseAsync<SdkModelCatalogResponse>(
+            endpoint,
+            cancellationToken).ConfigureAwait(false);
+        if (!string.Equals(response.Version, "1", StringComparison.Ordinal) ||
+            string.IsNullOrWhiteSpace(response.CatalogRevision))
+        {
+            throw new InvalidDataException(
+                "The SDK model catalog response is incomplete or unsupported.");
+        }
+        return response;
+    }
+
+    private static void AddQueryParameter(
+        ICollection<string> parameters,
+        string name,
+        string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+            parameters.Add($"{name}={Uri.EscapeDataString(value)}");
+    }
+
     #region Node Operations
 
     public async Task<List<NodeMetadataResponse>> GetNodeTypesAsync(CancellationToken cancellationToken = default)

@@ -30,6 +30,9 @@ internal static class VlTypeMapping
         if (nodeType.Values is { Count: > 0 })
             return MapEnum(nodeType);
 
+        if (DynamicModelEnumFactory.IsModelType(nodeType.Type))
+            return MapModel(nodeType.Type);
+
         if (TryMapAssetReference(nodeType) is { } assetReference)
             return assetReference;
 
@@ -75,6 +78,14 @@ internal static class VlTypeMapping
         return enumType is null
             ? (typeof(string), "")
             : (enumType, DynamicWorkflowEnumFactory.GetDefaultValue(enumType));
+    }
+
+    private static (Type, object?) MapModel(string? compatibility)
+    {
+        var enumType = DynamicModelEnumFactory.GetOrCreate(compatibility);
+        return enumType is null
+            ? (typeof(object), null)
+            : (enumType, DynamicModelEnumFactory.GetDefaultValue(enumType));
     }
 
     private static (Type, object)? TryMapAssetReference(NodeTypeDefinition nodeType)

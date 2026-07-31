@@ -528,19 +528,6 @@
           <Pad Id="LkCRt3joIeNMgVqFl8MldV" Comment="IsRunning" Bounds="-1203,841,35,35" ShowValueBox="true" isIOBox="true" />
           <Pad Id="VeNL74krIQiMxiwJDem9DD" Comment="Execution Time" Bounds="-952,780,163,45" ShowValueBox="true" isIOBox="true" />
           <Pad Id="HWiht4dPJpWMXzpCJAyKuK" Comment="Execution Time" Bounds="-351,1200,190,132" ShowValueBox="true" isIOBox="true" />
-          <Node Bounds="-1215,210,92,19" Id="OAWsQVVoam6QGHgG27XpiG">
-            <p:NodeReference LastCategoryFullName="Nodetool" LastDependency="VL.Nodetool.vl">
-              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
-              <CategoryReference Kind="Category" Name="Nodetool" />
-              <Choice Kind="ProcessNode" Name="DecodeImageRef" />
-            </p:NodeReference>
-            <Pin Id="BhhNyKzblS9Oe6hbLrMPqk" Name="Value" Kind="InputPin" />
-            <Pin Id="HcThGDrWlx2OERzbgSUg6h" Name="Bytes" Kind="OutputPin" />
-            <Pin Id="PaprtnqvnbVOiBk0xW7005" Name="Format" Kind="OutputPin" />
-            <Pin Id="T8D5vxgsrw2Mjpa3sTv32h" Name="Width" Kind="OutputPin" />
-            <Pin Id="Ror3VE76jKsMWMXnoaBYlt" Name="Height" Kind="OutputPin" />
-            <Pin Id="PDRCQwdNjBOLkGSqZ0dxmv" Name="Error" Kind="OutputPin" />
-          </Node>
           <Node Bounds="610,770,82,19" Id="KymTLMkb5JNNXfd02FQ7ig">
             <p:NodeReference LastCategoryFullName="Nodetool Nodes.nodetool.text" LastDependency="VL.Nodetool.vl">
               <Choice Kind="NodeFlag" Name="Node" Fixed="true" />

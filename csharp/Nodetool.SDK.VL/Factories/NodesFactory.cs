@@ -572,7 +572,16 @@ namespace Nodetool.SDK.VL.Factories
             var client = await NodeToolClientProvider
                 .GetApiClientAsync(timeout.Token)
                 .ConfigureAwait(false);
-            var nodes = await client.GetNodeTypesAsync(timeout.Token).ConfigureAwait(false);
+            using var modelTimeout =
+                CancellationTokenSource.CreateLinkedTokenSource(
+                    cancellationToken);
+            modelTimeout.CancelAfter(TimeSpan.FromSeconds(5));
+            var modelCatalogTask = VlModelCatalogService.RefreshAsync(
+                force: false,
+                modelTimeout.Token);
+            var nodesTask = client.GetNodeTypesAsync(timeout.Token);
+            await Task.WhenAll(nodesTask, modelCatalogTask).ConfigureAwait(false);
+            var nodes = await nodesTask.ConfigureAwait(false);
             return nodes?.ToImmutableList() ?? ImmutableList<NodeMetadataResponse>.Empty;
         }
 

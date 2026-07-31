@@ -365,6 +365,7 @@ public static class NodeToolClientProvider
             VlReadinessLog.MarkRegistered();
             WorkflowNodeFactory.Reset();
             NodesFactory.Reset();
+            VlModelCatalogService.Reset();
 
             StatusChanged?.Invoke(Status);
         }
@@ -437,6 +438,7 @@ public static class NodeToolClientProvider
             VlReadinessLog.MarkRegistered();
             WorkflowNodeFactory.Reset();
             NodesFactory.Reset();
+            VlModelCatalogService.Reset();
             StatusChanged?.Invoke(Status);
         }
     }

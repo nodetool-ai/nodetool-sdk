@@ -30,6 +30,13 @@ internal static class WorkflowVlTypeMapping
     public static (Type Type, object? DefaultValue) GetTypeAndDefault(TypeMetadata metadata)
     {
         var type = metadata.Type?.Trim().ToLowerInvariant();
+        if (DynamicModelEnumFactory.IsModelType(type))
+        {
+            var enumType = DynamicModelEnumFactory.GetOrCreate(type);
+            return enumType is null
+                ? (typeof(object), null)
+                : (enumType, DynamicModelEnumFactory.GetDefaultValue(enumType));
+        }
         return type switch
         {
             "string" or "str" or "text" or "chunk" => (typeof(string), ""),

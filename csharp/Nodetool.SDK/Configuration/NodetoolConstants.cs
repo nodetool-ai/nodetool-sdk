@@ -13,6 +13,7 @@ public static class NodetoolConstants
         public const string Health = "/api/health";
         public const string SdkCapabilitiesV1 = "/api/sdk/v1/capabilities";
         public const string SdkPreflightV1 = "/api/sdk/v1/preflight";
+        public const string SdkModelsV1 = "/api/sdk/v1/models";
 
         // Node operations
         public const string NodesMetadata = "/api/nodes/metadata";
