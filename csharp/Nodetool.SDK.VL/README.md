@@ -115,6 +115,21 @@ Workflow discovery transport:
   keeps the last successful workflow nodes available.
 - Connection changes retain the last workflow factory while the replacement is fetched. A single empty discovery response is treated as provisional and must be confirmed before existing workflow nodes are removed.
 
+Model pins:
+
+- Authoritative model input types such as `language_model`, `image_model`,
+  `llama_model`, `hf.*`, and `tjs.*` use live dynamic enums when the connected
+  server advertises the `model_catalog` capability.
+- Entries show compatible ready local and configured remote models and retain
+  the exact structured NodeTool wire value behind their readable label.
+- Catalog entry changes update enum definitions without changing their CLR pin
+  type or requiring a vvvv restart. Unknown compatibility or an unavailable
+  catalog retains the explicit `Object` fallback.
+- Model downloads and progress are implemented in the portable C# SDK over
+  the server's `model_download` capability. The planned HDE window will only
+  provide editor UI over that service; it will not own model storage or a
+  separate downloader.
+
 Media transport:
 
 - `InlineMediaLimitBytes` defaults to 10 MiB. With the default `AssetPersistence = Temporary`, larger local media uses the advertised SDK temporary-upload route and is represented by a storage URI. This skips persistent asset metadata and thumbnail work. Selecting `Auto`, or connecting to a server without that profile, uses the normal asset API and `asset_id`.

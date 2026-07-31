@@ -14,6 +14,9 @@ public static class NodetoolConstants
         public const string SdkCapabilitiesV1 = "/api/sdk/v1/capabilities";
         public const string SdkPreflightV1 = "/api/sdk/v1/preflight";
         public const string SdkModelsV1 = "/api/sdk/v1/models";
+        public const string SdkModelDownloadsV1 = "/api/sdk/v1/model-downloads";
+        public const string SdkModelDownloadCancelV1 =
+            "/api/sdk/v1/model-downloads/cancel";
 
         // Node operations
         public const string NodesMetadata = "/api/nodes/metadata";

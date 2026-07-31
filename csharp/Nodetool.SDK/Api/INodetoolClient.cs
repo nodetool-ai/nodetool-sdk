@@ -8,7 +8,8 @@ namespace Nodetool.SDK.Api;
 public interface INodetoolClient :
     IDisposable,
     Workflows.IWorkflowDiscoveryClient,
-    global::Nodetool.SDK.Models.IModelCatalogClient
+    global::Nodetool.SDK.Models.IModelCatalogClient,
+    global::Nodetool.SDK.Models.IModelDownloadClient
 {
     /// <summary>
     /// Get server version and uptime information.

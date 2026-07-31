@@ -60,6 +60,44 @@ projects connection status/errors, and supports reconnect or reset without
 host-specific lifecycle code. The VL adapter uses this portable session;
 future C# hosts can use the same boundary.
 
+## Model catalog and downloads
+
+`ModelCatalog` provides a revision-aware, scoped view of models advertised by
+the connected server. A `ModelSelection` preserves the complete structured
+wire value expected by a node or workflow input; do not reduce it to the
+display label.
+
+`ModelDownloadService` is the portable download lifecycle used by host UIs.
+It starts and cancels downloads through NodeTool's existing model manager,
+restores current state from the server, and exposes progress as an async
+stream without requiring a reactive-framework dependency:
+
+```csharp
+using Nodetool.SDK.Models;
+
+using var catalog = new ModelCatalog(
+    api,
+    "server-and-principal-scope");
+var models = await catalog.RefreshAsync();
+var selected = models.Models.First(model =>
+    model.Compatibility == "hf.text_generation" &&
+    model.Availability == "downloadable");
+
+var downloads = new ModelDownloadService(api, catalog: catalog);
+var started = await downloads.StartAsync(selected);
+await foreach (var update in downloads.MonitorAsync(started.OperationId))
+    Console.WriteLine($"{update.Status}: {update.Progress:P0}");
+```
+
+The current server contract supports local Hugging Face, llama.cpp repository,
+and Transformers.js downloads. It also projects cached/recommended worker
+models and reuses the existing worker download relay when a compatible worker
+is attached. Missing or older workers and unsupported Ollama downloads report
+explicit unavailable responses. Starting the same repository/path again
+returns the active operation or retries a terminal operation. A completed
+download forces a catalog refresh when the service was constructed with an
+`IModelCatalog`.
+
 Caller-owned `HttpClient` instances retain their base address, timeout, and
 default headers. NodeTool endpoint, authentication, and user-agent headers are
 applied per request, including deployments hosted below a reverse-proxy

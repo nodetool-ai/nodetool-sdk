@@ -629,6 +629,107 @@ public class NodetoolClientContractTests
         Assert.Equal("openai", model.WireValue.GetProperty("provider").GetString());
     }
 
+    [Fact]
+    public async Task ModelDownloadApi_UsesVersionedLifecycleRoutesAndWireNames()
+    {
+        var requests = new List<(HttpMethod Method, string Path, string? Body)>();
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(request =>
+        {
+            requests.Add((
+                request.Method,
+                request.RequestUri?.PathAndQuery ?? string.Empty,
+                request.Content?.ReadAsStringAsync().GetAwaiter().GetResult()));
+            var cancelled = request.RequestUri?.AbsolutePath.EndsWith(
+                "/cancel",
+                StringComparison.Ordinal) == true;
+            var state = $$"""
+                {
+                  "version":"1",
+                  "operation_id":"mdl_test",
+                  "scope":"local",
+                  "repo_id":"org/model",
+                  "path":"model.bin",
+                  "model_type":"hf.text_generation",
+                  "status":"{{(cancelled ? "cancelled" : "start")}}",
+                  "downloaded_bytes":0,
+                  "total_bytes":100,
+                  "downloaded_files":0,
+                  "current_files":["model.bin"],
+                  "total_files":1,
+                  "error":null,
+                  "started_at":"2026-07-31T00:00:00.000Z",
+                  "updated_at":"2026-07-31T00:00:00.000Z"
+                }
+                """;
+            var body = request.Method == HttpMethod.Get
+                ? $$"""{"version":"1","downloads":[{{state}}]}"""
+                : state;
+            return new HttpResponseMessage(
+                request.Method == HttpMethod.Post && !cancelled
+                    ? HttpStatusCode.Accepted
+                    : HttpStatusCode.OK)
+            {
+                Content = new StringContent(body)
+            };
+        }));
+        var client = new NodetoolClient(httpClient);
+
+        var started = await client.StartModelDownloadAsync(
+            new SdkModelDownloadStartRequest(
+                "org/model",
+                "hf.text_generation",
+                "model.bin"));
+        var snapshot = await client.GetModelDownloadsAsync(
+            new SdkModelDownloadQuery("local", started.OperationId));
+        var cancelled = await client.CancelModelDownloadAsync(started.OperationId);
+
+        Assert.Equal("mdl_test", Assert.Single(snapshot.Downloads).OperationId);
+        Assert.Equal(SdkModelDownloadStatuses.Cancelled, cancelled.Status);
+        Assert.Equal(
+            (HttpMethod.Post, "/api/sdk/v1/model-downloads"),
+            (requests[0].Method, requests[0].Path));
+        Assert.Contains("\"repo_id\":\"org/model\"", requests[0].Body);
+        Assert.Contains("\"model_type\":\"hf.text_generation\"", requests[0].Body);
+        Assert.Equal(
+            "/api/sdk/v1/model-downloads?scope=local&operation_id=mdl_test",
+            requests[1].Path);
+        Assert.Equal(
+            "/api/sdk/v1/model-downloads/cancel",
+            requests[2].Path);
+        Assert.Contains("\"operation_id\":\"mdl_test\"", requests[2].Body);
+    }
+
+    [Fact]
+    public async Task ModelDownloadMutations_AreNotRetried()
+    {
+        var attempts = 0;
+        using var httpClient = new HttpClient(new StubHttpMessageHandler(_ =>
+        {
+            attempts++;
+            return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+            {
+                Content = new StringContent(
+                    """{"code":"UNAVAILABLE","detail":"not ready","retryable":true}""")
+            };
+        }));
+        var client = new NodetoolClient(
+            httpClient,
+            readRetryPolicy: new Nodetool.SDK.Connection.NodeToolReadRetryPolicy
+            {
+                MaximumAttempts = 3,
+                InitialDelay = TimeSpan.Zero,
+                MaximumDelay = TimeSpan.Zero
+            });
+
+        await Assert.ThrowsAsync<SdkApiException>(() =>
+            client.StartModelDownloadAsync(
+                new SdkModelDownloadStartRequest(
+                    "org/model",
+                    "hf.text_generation")));
+
+        Assert.Equal(1, attempts);
+    }
+
     private sealed class StubHttpMessageHandler(
         Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
     {

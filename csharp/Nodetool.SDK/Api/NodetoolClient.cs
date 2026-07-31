@@ -222,6 +222,104 @@ public class NodetoolClient : INodetoolClient
         return response;
     }
 
+    public async Task<SdkModelDownloadStateResponse> StartModelDownloadAsync(
+        SdkModelDownloadStartRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateModelDownloadRequest(request);
+        using var message = JsonRequest(
+            NodetoolConstants.Endpoints.SdkModelDownloadsV1,
+            request);
+        var response = await SendSdkResponseAsync<SdkModelDownloadStateResponse>(
+            message,
+            cancellationToken,
+            allowRetry: false).ConfigureAwait(false);
+        ValidateModelDownloadState(response);
+        return response;
+    }
+
+    public async Task<SdkModelDownloadSnapshotResponse> GetModelDownloadsAsync(
+        SdkModelDownloadQuery? query = null,
+        CancellationToken cancellationToken = default)
+    {
+        query ??= new SdkModelDownloadQuery();
+        ValidateModelScope(query.Scope, nameof(query));
+        var parameters = new List<string>();
+        AddQueryParameter(parameters, "scope", query.Scope);
+        AddQueryParameter(parameters, "operation_id", query.OperationId);
+        var response = await GetSdkResponseAsync<SdkModelDownloadSnapshotResponse>(
+            $"{NodetoolConstants.Endpoints.SdkModelDownloadsV1}?{string.Join("&", parameters)}",
+            cancellationToken).ConfigureAwait(false);
+        if (!string.Equals(response.Version, "1", StringComparison.Ordinal))
+            throw new InvalidDataException(
+                "The SDK model download snapshot is unsupported.");
+        foreach (var state in response.Downloads)
+            ValidateModelDownloadState(state);
+        return response;
+    }
+
+    public async Task<SdkModelDownloadStateResponse> CancelModelDownloadAsync(
+        string operationId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(operationId);
+        using var message = JsonRequest(
+            NodetoolConstants.Endpoints.SdkModelDownloadCancelV1,
+            new SdkModelDownloadCancelRequest(operationId));
+        var response = await SendSdkResponseAsync<SdkModelDownloadStateResponse>(
+            message,
+            cancellationToken,
+            allowRetry: false).ConfigureAwait(false);
+        ValidateModelDownloadState(response);
+        return response;
+    }
+
+    private HttpRequestMessage JsonRequest(string endpoint, object value)
+        => new(HttpMethod.Post, endpoint)
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(value, _jsonOptions),
+                Encoding.UTF8,
+                NodetoolConstants.ContentTypes.Json)
+        };
+
+    private static void ValidateModelDownloadRequest(
+        SdkModelDownloadStartRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.RepositoryId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.ModelType);
+        ValidateModelScope(request.Scope, nameof(request));
+        if (request.Path != null &&
+            (request.AllowPatterns != null || request.IgnorePatterns != null))
+        {
+            throw new ArgumentException(
+                "Download patterns cannot be combined with an explicit path.",
+                nameof(request));
+        }
+    }
+
+    private static void ValidateModelScope(string scope, string argumentName)
+    {
+        if (scope is not (SdkModelScopes.Local or SdkModelScopes.Worker))
+            throw new ArgumentException(
+                $"Unsupported model scope '{scope}'.",
+                argumentName);
+    }
+
+    private static void ValidateModelDownloadState(
+        SdkModelDownloadStateResponse state)
+    {
+        if (!string.Equals(state.Version, "1", StringComparison.Ordinal) ||
+            string.IsNullOrWhiteSpace(state.OperationId) ||
+            string.IsNullOrWhiteSpace(state.RepositoryId) ||
+            string.IsNullOrWhiteSpace(state.ModelType))
+        {
+            throw new InvalidDataException(
+                "The SDK model download state is incomplete or unsupported.");
+        }
+    }
+
     private static void AddQueryParameter(
         ICollection<string> parameters,
         string name,
@@ -416,7 +514,8 @@ public class NodetoolClient : INodetoolClient
 
     private async Task<T> SendSdkResponseAsync<T>(
         HttpRequestMessage request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool allowRetry = true)
     {
         var requestId = Guid.NewGuid().ToString("N");
         var template = await ReadRequestTemplateAsync(
@@ -425,8 +524,11 @@ public class NodetoolClient : INodetoolClient
         HttpResponseMessage? response = null;
         Exception? lastTransportError = null;
 
+        var maximumAttempts = allowRetry
+            ? _readRetryPolicy.MaximumAttempts
+            : 1;
         for (var attempt = 1;
-             attempt <= _readRetryPolicy.MaximumAttempts;
+             attempt <= maximumAttempts;
              attempt++)
         {
             using var attemptRequest = CreateRequest(
@@ -437,7 +539,7 @@ public class NodetoolClient : INodetoolClient
                 response = await _httpClient.SendAsync(
                     attemptRequest,
                     cancellationToken).ConfigureAwait(false);
-                if (!_readRetryPolicy.ShouldRetry(
+                if (!allowRetry || !_readRetryPolicy.ShouldRetry(
                         response.StatusCode,
                         attempt))
                 {
@@ -454,7 +556,7 @@ public class NodetoolClient : INodetoolClient
             }
             catch (Exception exception) when (
                 exception is HttpRequestException or IOException &&
-                attempt < _readRetryPolicy.MaximumAttempts)
+                attempt < maximumAttempts)
             {
                 lastTransportError = exception;
                 await Task.Delay(

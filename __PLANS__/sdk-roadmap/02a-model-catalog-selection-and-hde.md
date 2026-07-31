@@ -82,17 +82,19 @@ new widget toolkit in C#.
       availability, provider, and scope.
 - [x] Implement the SDK endpoint over existing model services rather than
       duplicating provider and Hugging Face classification logic.
-- [ ] Add a versioned download operation and progress contract that reuses the
-      existing download manager and worker relay.
-- [ ] Support start, progress, completion, failure, cancellation, and retry
+- [x] Add a versioned local download operation and progress contract that
+      reuses the existing Hugging Face and Transformers.js downloaders.
+- [x] Extend the same contract to the existing worker catalog and download
+      relay, with explicit unavailable errors for absent or older workers.
+- [x] Support start, progress, completion, failure, cancellation, and retry
       without tying the public SDK contract to the current web UI transport.
-- [ ] Provide a current download-state snapshot so a newly opened or restarted
+- [x] Provide a current download-state snapshot so a newly opened or restarted
       HDE can recover in-progress downloads before subscribing to new events.
-- [ ] Advertise model-catalog and model-download capabilities through existing
+- [x] Advertise model-catalog and model-download capabilities through existing
       SDK capability negotiation.
 - [x] Keep existing tRPC, web, Electron, and execution call sites unchanged.
-- [ ] Add authorization, local/worker scope, bounded-response, and cancellation
-      tests.
+- [x] Add authorization-policy, local/worker scope, unavailable-worker,
+      bounded-response, relay, and cancellation tests.
 
 ### Gate
 
@@ -115,9 +117,9 @@ new widget toolkit in C#.
       object instead of reducing it to a display string.
 - [x] Add checked conversion between catalog selections and node/workflow input
       values.
-- [ ] Add `IModelDownloadService` with start, cancel, retry, and observable
+- [x] Add `IModelDownloadService` with start, cancel, retry, and observable
       progress/state updates.
-- [ ] Refresh the affected catalog scope after a successful download.
+- [x] Refresh the affected catalog scope after a successful download.
 - [x] Keep the implementation free of VL, HDE, Skia, Stride, and Unity
       dependencies.
 - [ ] Add tests for cache scoping, refresh failure, structured wire values,
