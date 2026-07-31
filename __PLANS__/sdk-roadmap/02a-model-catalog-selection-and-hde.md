@@ -122,7 +122,7 @@ new widget toolkit in C#.
 - [x] Refresh the affected catalog scope after a successful download.
 - [x] Keep the implementation free of VL, HDE, Skia, Stride, and Unity
       dependencies.
-- [ ] Add tests for cache scoping, refresh failure, structured wire values,
+- [x] Add tests for cache scoping, refresh failure, structured wire values,
       progress ordering, cancellation, and reconnect behavior.
 
 ### Gate
@@ -152,7 +152,7 @@ new widget toolkit in C#.
       unknown or the connected server lacks the model-catalog capability.
 - [ ] Avoid repeatedly invalidating all node/workflow factories for catalog
       entry-only changes.
-- [ ] Add focused tests for provider models, local models, HF subtypes,
+- [x] Add focused tests for provider models, local models, HF subtypes,
       structured serialization, label collisions, missing selections, and live
       catalog refresh.
 
@@ -179,9 +179,10 @@ new widget toolkit in C#.
       adds dependencies.
 - [x] Select a hybrid implementation: C# view-model/controller plus a small
       `VL.ImGui.Skia` UI patch hosted by the standard HDE `SkiaWindow`.
-- [ ] Build a minimal spike with target text, one model row, one action button,
-      and one progress bar; verify docking, resizing, input, disposal, and
-      Shift+F9 extension restart before building the real screen.
+- [x] Build and package a minimal spike with target text, one model row, one
+      action button, and one progress bar.
+- [ ] Interactively verify docking, resizing, input, disposal, and Shift+F9
+      extension restart before building the real screen.
 
 ### C# presentation layer
 

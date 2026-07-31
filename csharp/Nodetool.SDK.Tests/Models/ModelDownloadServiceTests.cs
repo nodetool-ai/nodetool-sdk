@@ -59,6 +59,19 @@ public class ModelDownloadServiceTests
             service.RetryAsync(retried));
     }
 
+    [Fact]
+    public async Task Cancel_UsesOperationIdentityAndStoresTerminalState()
+    {
+        var client = new FakeDownloadClient();
+        var service = new ModelDownloadService(client);
+
+        var cancelled = await service.CancelAsync("mdl_test");
+
+        Assert.Equal("mdl_test", Assert.Single(client.CancelledOperations));
+        Assert.Equal(SdkModelDownloadStatuses.Cancelled, cancelled.Status);
+        Assert.Equal(cancelled, Assert.Single(service.Snapshot.Downloads));
+    }
+
     private static ModelDescriptor Model()
     {
         using var document = JsonDocument.Parse(
@@ -123,6 +136,7 @@ public class ModelDownloadServiceTests
     private sealed class FakeDownloadClient : IModelDownloadClient
     {
         public List<SdkModelDownloadStartRequest> StartRequests { get; } = [];
+        public List<string> CancelledOperations { get; } = [];
         public Queue<SdkModelDownloadSnapshotResponse> Snapshots { get; } = [];
 
         public Task<SdkModelDownloadStateResponse> StartModelDownloadAsync(
@@ -141,7 +155,10 @@ public class ModelDownloadServiceTests
         public Task<SdkModelDownloadStateResponse> CancelModelDownloadAsync(
             string operationId,
             CancellationToken cancellationToken = default)
-            => Task.FromResult(State("cancelled", 25, 2));
+        {
+            CancelledOperations.Add(operationId);
+            return Task.FromResult(State("cancelled", 25, 2));
+        }
     }
 
     private sealed class FakeCatalog : IModelCatalog

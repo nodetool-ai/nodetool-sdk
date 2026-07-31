@@ -48,6 +48,72 @@ public class ModelCatalogTests
     }
 
     [Fact]
+    public async Task Refresh_RecoversAfterTransientFailure()
+    {
+        var client = new FakeModelCatalogClient(
+            Response("revision-1", Entry("openai", "ready_remote")),
+            Response("revision-2", Entry("anthropic", "ready_remote")));
+        using var catalog = new ModelCatalog(
+            client,
+            "https://server|alice|local",
+            cacheDuration: TimeSpan.Zero);
+        await catalog.RefreshAsync();
+        client.Error = new HttpRequestException("offline");
+        await catalog.RefreshAsync(force: true);
+
+        client.Error = null;
+        var recovered = await catalog.RefreshAsync(force: true);
+
+        Assert.Equal("revision-2", recovered.Revision);
+        Assert.False(recovered.IsStale);
+        Assert.Null(recovered.LastError);
+        Assert.Equal("anthropic", Assert.Single(recovered.Models).Provider);
+    }
+
+    [Fact]
+    public async Task CatalogInstances_DoNotShareSnapshotsAcrossCacheScopes()
+    {
+        var client = new FakeModelCatalogClient(
+            Response("revision-a", Entry("openai", "ready_remote")),
+            Response("revision-b", Entry("local", "ready_local")));
+        using var first = new ModelCatalog(
+            client,
+            "https://server-a|alice|local",
+            cacheDuration: TimeSpan.FromMinutes(5));
+        using var second = new ModelCatalog(
+            client,
+            "https://server-b|alice|local",
+            cacheDuration: TimeSpan.FromMinutes(5));
+
+        var firstSnapshot = await first.RefreshAsync();
+        var secondSnapshot = await second.RefreshAsync();
+
+        Assert.Equal("revision-a", firstSnapshot.Revision);
+        Assert.Equal("revision-b", secondSnapshot.Revision);
+        Assert.Equal(2, client.Cursors.Count);
+    }
+
+    [Fact]
+    public void Selection_PreservesCompleteStructuredWireValue()
+    {
+        var descriptor = Map(Entry("openai", "ready_remote")) with
+        {
+            WireValue = Json(
+                """{"type":"language_model","provider":"openai","id":"model","settings":{"quantization":"q4"},"tags":["chat","tools"]}""")
+        };
+
+        var value = Assert.IsType<Dictionary<string, object?>>(
+            descriptor.Select().ToInputValue());
+        var settings = Assert.IsType<Dictionary<string, object?>>(
+            value["settings"]);
+        var tags = Assert.IsAssignableFrom<IReadOnlyList<object?>>(
+            value["tags"]);
+
+        Assert.Equal("q4", settings["quantization"]);
+        Assert.Equal(new object?[] { "chat", "tools" }, tags);
+    }
+
+    [Fact]
     public void Selection_RejectsMismatchedWireType()
     {
         var descriptor = Map(Entry("openai", "ready_remote")) with

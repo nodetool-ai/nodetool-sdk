@@ -56,6 +56,15 @@ Once connected, open the node menu (double-click or right-click in a patch):
 
 Each workflow or node execution input is named **Run**. Connect your vvvv logic, set parameter pins, and trigger a run.
 
+### Model manager extension (preview)
+
+The package includes an optional **Nodetool Models** editor extension. Open it
+from the vvvv extension menu (shortcut: `Alt+M`). The current preview is the
+first validation surface for the standard dockable HDE/ImGui window lifecycle;
+live catalog rows and download actions will be connected after the interactive
+spike is accepted. The extension is editor-only and is not required for
+generated nodes, workflow execution, or exported applications.
+
 ## Workflow inputs and outputs
 
 A workflow's vvvv pins come from its **public interface** in NodeTool:

@@ -44,6 +44,10 @@ public sealed class VlDocumentTests
         => CompileDocumentAsync("vvvv/VL.Nodetool.vl");
 
     [Test]
+    public Task HdeDocumentCompilesWithoutErrors()
+        => CompileDocumentAsync("vvvv/VL.Nodetool.HDE.vl");
+
+    [Test]
     public Task HelpDocumentCompilesWithoutErrors()
         => CompileDocumentAsync("vvvv/help/Nodetool_Help.vl");
 
@@ -78,6 +82,13 @@ public sealed class VlDocumentTests
             File.Exists(documentPath),
             Is.True,
             $"Package document is missing: {documentPath}");
+        var hdeDocumentPath = Path.Combine(
+            isolatedRoot,
+            "VL.Nodetool.HDE.vl");
+        Assert.That(
+            File.Exists(hdeDocumentPath),
+            Is.True,
+            "Package HDE document is missing.");
         var document = XDocument.Load(documentPath);
         var factoryLocations = document
             .Descendants()
@@ -102,6 +113,9 @@ public sealed class VlDocumentTests
             preCompilePackages: false);
         await environment.LoadAndTestAsync(
             documentPath,
+            runEntryPoint: false);
+        await environment.LoadAndTestAsync(
+            hdeDocumentPath,
             runEntryPoint: false);
 
         // Managed assemblies loaded by vvvv remain locked on Windows until

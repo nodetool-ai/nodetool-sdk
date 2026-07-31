@@ -96,6 +96,59 @@ public sealed class DynamicModelEnumFactoryTests
         }
     }
 
+    [Theory]
+    [InlineData("language_model")]
+    [InlineData("image_model")]
+    [InlineData("llama_model")]
+    [InlineData("hf.text_generation")]
+    [InlineData("tjs.image_classification")]
+    public void AuthoritativeModelTypes_MapToStableDynamicEnums(
+        string compatibility)
+    {
+        try
+        {
+            DynamicModelEnumFactory.UpdateCatalog(Snapshot(
+                Model(
+                    "model",
+                    "Compatible model",
+                    "local",
+                    compatibility,
+                    SdkModelAvailability.ReadyLocal)));
+
+            var nodeType = VlTypeMapping.MapNodeInputType(
+                new NodeTypeDefinition { Type = compatibility }).Item1;
+            var workflowType = WorkflowVlTypeMapping.GetInputTypeAndDefault(
+                new TypeMetadata { Type = compatibility }).Type;
+
+            Assert.NotNull(nodeType);
+            Assert.Same(nodeType, workflowType);
+            Assert.True(typeof(IDynamicEnum).IsAssignableFrom(nodeType));
+        }
+        finally
+        {
+            DynamicModelEnumFactory.ResetCatalog();
+        }
+    }
+
+    [Fact]
+    public void MissingCatalog_UsesObjectFallbackWithoutGuessing()
+    {
+        DynamicModelEnumFactory.ResetCatalog();
+
+        Assert.Equal(
+            typeof(object),
+            VlTypeMapping.MapNodeInputType(
+                new NodeTypeDefinition { Type = "language_model" }).Item1);
+        Assert.Equal(
+            typeof(object),
+            WorkflowVlTypeMapping.GetInputTypeAndDefault(
+                new TypeMetadata { Type = "language_model" }).Type);
+        Assert.Equal(
+            typeof(object),
+            VlTypeMapping.MapNodeInputType(
+                new NodeTypeDefinition { Type = "custom_unknown_model" }).Item1);
+    }
+
     private static ModelCatalogSnapshot Snapshot(params ModelDescriptor[] models)
         => new(
             Guid.NewGuid().ToString("N"),
@@ -108,12 +161,14 @@ public sealed class DynamicModelEnumFactoryTests
     private static ModelDescriptor Model(
         string id,
         string name,
-        string provider)
+        string provider,
+        string compatibility = "language_model",
+        string availability = SdkModelAvailability.ReadyRemote)
         => new(
-            $"language_model|{provider}|{id}|",
+            $"{compatibility}|{provider}|{id}|",
             name,
-            "language_model",
-            "ready_remote",
+            compatibility,
+            availability,
             false,
             "local",
             provider,
@@ -123,7 +178,7 @@ public sealed class DynamicModelEnumFactoryTests
             Array.Empty<string>(),
             null,
             Json(
-                $$"""{"type":"language_model","provider":"{{provider}}","id":"{{id}}","name":"{{name}}"}"""));
+                $$"""{"type":"{{compatibility}}","provider":"{{provider}}","id":"{{id}}","name":"{{name}}"}"""));
 
     private static JsonElement Json(string json)
     {

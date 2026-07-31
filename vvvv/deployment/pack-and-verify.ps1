@@ -68,6 +68,7 @@ if (-not (Test-Path -LiteralPath $packagePath)) {
 
 $requiredEntries = @(
     "VL.Nodetool.vl",
+    "VL.Nodetool.HDE.vl",
     "help/help.xml",
     "help/Nodetool_Help.vl",
     "lib/net8.0/Nodetool.SDK.VL.dll",
