@@ -377,4 +377,25 @@ public class ExecutionSessionContractTests
         Assert.Equal("only-active", first.GetLatestOutput("output", "value")?.AsString());
         Assert.Null(second.GetLatestOutput("output", "value"));
     }
+
+    [Fact]
+    public void UncorrelatedProtocolRejection_FailsTheOnlyActiveSession()
+    {
+        using var client = new NodeToolExecutionClient(new NodeToolClientOptions
+        {
+            WorkerWebSocketUrl = new Uri("ws://127.0.0.1:7777/ws")
+        });
+        var session = client.CreateSession("job-1", "workflow-1");
+
+        client.RouteExecutionMessage(new Dictionary<string, object?>
+        {
+            ["error"] = "invalid_command",
+            ["details"] = "Malformed 'run_job' data"
+        });
+
+        Assert.True(session.IsCompleted);
+        Assert.Equal("failed", session.CurrentStatus);
+        Assert.Contains("Malformed 'run_job' data", session.ErrorMessage);
+        Assert.Contains("invalid_command", client.LastError);
+    }
 }

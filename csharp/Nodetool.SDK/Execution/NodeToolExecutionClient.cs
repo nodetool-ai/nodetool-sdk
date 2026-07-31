@@ -947,6 +947,9 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
             return;
         }
 
+        if (TryHandleProtocolRejection(message))
+            return;
+
         switch (message)
         {
             case JobUpdate jobUpdate:
@@ -1025,6 +1028,52 @@ public class NodeToolExecutionClient : INodeToolExecutionClient
                 }
                 break;
         }
+    }
+
+    private bool TryHandleProtocolRejection(object message)
+    {
+        if (message is not Dictionary<string, object?> envelope ||
+            !envelope.TryGetValue("error", out var errorValue) ||
+            errorValue is not string errorCode ||
+            errorCode is not ("invalid_command" or "invalid_frame" or "invalid_message"))
+        {
+            return false;
+        }
+
+        if (envelope.TryGetValue("request_id", out var requestId) &&
+            requestId is string { Length: > 0 })
+        {
+            return false;
+        }
+
+        var details = envelope.TryGetValue("details", out var detailsValue)
+            ? detailsValue?.ToString()
+            : envelope.TryGetValue("message", out var messageValue)
+                ? messageValue?.ToString()
+                : null;
+        var error = string.IsNullOrWhiteSpace(details)
+            ? errorCode
+            : $"{errorCode}: {details}";
+        error = NodeToolDiagnosticRedactor.RedactText(
+            error,
+            _resolvedAuthToken);
+        LastError = error;
+        _logger.LogError("NodeTool WebSocket protocol rejection: {Error}", error);
+
+        ExecutionSession? session = null;
+        if (envelope.TryGetValue("job_id", out var jobIdValue) &&
+            jobIdValue is string jobId)
+        {
+            _sessions.TryGetValue(jobId, out session);
+        }
+        session ??= GetOnlyBoundSession();
+        session?.ProcessJobUpdate(new JobUpdate
+        {
+            job_id = session.JobId,
+            status = "failed",
+            error = error
+        });
+        return true;
     }
 
     private ExecutionSession? GetOnlyBoundSession()
