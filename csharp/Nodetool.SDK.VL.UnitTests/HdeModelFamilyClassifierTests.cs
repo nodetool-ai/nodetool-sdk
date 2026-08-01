@@ -86,6 +86,11 @@ public sealed class HdeModelFamilyClassifierTests
             "Completed",
             "image_model",
             SdkModelAvailability.Downloadable);
+        var cancelled = Model(
+            "cancelled",
+            "Cancelled",
+            "image_model",
+            SdkModelAvailability.Downloadable);
         var download = new ModelDownloadState(
             "operation",
             SdkModelScopes.Local,
@@ -109,12 +114,21 @@ public sealed class HdeModelFamilyClassifierTests
             DownloadedBytes = 100,
             UpdatedAt = DateTimeOffset.UtcNow.AddMilliseconds(1)
         };
+        var cancelledDownload = download with
+        {
+            OperationId = "cancelled-operation",
+            RepositoryId = cancelled.RepositoryId!,
+            Status = SdkModelDownloadStatuses.Cancelled,
+            DownloadedBytes = 0,
+            Error = null,
+            UpdatedAt = DateTimeOffset.UtcNow.AddMilliseconds(2)
+        };
 
         var view = HdeModelListProjector.Project(
-            Catalog(downloadable, running, completed),
+            Catalog(downloadable, running, completed, cancelled),
             new ModelDownloadSnapshot(
                 SdkModelScopes.Local,
-                [download, completedDownload],
+                [download, completedDownload, cancelledDownload],
                 DateTimeOffset.UtcNow),
             HdeModelFamily.Image,
             "",
@@ -133,6 +147,10 @@ public sealed class HdeModelFamilyClassifierTests
         var completedRow = Assert.Single(view.Rows, row => row.Key == completed.Key);
         Assert.Equal("Finalizing", completedRow.ActionLabel);
         Assert.False(completedRow.CanAct);
+
+        var cancelledRow = Assert.Single(view.Rows, row => row.Key == cancelled.Key);
+        Assert.Equal("Retry", cancelledRow.ActionLabel);
+        Assert.Empty(cancelledRow.ProgressText);
     }
 
     [Fact]

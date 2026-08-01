@@ -1,6 +1,8 @@
 using System.Numerics;
 using ImGuiNET;
 using Nodetool.SDK.VL.Hde;
+using Nodetool.SDK.VL.Services;
+using Nodetool.SDK.VL.Utilities;
 using VL.Core.Import;
 using ImGui = ImGuiNET.ImGui;
 using ImGuiContext = VL.ImGui.Context;
@@ -28,6 +30,7 @@ public sealed class ModelManagerView : IDisposable
     private static readonly int[] PageSizes = [50, 100, 200];
     private readonly HdeModelManagerNode _state = new();
     private string _search = "";
+    private string? _lastRenderError;
 
     /// <summary>
     /// Renders the manager within the active VL.ImGui region.
@@ -37,18 +40,34 @@ public sealed class ModelManagerView : IDisposable
         out ImGuiContext? output)
     {
         output = context;
-        _state.Update();
-        if (context == null) return;
+        try
+        {
+            _state.Update();
+            if (context == null) return;
 
-        using var frame = context.MakeCurrent();
-        Render(_state.ReadState());
+            using var frame = context.MakeCurrent();
+            Render(_state.ReadState());
+            _lastRenderError = null;
+        }
+        catch (Exception exception)
+        {
+            var error = $"{exception.GetType().Name}: " +
+                        VlLog.SafeError(
+                            exception,
+                            NodeToolClientProvider.CurrentAuthToken);
+            if (!string.Equals(_lastRenderError, error, StringComparison.Ordinal))
+            {
+                _lastRenderError = error;
+                VlLog.Error($"model manager view failed: {error}");
+            }
+        }
     }
 
     private void Render(HdeModelPageSnapshot view)
     {
         ImGui.TextUnformatted(view.Target);
         RenderFamilyTabs(view.Family);
-        RenderToolbar(view);
+        RenderToolbar();
 
         if (!string.IsNullOrWhiteSpace(view.Notice))
             ImGui.TextWrapped(view.Notice);
@@ -63,17 +82,22 @@ public sealed class ModelManagerView : IDisposable
                     ImGuiTableFlags.SizingStretchProp;
         if (ImGui.BeginTable("##nodetool-models", 4, flags, new Vector2(0f, tableHeight)))
         {
-            ImGui.TableSetupScrollFreeze(0, 1);
-            ImGui.TableSetupColumn("Model", ImGuiTableColumnFlags.WidthStretch, 2.5f);
-            ImGui.TableSetupColumn("Type / Source", ImGuiTableColumnFlags.WidthStretch, 1.8f);
-            ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthStretch, 1.7f);
-            ImGui.TableSetupColumn("Action", ImGuiTableColumnFlags.WidthFixed, 92f);
-            ImGui.TableHeadersRow();
+            try
+            {
+                ImGui.TableSetupScrollFreeze(0, 1);
+                ImGui.TableSetupColumn("Model", ImGuiTableColumnFlags.WidthStretch, 2.5f);
+                ImGui.TableSetupColumn("Source / Type", ImGuiTableColumnFlags.WidthStretch, 1.8f);
+                ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthStretch, 1.7f);
+                ImGui.TableSetupColumn("Action", ImGuiTableColumnFlags.WidthFixed, 92f);
+                ImGui.TableHeadersRow();
 
-            foreach (var row in view.Rows)
-                RenderRow(row);
-
-            ImGui.EndTable();
+                foreach (var row in view.Rows)
+                    RenderRow(row);
+            }
+            finally
+            {
+                ImGui.EndTable();
+            }
         }
 
         RenderPagination(view);
@@ -87,16 +111,22 @@ public sealed class ModelManagerView : IDisposable
             var selected = string.Equals(label, selectedFamily, StringComparison.Ordinal);
             if (selected)
                 ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetStyle().Colors[(int)ImGuiCol.ButtonActive]);
-            if (ImGui.SmallButton($"{label}##family-{family}"))
-                _state.SelectFamily(family);
-            if (selected)
-                ImGui.PopStyleColor();
+            try
+            {
+                if (ImGui.SmallButton($"{label}##family-{family}"))
+                    _state.SelectFamily(family);
+            }
+            finally
+            {
+                if (selected)
+                    ImGui.PopStyleColor();
+            }
             if (family != Families[^1])
                 ImGui.SameLine();
         }
     }
 
-    private void RenderToolbar(HdeModelPageSnapshot view)
+    private void RenderToolbar()
     {
         ImGui.SetNextItemWidth(Math.Max(120f, ImGui.GetContentRegionAvail().X - 92f));
         if (ImGui.InputTextWithHint("##model-search", "Search models...", ref _search, 256))
@@ -104,9 +134,6 @@ public sealed class ModelManagerView : IDisposable
         ImGui.SameLine();
         if (ImGui.Button("Refresh##models"))
             _state.Refresh();
-
-        if (!string.Equals(_search, view.Search, StringComparison.Ordinal))
-            _state.SetSearch(_search);
     }
 
     private void RenderRow(HdeModelRow row)
@@ -144,10 +171,16 @@ public sealed class ModelManagerView : IDisposable
             ImGui.TableSetColumnIndex(3);
             if (!row.CanAct)
                 ImGui.BeginDisabled();
-            if (ImGui.Button($"{row.ActionLabel}##action", new Vector2(-1f, 0f)) && row.CanAct)
-                _state.Act(row.Key);
-            if (!row.CanAct)
-                ImGui.EndDisabled();
+            try
+            {
+                if (ImGui.Button($"{row.ActionLabel}##action", new Vector2(-1f, 0f)) && row.CanAct)
+                    _state.Act(row.Key);
+            }
+            finally
+            {
+                if (!row.CanAct)
+                    ImGui.EndDisabled();
+            }
         }
         finally
         {
@@ -163,40 +196,53 @@ public sealed class ModelManagerView : IDisposable
         ImGui.TextUnformatted(range);
         ImGui.SameLine();
 
-        if (view.PageNumber <= 1)
-            ImGui.BeginDisabled();
-        if (ImGui.SmallButton("Previous##page") && view.PageNumber > 1)
+        if (SmallButton("Previous##page", view.PageNumber > 1))
             _state.PreviousPage();
-        if (view.PageNumber <= 1)
-            ImGui.EndDisabled();
 
         ImGui.SameLine();
         ImGui.TextUnformatted($"Page {view.PageNumber} / {view.PageCount}");
         ImGui.SameLine();
 
-        if (view.PageNumber >= view.PageCount)
-            ImGui.BeginDisabled();
-        if (ImGui.SmallButton("Next##page") && view.PageNumber < view.PageCount)
+        if (SmallButton("Next##page", view.PageNumber < view.PageCount))
             _state.NextPage();
-        if (view.PageNumber >= view.PageCount)
-            ImGui.EndDisabled();
 
         ImGui.SameLine();
         ImGui.SetNextItemWidth(76f);
         if (ImGui.BeginCombo("##page-size", view.PageSize.ToString()))
         {
-            foreach (var size in PageSizes)
+            try
             {
-                var selected = size == view.PageSize;
-                if (ImGui.Selectable(size.ToString(), selected))
-                    _state.SetPageSize(size);
-                if (selected)
-                    ImGui.SetItemDefaultFocus();
+                foreach (var size in PageSizes)
+                {
+                    var selected = size == view.PageSize;
+                    if (ImGui.Selectable(size.ToString(), selected))
+                        _state.SetPageSize(size);
+                    if (selected)
+                        ImGui.SetItemDefaultFocus();
+                }
             }
-            ImGui.EndCombo();
+            finally
+            {
+                ImGui.EndCombo();
+            }
         }
         ImGui.SameLine();
         ImGui.TextDisabled("per page");
+    }
+
+    private static bool SmallButton(string label, bool enabled)
+    {
+        if (!enabled)
+            ImGui.BeginDisabled();
+        try
+        {
+            return ImGui.SmallButton(label) && enabled;
+        }
+        finally
+        {
+            if (!enabled)
+                ImGui.EndDisabled();
+        }
     }
 
     void IDisposable.Dispose() => _state.Dispose();

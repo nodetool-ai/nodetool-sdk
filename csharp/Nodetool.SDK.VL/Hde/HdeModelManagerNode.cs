@@ -5,7 +5,6 @@ using Nodetool.SDK.VL.Utilities;
 
 namespace Nodetool.SDK.VL.Hde;
 
-
 internal sealed class HdeModelManagerNode : IDisposable
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(500);
@@ -257,6 +256,7 @@ internal sealed class HdeModelManagerNode : IDisposable
         CancellationTokenSource monitor)
     {
         var token = monitor.Token;
+        var checkForNewDownloads = false;
         try
         {
             while (true)
@@ -265,7 +265,11 @@ internal sealed class HdeModelManagerNode : IDisposable
                 var downloads = await service.RefreshAsync(token).ConfigureAwait(false);
                 lock (_stateLock)
                     UpdateViewLocked();
-                if (!HasActiveDownloads(downloads)) break;
+                if (!HasActiveDownloads(downloads))
+                {
+                    checkForNewDownloads = true;
+                    break;
+                }
             }
 
             var catalog = await VlModelCatalogService
@@ -295,6 +299,8 @@ internal sealed class HdeModelManagerNode : IDisposable
                     _monitorCancellation = null;
             }
             monitor.Dispose();
+            if (checkForNewDownloads)
+                StartMonitorIfNeeded();
         }
     }
 

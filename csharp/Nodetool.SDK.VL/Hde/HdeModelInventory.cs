@@ -13,6 +13,7 @@ internal enum HdeModelFamily
     ThreeD,
     Other
 }
+
 internal static class HdeModelFamilyClassifier
 {
     public static HdeModelFamily Classify(string compatibility)
@@ -224,7 +225,7 @@ internal static class HdeModelListProjector
                 "Retry",
                 (float)(download.Progress ?? 0d),
                 string.IsNullOrWhiteSpace(download.Error)
-                    ? download.Status
+                    ? ""
                     : download.Error,
                 true,
                 false,
