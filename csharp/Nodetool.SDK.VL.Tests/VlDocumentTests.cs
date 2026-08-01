@@ -72,6 +72,14 @@ public sealed class VlDocumentTests
         Assert.That(pins, Does.Contain(("Context", "InputPin")));
         Assert.That(pins, Does.Contain(("Update", "ApplyPin")));
         Assert.That(pins.Any(pin => pin.Kind == "OutputPin"), Is.False);
+        Assert.That(
+            modelManagerNode
+                .Elements()
+                .Single(element =>
+                    element.Name.LocalName == "Pin" &&
+                    (string?)element.Attribute("Name") == "Update")
+                .Attribute("DefaultValue")?.Value,
+            Is.EqualTo("True"));
     }
 
     [Test]

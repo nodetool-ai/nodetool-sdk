@@ -60,6 +60,8 @@ internal static class DynamicModelEnumFactory
                 normalized,
                 new Dictionary<string, object>(StringComparer.Ordinal),
                 new Dictionary<string, object>(StringComparer.Ordinal)));
+        if (mapping.VisibleWireValues.Count == 0)
+            return null;
         ConfigureDefinition(markerType, mapping.VisibleWireValues);
         return enumType;
     }
@@ -100,8 +102,19 @@ internal static class DynamicModelEnumFactory
     {
         if (!IsAppHostAvailable())
             return null;
-        return Activator.CreateInstance(enumType, "");
+        var entry = GetDefaultEntry(enumType);
+        return entry.Length == 0
+            ? null
+            : Activator.CreateInstance(enumType, entry);
     }
+
+    internal static string GetDefaultEntry<TMarker>()
+        => GetDefaultEntry(typeof(ModelDynamicEnum<TMarker>));
+
+    private static string GetDefaultEntry(Type enumType)
+        => ByType.TryGetValue(enumType, out var mapping)
+            ? mapping.VisibleWireValues.Keys.FirstOrDefault() ?? ""
+            : "";
 
     public static bool TryToWireValue(object? value, out object? wireValue)
     {
@@ -221,7 +234,9 @@ internal static class DynamicModelEnumFactory
                      StringComparer.OrdinalIgnoreCase))
         {
             var source = model.Provider ?? model.RepositoryId ?? model.Id;
-            var label = model.DisplayName;
+            var label = string.IsNullOrWhiteSpace(model.DisplayName)
+                ? model.RepositoryId ?? model.Id ?? "Model"
+                : model.DisplayName.Trim();
             if (entries.ContainsKey(label))
                 label = $"{model.DisplayName} ({source})";
             var suffix = 2;
@@ -329,6 +344,10 @@ public sealed class ModelDynamicEnum<TMarker>
         ModelDynamicEnum<TMarker>,
         ModelDynamicEnumDefinition<TMarker>>
 {
-    public ModelDynamicEnum() : base("") { }
+    public ModelDynamicEnum()
+        : base(DynamicModelEnumFactory.GetDefaultEntry<TMarker>())
+    {
+    }
+
     public ModelDynamicEnum(string value) : base(value) { }
 }

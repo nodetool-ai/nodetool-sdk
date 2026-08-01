@@ -37,6 +37,10 @@ public sealed class DynamicModelEnumFactoryTests
                 "language_model");
             Assert.NotNull(firstType);
             Assert.True(typeof(IDynamicEnum).IsAssignableFrom(firstType));
+            Assert.Equal(
+                "GPT Test",
+                Assert.IsAssignableFrom<IDynamicEnum>(
+                    Activator.CreateInstance(firstType)).Value);
             Assert.Same(
                 firstType,
                 VlTypeMapping.MapNodeInputType(
@@ -80,6 +84,46 @@ public sealed class DynamicModelEnumFactoryTests
             Assert.Equal(
                 "first",
                 Assert.IsType<Dictionary<string, object?>>(preserved)["id"]);
+        }
+        finally
+        {
+            DynamicModelEnumFactory.ResetCatalog();
+        }
+    }
+
+    [Fact]
+    public void CompatibilityWithoutModels_UsesObjectFallback()
+    {
+        try
+        {
+            DynamicModelEnumFactory.UpdateCatalog(Snapshot(
+                Model("language", "Language", "local")));
+
+            Assert.Null(DynamicModelEnumFactory.GetOrCreate("image_model"));
+            Assert.Equal(
+                typeof(object),
+                VlTypeMapping.MapNodeInputType(
+                    new NodeTypeDefinition { Type = "image_model" }).Item1);
+        }
+        finally
+        {
+            DynamicModelEnumFactory.ResetCatalog();
+        }
+    }
+
+    [Fact]
+    public void EmptyDisplayName_UsesNonEmptyFallbackEntry()
+    {
+        try
+        {
+            DynamicModelEnumFactory.UpdateCatalog(Snapshot(
+                Model("fallback-id", "", "local")));
+            var type = DynamicModelEnumFactory.GetOrCreate("language_model")!;
+
+            Assert.Equal(
+                "fallback-id",
+                Assert.IsAssignableFrom<IDynamicEnum>(
+                    Activator.CreateInstance(type)).Value);
         }
         finally
         {

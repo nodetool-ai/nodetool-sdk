@@ -186,7 +186,7 @@
                       <Choice Kind="ProcessAppFlag" Name="ModelManagerView" />
                     </p:NodeReference>
                     <Pin Id="HDE0000000000000000004" Name="Context" Kind="InputPin" />
-                    <Pin Id="HDE0000000000000000119" Name="Update" Kind="ApplyPin" />
+                    <Pin Id="HDE0000000000000000119" Name="Update" Kind="ApplyPin" DefaultValue="True" />
                   </Node>
                   <Patch Id="P0d3LMaNag3rUiSp1kE00Z" Name="Dispose" />
                 </Patch>
