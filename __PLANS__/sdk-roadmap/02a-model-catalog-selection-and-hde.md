@@ -251,6 +251,8 @@ new widget toolkit in C#.
 - [x] Review HDE/catalog concurrency: publish coherent frame snapshots, retain
       explicit refreshes, isolate authenticated cache scopes, and contain
       reset/disposal races without adding UI or transport abstractions.
+- [x] Suppress identical dynamic-model enum updates so catalog polling and HDE
+      refreshes do not trigger redundant vvvv recompilations.
 - [ ] Run an interactive vvvv pass covering language, image, HF, llama, and
       missing/unavailable model selections.
 - [ ] Test a connected remote worker/cloud target so downloads occur on the

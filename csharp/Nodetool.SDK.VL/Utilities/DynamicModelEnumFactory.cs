@@ -64,20 +64,22 @@ internal static class DynamicModelEnumFactory
         return enumType;
     }
 
-    public static void UpdateCatalog(ModelCatalogSnapshot snapshot)
+    public static bool UpdateCatalog(ModelCatalogSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         lock (CatalogUpdateLock)
         {
             _hasCatalog = snapshot.LastSuccessfulRefreshUtc.HasValue;
             if (!_hasCatalog)
-                return;
+                return false;
+
+            var changed = false;
 
             foreach (var group in snapshot.Models
                          .Where(model => model.IsReady && IsModelType(model.Compatibility))
                          .GroupBy(model => model.Compatibility, StringComparer.OrdinalIgnoreCase))
             {
-                UpdateCompatibility(group.Key, group.ToArray());
+                changed |= UpdateCompatibility(group.Key, group.ToArray());
             }
 
             var active = snapshot.Models
@@ -87,8 +89,10 @@ internal static class DynamicModelEnumFactory
             foreach (var pair in ByType)
             {
                 if (!active.Contains(pair.Value.Compatibility))
-                    UpdateCompatibility(pair.Value.Compatibility, []);
+                    changed |= UpdateCompatibility(pair.Value.Compatibility, []);
             }
+
+            return changed;
         }
     }
 
@@ -162,7 +166,7 @@ internal static class DynamicModelEnumFactory
         }
     }
 
-    private static void UpdateCompatibility(
+    private static bool UpdateCompatibility(
         string compatibility,
         IReadOnlyList<ModelDescriptor> models)
     {
@@ -172,6 +176,9 @@ internal static class DynamicModelEnumFactory
         var enumType = typeof(ModelDynamicEnum<>).MakeGenericType(markerType);
         ByType.TryGetValue(enumType, out var previous);
         var visible = CreateEntries(models);
+        if (previous != null && EntriesEqual(previous.VisibleWireValues, visible))
+            return false;
+
         var historical = previous?.HistoricalWireValues.ToDictionary(
                 pair => pair.Key,
                 pair => pair.Value,
@@ -182,6 +189,27 @@ internal static class DynamicModelEnumFactory
         var mapping = new EnumMapping(normalized, visible, historical);
         ByType[enumType] = mapping;
         ConfigureDefinition(markerType, visible);
+        return true;
+    }
+
+    private static bool EntriesEqual(
+        IReadOnlyDictionary<string, object> left,
+        IReadOnlyDictionary<string, object> right)
+    {
+        if (left.Count != right.Count)
+            return false;
+        foreach (var pair in left)
+        {
+            if (!right.TryGetValue(pair.Key, out var value) ||
+                !string.Equals(
+                    System.Text.Json.JsonSerializer.Serialize(pair.Value),
+                    System.Text.Json.JsonSerializer.Serialize(value),
+                    StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static IReadOnlyDictionary<string, object> CreateEntries(

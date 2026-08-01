@@ -11,6 +11,22 @@ namespace Nodetool.SDK.VL.UnitTests;
 public sealed class DynamicModelEnumFactoryTests
 {
     [Fact]
+    public void IdenticalCatalogSnapshot_DoesNotRepublishEnumDefinitions()
+    {
+        try
+        {
+            var snapshot = Snapshot(Model("same", "Same", "openai"));
+
+            Assert.True(DynamicModelEnumFactory.UpdateCatalog(snapshot));
+            Assert.False(DynamicModelEnumFactory.UpdateCatalog(snapshot));
+        }
+        finally
+        {
+            DynamicModelEnumFactory.ResetCatalog();
+        }
+    }
+
+    [Fact]
     public void CatalogEntries_UseStableTypeAndStructuredWireValues()
     {
         try
