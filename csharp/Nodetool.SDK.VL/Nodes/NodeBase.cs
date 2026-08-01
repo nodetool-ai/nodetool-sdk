@@ -19,7 +19,10 @@ using Nodetool.SDK.Execution;
 using Nodetool.SDK.Types.Assets;
 using Nodetool.SDK.Values;
 using Nodetool.SDK.VL.Services;
+using Nodetool.SDK.VL.Streaming;
 using Nodetool.SDK.VL.Utilities;
+using SkiaSharp;
+using VL.Lib.Basics.Audio;
 
 namespace Nodetool.SDK.VL.Nodes
 {
@@ -36,6 +39,8 @@ namespace Nodetool.SDK.VL.Nodes
 
         private readonly object _lock = new();
         private readonly Dictionary<string, StringBuilder> _chunkBuffers = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, NodeToolAudioSource>
+            _audioSourcesByOutputName = new(StringComparer.Ordinal);
         private readonly Queue<string> _debugLines = new();
         private const int DebugMaxLines = 30;
         
@@ -108,6 +113,17 @@ namespace Nodetool.SDK.VL.Nodes
                     var pin = new InternalPin(output.Name, vlType ?? typeof(string), defaultValue);
                     _outputPins[output.Name] = pin;
                 }
+            }
+            foreach (var audioPin in NodeAudioSourcePins.Create(
+                         _nodeMetadata,
+                         _outputPins.Keys))
+            {
+                var source = new NodeToolAudioSource();
+                _outputPins[audioPin.PinName] = new InternalPin(
+                    audioPin.PinName,
+                    typeof(IAudioSource),
+                    source);
+                _audioSourcesByOutputName[audioPin.Output.Name] = source;
             }
 
             // Add standard status outputs
@@ -294,6 +310,9 @@ namespace Nodetool.SDK.VL.Nodes
                 _rerunRequested = false;
                 _cancelRequestedByRestart = false;
 
+                foreach (var source in _audioSourcesByOutputName.Values)
+                    source.Reset();
+
                 _manualCancelCts?.Dispose();
                 _manualCancelCts = new CancellationTokenSource();
             }
@@ -334,7 +353,7 @@ namespace Nodetool.SDK.VL.Nodes
                     .ConfigureAwait(false);
                 var hasMediaInputs =
                     _nodeMetadata.Properties?.Any(property =>
-                        ContainsFileBackedAssetReference(property.Type)) ==
+                        ContainsPreparedMediaReference(property.Type)) ==
                     true;
                 var useTemporaryAssetUploads = hasMediaInputs &&
                     await NodeToolClientProvider
@@ -408,6 +427,40 @@ namespace Nodetool.SDK.VL.Nodes
 
                     session.StreamReceived += update =>
                     {
+                        if (string.Equals(
+                                update.ContentType,
+                                "audio",
+                                StringComparison.OrdinalIgnoreCase))
+                        {
+                            NodeToolAudioSource? source = null;
+                            if (!string.IsNullOrWhiteSpace(update.OutputName))
+                            {
+                                _audioSourcesByOutputName.TryGetValue(
+                                    update.OutputName,
+                                    out source);
+                            }
+                            if (source == null &&
+                                _audioSourcesByOutputName.Count == 1)
+                            {
+                                source = _audioSourcesByOutputName.Values.First();
+                            }
+                            if (source != null)
+                            {
+                                var previousError = source.LastError;
+                                if (!source.TryPush(update, out var error) &&
+                                    !string.Equals(
+                                        previousError,
+                                        error,
+                                        StringComparison.Ordinal))
+                                {
+                                    VlLog.Error(
+                                        $"Audio stream '{update.OutputName ?? update.NodeId}' " +
+                                        $"could not be decoded: {error}");
+                                }
+                            }
+                            return;
+                        }
+
                         if (update.Source != ExecutionStreamSource.StandaloneChunk ||
                             !IsTextContent(update.ContentType, update.Content) ||
                             _nodeMetadata.Outputs?.Count != 1)
@@ -582,6 +635,7 @@ namespace Nodetool.SDK.VL.Nodes
                     .ToArray());
                 token = token switch
                 {
+                    "imageref" => "image",
                     "audioref" => "audio",
                     "videoref" => "video",
                     "documentref" => "document",
@@ -593,7 +647,7 @@ namespace Nodetool.SDK.VL.Nodes
                     _ => token
                 };
                 if (token is
-                    "audio" or "video" or "document" or "asset" or "folder" or
+                    "image" or "audio" or "video" or "document" or "asset" or "folder" or
                     "model_ref" or "model_3d" or "font")
                 {
                     return token;
@@ -603,7 +657,7 @@ namespace Nodetool.SDK.VL.Nodes
             return "asset";
         }
 
-        private static async Task<object> ConvertNodeInputValueAsync(
+        internal static async Task<object> ConvertNodeInputValueAsync(
             string inputName,
             NodeTypeDefinition? nodeType,
             object? rawValue,
@@ -633,7 +687,17 @@ namespace Nodetool.SDK.VL.Nodes
                 return converted.ToArray();
             }
 
-            if (VlTypeMapping.IsFileBackedAssetReference(nodeType))
+            if (type == "tool_name")
+            {
+                return new Dictionary<string, object?>(StringComparer.Ordinal)
+                {
+                    ["type"] = "tool_name",
+                    ["name"] = rawValue?.ToString()?.Trim() ?? ""
+                };
+            }
+
+            if (VlTypeMapping.IsImageReference(nodeType) ||
+                VlTypeMapping.IsFileBackedAssetReference(nodeType))
             {
                 return await VlMediaInputAdapter.PrepareAsync(
                     inputName,
@@ -646,15 +710,16 @@ namespace Nodetool.SDK.VL.Nodes
             return rawValue == null ? "" : VlValueConversion.NormalizeForTransport(rawValue);
         }
 
-        private static bool ContainsFileBackedAssetReference(
+        private static bool ContainsPreparedMediaReference(
             NodeTypeDefinition? nodeType)
         {
             if (nodeType == null)
                 return false;
-            if (VlTypeMapping.IsFileBackedAssetReference(nodeType))
+            if (VlTypeMapping.IsImageReference(nodeType) ||
+                VlTypeMapping.IsFileBackedAssetReference(nodeType))
                 return true;
             return nodeType.TypeArgs?.Any(
-                ContainsFileBackedAssetReference) == true;
+                ContainsPreparedMediaReference) == true;
         }
 
         private void ApplyBufferedOutputs(IExecutionSession session)
@@ -805,6 +870,9 @@ namespace Nodetool.SDK.VL.Nodes
                             hash = (hash * 31) + bytes[i];
                         return $"bytes:{bytes.Length}:{hash}";
                     }
+                case SKImage image:
+                    return $"skimage:{RuntimeHelpers.GetHashCode(image)}:" +
+                        $"{image.Width}x{image.Height}";
             }
 
             if (value is System.Collections.IEnumerable enumerable && value is not string)
@@ -1252,6 +1320,15 @@ namespace Nodetool.SDK.VL.Nodes
                             vlType ?? typeof(string),
                             defaultValue));
                     }
+                }
+                foreach (var audioPin in NodeAudioSourcePins.Create(
+                             _nodeMetadata,
+                             pins.Select(pin => pin.Name)))
+                {
+                    pins.Add(new SimplePinDescription(
+                        audioPin.PinName,
+                        typeof(IAudioSource),
+                        null));
                 }
                 
                 pins.Add(new SimplePinDescription("IsRunning", typeof(bool), false));

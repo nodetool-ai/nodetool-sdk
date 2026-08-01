@@ -10,8 +10,10 @@ using VL.Core.CompilerServices;
 using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.VL.Nodes;
 using Nodetool.SDK.VL.Services;
+using Nodetool.SDK.VL.Streaming;
 using Nodetool.SDK.Configuration;
 using Nodetool.SDK.VL.Utilities;
+using VL.Lib.Basics.Audio;
 
 namespace Nodetool.SDK.VL.Factories
 {
@@ -302,6 +304,17 @@ namespace Nodetool.SDK.VL.Factories
                                             
                                             outputPins.Add(bc.Pin(output.Name, vlType ?? typeof(string), defaultValue, pinSummary, pinRemarks));
                                         }
+                                    }
+                                    foreach (var audioPin in NodeAudioSourcePins.Create(
+                                                 nodeMetadata,
+                                                 outputPins.Select(pin => pin.Name)))
+                                    {
+                                        outputPins.Add(bc.Pin(
+                                            audioPin.PinName,
+                                            typeof(IAudioSource),
+                                            null,
+                                            $"Realtime audio source for {audioPin.Output.Name}",
+                                            "Connect to VL.Audio's AudioSourceToAudioSignal node."));
                                     }
                                     
                                     // Add standard status outputs with documentation

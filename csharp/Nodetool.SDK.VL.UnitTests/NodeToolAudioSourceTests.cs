@@ -1,3 +1,4 @@
+using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.Execution;
 using Nodetool.SDK.Values;
 using Nodetool.SDK.VL.Streaming;
@@ -166,6 +167,36 @@ public sealed class NodeToolAudioSourceTests
 
         Assert.Equal("audio-out", pin.Output.NodeId);
         Assert.Equal("Audio Audio Source 2", pin.PinName);
+    }
+
+    [Fact]
+    public void StreamingAgentAudio_GetsRealtimeSourcePin()
+    {
+        var metadata = new NodeMetadataResponse
+        {
+            NodeType = "nodetool.agents.Agent",
+            IsStreamingOutput = true,
+            Outputs =
+            [
+                new NodeOutput
+                {
+                    Name = "text",
+                    Type = new NodeTypeDefinition { Type = "str" }
+                },
+                new NodeOutput
+                {
+                    Name = "audio",
+                    Type = new NodeTypeDefinition { Type = "audio" }
+                }
+            ]
+        };
+
+        var pin = Assert.Single(NodeAudioSourcePins.Create(
+            metadata,
+            metadata.Outputs.Select(output => output.Name)));
+
+        Assert.Equal("audio", pin.Output.Name);
+        Assert.Equal("Audio Source", pin.PinName);
     }
 
     private static WorkflowOutputDescriptor Output(

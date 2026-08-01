@@ -3,6 +3,7 @@ using Nodetool.SDK.Types.Assets;
 using Nodetool.SDK.Values;
 using Nodetool.SDK.VL.Nodes;
 using Nodetool.SDK.VL.Utilities;
+using SkiaSharp;
 using VL.Lib.Collections;
 using Xunit;
 using VlPath = VL.Lib.IO.Path;
@@ -209,13 +210,71 @@ public class NodeVlTypeMappingTests
     }
 
     [Fact]
-    public void ImageInput_RemainsATypedImageReference()
+    public void ImageInput_UsesNativeSkiaImage()
     {
         var (type, defaultValue) = VlTypeMapping.MapNodeInputType(
             new NodeTypeDefinition { Type = "image" });
 
-        Assert.Equal(typeof(ImageRef), type);
-        Assert.IsType<ImageRef>(defaultValue);
+        Assert.Equal(typeof(SKImage), type);
+        Assert.Null(defaultValue);
+    }
+
+    [Fact]
+    public void ImageInputList_UsesNativeSkiaSpread()
+    {
+        var (type, defaultValue) = VlTypeMapping.MapNodeInputType(
+            new NodeTypeDefinition
+            {
+                Type = "list",
+                TypeArgs = [new NodeTypeDefinition { Type = "image" }]
+            });
+
+        Assert.Equal(typeof(Spread<SKImage>), type);
+        Assert.Empty(Assert.IsType<Spread<SKImage>>(defaultValue));
+    }
+
+    [Fact]
+    public async Task ToolNameInput_UsesStringsAndWrapsWireValues()
+    {
+        var toolName = new NodeTypeDefinition { Type = "tool_name" };
+        var list = new NodeTypeDefinition
+        {
+            Type = "list",
+            TypeArgs = [toolName]
+        };
+
+        Assert.Equal(typeof(string),
+            VlTypeMapping.MapNodeInputType(toolName).Item1);
+        Assert.Equal(typeof(Spread<string>),
+            VlTypeMapping.MapNodeInputType(list).Item1);
+
+        var wire = Assert.IsType<Dictionary<string, object?>>(
+            await NodeBase.ConvertNodeInputValueAsync(
+                "tools[0]",
+                toolName,
+                "read_file",
+                useTemporaryAssetUploads: false,
+                CancellationToken.None));
+        Assert.Equal("tool_name", wire["type"]);
+        Assert.Equal("read_file", wire["name"]);
+    }
+
+    [Fact]
+    public async Task NativeSkiaInput_IsPreparedAsImageWireValue()
+    {
+        using var bitmap = new SKBitmap(2, 2);
+        using var image = SKImage.FromBitmap(bitmap);
+
+        var wire = Assert.IsType<Dictionary<string, object?>>(
+            await NodeBase.ConvertNodeInputValueAsync(
+                "image[0]",
+                new NodeTypeDefinition { Type = "image" },
+                image,
+                useTemporaryAssetUploads: false,
+                CancellationToken.None));
+
+        Assert.Equal("image", wire["type"]);
+        Assert.NotEmpty(Assert.IsType<byte[]>(wire["data"]));
     }
 
     [Fact]

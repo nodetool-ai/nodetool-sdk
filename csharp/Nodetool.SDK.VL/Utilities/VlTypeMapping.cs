@@ -1,5 +1,6 @@
 using Nodetool.SDK.Api.Models;
 using Nodetool.SDK.Types.Assets;
+using SkiaSharp;
 using VL.Lib.Collections;
 using VlPath = VL.Lib.IO.Path;
 
@@ -15,6 +16,9 @@ internal static class VlTypeMapping
         var type = nodeType.Type?.Trim().ToLowerInvariant();
         if (type is "list" or "array" or "tuple")
             return MapInputCollection(nodeType);
+
+        if (IsImageReference(nodeType))
+            return (typeof(SKImage), null);
 
         if (IsFileBackedAssetReference(nodeType))
             return (typeof(VlPath), new VlPath(""));
@@ -54,7 +58,8 @@ internal static class VlTypeMapping
 
         return t switch
         {
-            "str" or "string" or "text" or "chunk" => (typeof(string), ""),
+            "str" or "string" or "text" or "chunk" or "tool_name" =>
+                (typeof(string), ""),
             "enum" => MapEnum(nodeType),
             "int" or "integer" => (typeof(int), 0),
             "float" or "number" => (typeof(float), 0.0f),
@@ -119,19 +124,20 @@ internal static class VlTypeMapping
                IsFileBackedAssetToken(nodeType.Type);
     }
 
+    internal static bool IsImageReference(NodeTypeDefinition nodeType)
+        => IsAssetToken(nodeType.TypeName, "image", "imageref") ||
+           IsAssetToken(nodeType.Type, "image", "imageref");
+
+    internal static bool IsAudioReference(NodeTypeDefinition nodeType)
+        => IsAssetToken(nodeType.TypeName, "audio", "audioref") ||
+           IsAssetToken(nodeType.Type, "audio", "audioref");
+
     private static bool IsFileBackedAssetToken(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
             return false;
 
-        var qualifiedToken = value
-            .Trim()
-            .Split(new[] { '.', '+', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
-            .LastOrDefault() ?? value;
-        var token = new string(qualifiedToken
-            .ToLowerInvariant()
-            .Where(char.IsLetterOrDigit)
-            .ToArray());
+        var token = NormalizeAssetToken(value);
         return token is
             "audio" or "audioref" or
             "video" or "videoref" or
@@ -149,14 +155,7 @@ internal static class VlTypeMapping
         if (string.IsNullOrWhiteSpace(value))
             return null;
 
-        var qualifiedToken = value
-            .Trim()
-            .Split(new[] { '.', '+', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
-            .LastOrDefault() ?? value;
-        var token = new string(qualifiedToken
-            .ToLowerInvariant()
-            .Where(char.IsLetterOrDigit)
-            .ToArray());
+        var token = NormalizeAssetToken(value);
         return token switch
         {
             "image" or "imageref" => (typeof(ImageRef), new ImageRef()),
@@ -171,6 +170,29 @@ internal static class VlTypeMapping
             "textref" when includeTextReference => (typeof(TextRef), new TextRef()),
             _ => null
         };
+    }
+
+    private static bool IsAssetToken(
+        string? value,
+        params string[] expected)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+        return expected.Contains(
+            NormalizeAssetToken(value),
+            StringComparer.Ordinal);
+    }
+
+    private static string NormalizeAssetToken(string value)
+    {
+        var qualifiedToken = value
+            .Trim()
+            .Split(new[] { '.', '+', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
+            .LastOrDefault() ?? value;
+        return new string(qualifiedToken
+            .ToLowerInvariant()
+            .Where(char.IsLetterOrDigit)
+            .ToArray());
     }
 
     private static (Type, object) MapCollection(NodeTypeDefinition nodeType)
