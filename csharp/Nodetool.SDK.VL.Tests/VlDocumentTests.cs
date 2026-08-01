@@ -52,6 +52,33 @@ public sealed class VlDocumentTests
         => CompileDocumentAsync("vvvv/help/Nodetool_Help.vl");
 
     [Test]
+    public async Task LiveCapitalizeTextNodeReferenceCompilesWhenServerIsAvailable()
+    {
+        using var client = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(2)
+        };
+        try
+        {
+            using var response = await client.GetAsync(
+                "http://127.0.0.1:7777/api/nodes/metadata?fields=summary");
+            if (!response.IsSuccessStatusCode)
+                Assert.Ignore("The local NodeTool server is not available.");
+        }
+        catch (HttpRequestException)
+        {
+            Assert.Ignore("The local NodeTool server is not available.");
+        }
+        catch (TaskCanceledException)
+        {
+            Assert.Ignore("The local NodeTool server is not available.");
+        }
+
+        await CompileDocumentAsync(
+            "vvvv-tests/CapitalizeText_Regression.vl");
+    }
+
+    [Test]
     public async Task PackagedDocumentCompilesFromIsolatedRepository()
     {
         var package = Directory

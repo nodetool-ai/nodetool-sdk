@@ -181,8 +181,10 @@ new widget toolkit in C#.
       `VL.ImGui.Skia` UI patch hosted by the standard HDE `SkiaWindow`.
 - [x] Build and package a minimal spike with target text, one model row, one
       action button, and one progress bar.
-- [ ] Interactively verify docking, resizing, input, disposal, and Shift+F9
-      extension restart before building the real screen.
+- [x] Interactively verify that the preview window opens, docks, resizes, and
+      renders its ImGui controls.
+- [ ] Verify disposal and Shift+F9 restart after the live controller is wired;
+      the preview action button is intentionally inert.
 
 ### C# presentation layer
 
@@ -209,6 +211,9 @@ new widget toolkit in C#.
 - [ ] Keep all HTTP/WebSocket and retry behavior behind the portable services;
       the HDE patch must not implement another protocol client.
 - [ ] Show which server and execution target the window is managing.
+- [ ] Group the first model inventory into a small set of model-type tabs
+      (language, image, audio, video/3D, and other) while retaining exact
+      compatibility filtering behind each tab.
 - [ ] Provide one compact search/filter row for compatibility category,
       provider/source, and availability.
 - [ ] Present ready local, ready remote, recommended/downloadable,

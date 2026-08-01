@@ -17,17 +17,9 @@ internal static class VlNodeMenuCategory
 
         return string.IsNullOrEmpty(nodeNamespace)
             ? $"{Root}.General"
-            : $"{Root}.{FormatNamespace(nodeNamespace)}";
+            // Category casing is part of a dynamic node's serialized identity
+            // in a .vl patch. Preserve NodeTool's canonical namespace instead
+            // of prettifying it and invalidating existing node references.
+            : $"{Root}.{nodeNamespace}";
     }
-
-    private static string FormatNamespace(string nodeNamespace)
-        => string.Join(
-            '.',
-            NodeNamespace.GetSegments(nodeNamespace)
-                .Select(CapitalizeSegment));
-
-    private static string CapitalizeSegment(string segment)
-        => segment.Length == 0
-            ? segment
-            : char.ToUpperInvariant(segment[0]) + segment[1..];
 }

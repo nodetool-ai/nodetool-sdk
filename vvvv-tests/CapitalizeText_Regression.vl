@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Document xmlns:p="property" Id="CapiTaLiZeTeXtRegre001" LanguageVersion="2025.7.1-0070-g54e23a3bf8" Version="0.128">
+  <NugetDependency Id="CapiTaLiZeTeXtRegre002" Location="VL.CoreLib" Version="2025.7.1-0070-g54e23a3bf8" />
+  <Patch Id="CapiTaLiZeTeXtRegre003">
+    <Canvas Id="CapiTaLiZeTeXtRegre004" DefaultCategory="Main" CanvasType="FullCategory" />
+    <Node Name="Application" Bounds="100,100" Id="CapiTaLiZeTeXtRegre005">
+      <p:NodeReference>
+        <Choice Kind="ContainerDefinition" Name="Process" />
+        <CategoryReference Kind="Category" Name="Primitive" />
+      </p:NodeReference>
+      <Patch Id="CapiTaLiZeTeXtRegre006">
+        <Canvas Id="CapiTaLiZeTeXtRegre007" CanvasType="Group">
+          <Node Bounds="200,200,82,19" Id="CapiTaLiZeTeXtRegre008">
+            <p:NodeReference LastCategoryFullName="Nodetool Nodes.nodetool.text" LastDependency="VL.Nodetool.vl">
+              <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+              <CategoryReference Kind="Category" Name="Nodetool Nodes" />
+              <CategoryReference Kind="Category" Name="nodetool" />
+              <CategoryReference Kind="Category" Name="text" />
+              <Choice Kind="ProcessNode" Name="CapitalizeText" />
+            </p:NodeReference>
+            <Pin Id="CapiTaLiZeTeXtRegre009" Name="Run" Kind="InputPin" />
+            <Pin Id="CapiTaLiZeTeXtRegre00A" Name="Cancel" Kind="InputPin" IsHidden="true" />
+            <Pin Id="CapiTaLiZeTeXtRegre00B" Name="AutoRun" Kind="InputPin" IsHidden="true" />
+            <Pin Id="CapiTaLiZeTeXtRegre00C" Name="RestartOnChange" Kind="InputPin" IsHidden="true" />
+            <Pin Id="CapiTaLiZeTeXtRegre00D" Name="ExecutionTimeoutSeconds" Kind="InputPin" IsHidden="true" />
+            <Pin Id="CapiTaLiZeTeXtRegre00E" Name="text" Kind="InputPin" />
+            <Pin Id="CapiTaLiZeTeXtRegre00F" Name="output" Kind="OutputPin" />
+            <Pin Id="CapiTaLiZeTeXtRegre00G" Name="IsRunning" Kind="OutputPin" />
+            <Pin Id="CapiTaLiZeTeXtRegre00H" Name="On Update" Kind="OutputPin" />
+            <Pin Id="CapiTaLiZeTeXtRegre00I" Name="Execution Time" Kind="OutputPin" IsHidden="true" />
+            <Pin Id="CapiTaLiZeTeXtRegre00J" Name="Error" Kind="OutputPin" IsHidden="true" />
+            <Pin Id="CapiTaLiZeTeXtRegre00K" Name="Debug" Kind="OutputPin" IsHidden="true" />
+          </Node>
+        </Canvas>
+        <Patch Id="CapiTaLiZeTeXtRegre00L" Name="Create" />
+        <Patch Id="CapiTaLiZeTeXtRegre00M" Name="Update" />
+        <ProcessDefinition Id="CapiTaLiZeTeXtRegre00N">
+          <Fragment Id="CapiTaLiZeTeXtRegre00O" Patch="CapiTaLiZeTeXtRegre00L" Enabled="true" />
+          <Fragment Id="CapiTaLiZeTeXtRegre00P" Patch="CapiTaLiZeTeXtRegre00M" Enabled="true" />
+        </ProcessDefinition>
+      </Patch>
+    </Node>
+  </Patch>
+  <DocumentDependency Id="CapiTaLiZeTeXtRegre00Q" Location="../vvvv/VL.Nodetool.vl" />
+</Document>
