@@ -1,8 +1,6 @@
 using System.Numerics;
 using ImGuiNET;
 using Nodetool.SDK.VL.Hde;
-using Nodetool.SDK.VL.Services;
-using Nodetool.SDK.VL.Utilities;
 using VL.Core.Import;
 using ImGui = ImGuiNET.ImGui;
 using ImGuiContext = VL.ImGui.Context;
@@ -30,7 +28,6 @@ public sealed class ModelManagerView : IDisposable
     private static readonly int[] PageSizes = [50, 100, 200];
     private readonly HdeModelManagerNode _state = new();
     private string _search = "";
-    private string? _lastRenderError;
 
     /// <summary>
     /// Renders the manager within the active VL.ImGui region.
@@ -40,27 +37,11 @@ public sealed class ModelManagerView : IDisposable
         out ImGuiContext? output)
     {
         output = context;
-        try
-        {
-            _state.Update();
-            if (context == null) return;
+        _state.Update();
+        if (context == null) return;
 
-            using var frame = context.MakeCurrent();
-            Render(_state.ReadState());
-            _lastRenderError = null;
-        }
-        catch (Exception exception)
-        {
-            var error = $"{exception.GetType().Name}: " +
-                        VlLog.SafeError(
-                            exception,
-                            NodeToolClientProvider.CurrentAuthToken);
-            if (!string.Equals(_lastRenderError, error, StringComparison.Ordinal))
-            {
-                _lastRenderError = error;
-                VlLog.Error($"model manager view failed: {error}");
-            }
-        }
+        using var frame = context.MakeCurrent();
+        Render(_state.ReadState());
     }
 
     private void Render(HdeModelPageSnapshot view)
