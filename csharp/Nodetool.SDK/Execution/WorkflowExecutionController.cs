@@ -470,6 +470,7 @@ public sealed class WorkflowExecutionController : IDisposable, IAsyncDisposable
             return;
 
         var value = Accumulate(publicName, update);
+        var isStreaming = IsTextStreamUpdate(update);
         Update(current =>
         {
             var outputs = new Dictionary<string, WorkflowOutputState>(
@@ -479,10 +480,7 @@ public sealed class WorkflowExecutionController : IDisposable, IAsyncDisposable
                 [publicName] = new(
                     publicName,
                     value,
-                    string.Equals(
-                        update.Value.TypeDiscriminator,
-                        "chunk",
-                        StringComparison.OrdinalIgnoreCase),
+                    isStreaming,
                     update.Done,
                     update.ReceivedAt)
             };
@@ -492,6 +490,31 @@ public sealed class WorkflowExecutionController : IDisposable, IAsyncDisposable
 
     private void OnStreamReceived(ExecutionStreamUpdate update)
     {
+        if (update.Source == ExecutionStreamSource.StandaloneChunk &&
+            IsTextContent(update.ContentType, update.Content) &&
+            ResolvePublicName(update) is { } publicName)
+        {
+            var value = AccumulateText(
+                publicName,
+                update.Content.AsString() ?? "",
+                update.Disposition);
+            Update(current =>
+            {
+                var outputs = new Dictionary<string, WorkflowOutputState>(
+                    current.Outputs,
+                    StringComparer.Ordinal)
+                {
+                    [publicName] = new(
+                        publicName,
+                        value,
+                        IsStreaming: true,
+                        Done: update.Done,
+                        UpdatedAt: update.ReceivedAt)
+                };
+                return current with { Outputs = ReadOnly(outputs) };
+            });
+        }
+
         var subscribers = StreamReceived;
         if (subscribers == null)
             return;
@@ -524,33 +547,36 @@ public sealed class WorkflowExecutionController : IDisposable, IAsyncDisposable
             : null;
     }
 
+    private string? ResolvePublicName(ExecutionStreamUpdate update)
+    {
+        if (!string.IsNullOrWhiteSpace(update.NodeId) &&
+            _routes.TryGetValue($"node:{update.NodeId}", out var byNode))
+        {
+            return byNode;
+        }
+        return !string.IsNullOrWhiteSpace(update.OutputName) &&
+            _routes.TryGetValue($"output:{update.OutputName}", out var byOutput)
+                ? byOutput
+                : null;
+    }
+
     private NodeToolValue Accumulate(
         string publicName,
         ExecutionOutputUpdate update)
     {
-        if (update.Value.Kind != NodeToolValueKind.Map ||
-            !string.Equals(
-                update.Value.TypeDiscriminator,
-                "chunk",
-                StringComparison.OrdinalIgnoreCase))
+        if (!TryGetTextContent(update.Value, out var content))
         {
             return update.Value;
         }
 
-        var map = update.Value.AsMapOrEmpty();
-        if (map.TryGetValue("content_type", out var contentType) &&
-            contentType.AsString() is { Length: > 0 } modality &&
-            !string.Equals(
-                modality,
-                "text",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            // Binary/realtime modalities are individual blocks, not text
-            // deltas. Keep the latest typed chunk until a modality-specific
-            // adapter consumes the raw StreamReceived events.
-            return update.Value;
-        }
+        return AccumulateText(publicName, content, update.Disposition);
+    }
 
+    private NodeToolValue AccumulateText(
+        string publicName,
+        string content,
+        string disposition)
+    {
         lock (_gate)
         {
             if (!_chunkBuffers.TryGetValue(publicName, out var buffer))
@@ -559,17 +585,71 @@ public sealed class WorkflowExecutionController : IDisposable, IAsyncDisposable
                 _chunkBuffers[publicName] = buffer;
             }
             if (string.Equals(
-                update.Disposition,
+                disposition,
                 "replace",
                 StringComparison.OrdinalIgnoreCase))
             {
                 buffer.Clear();
             }
-            if (map.TryGetValue("content", out var content))
-                buffer.Append(content.AsString() ?? "");
+            buffer.Append(content);
             return NodeToolValue.From(buffer.ToString());
         }
     }
+
+    private static bool IsTextStreamUpdate(ExecutionOutputUpdate update)
+        => update.Value.Kind == NodeToolValueKind.String ||
+            (update.Value.Kind == NodeToolValueKind.Map &&
+                string.Equals(
+                    update.Value.TypeDiscriminator,
+                    "chunk",
+                    StringComparison.OrdinalIgnoreCase) &&
+                TryGetTextContent(update.Value, out _));
+
+    private static bool TryGetTextContent(
+        NodeToolValue value,
+        out string content)
+    {
+        if (value.Kind == NodeToolValueKind.String)
+        {
+            content = value.AsString() ?? "";
+            return true;
+        }
+        if (value.Kind != NodeToolValueKind.Map ||
+            !string.Equals(
+                value.TypeDiscriminator,
+                "chunk",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            content = "";
+            return false;
+        }
+
+        var map = value.AsMapOrEmpty();
+        var contentType = map.TryGetValue("content_type", out var type)
+            ? type.AsString()
+            : null;
+        var chunk = map.TryGetValue("content", out var part)
+            ? part
+            : NodeToolValue.From(null);
+        if (!IsTextContent(contentType, chunk))
+        {
+            content = "";
+            return false;
+        }
+
+        content = chunk.AsString() ?? "";
+        return true;
+    }
+
+    private static bool IsTextContent(
+        string? contentType,
+        NodeToolValue content)
+        => (string.IsNullOrWhiteSpace(contentType) ||
+                string.Equals(
+                    contentType,
+                    "text",
+                    StringComparison.OrdinalIgnoreCase)) &&
+            content.Kind == NodeToolValueKind.String;
 
     private void ReconcileTerminalOutputs(
         IReadOnlyDictionary<string, NodeToolValue> terminalOutputs)

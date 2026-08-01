@@ -141,6 +141,65 @@ public class WorkflowExecutionControllerTests
     }
 
     [Fact]
+    public async Task AccumulatesPlainStringOutputDeltas()
+    {
+        using var session = new ExecutionSession("job-1", "workflow-1");
+        using var client = new FakeExecutionClient(session);
+        await using var controller = CreateController(client);
+
+        await controller.StartAsync(new WorkflowInvocation("workflow-1"));
+        session.ProcessOutputUpdate(Output("output-node", "Hel"));
+        session.ProcessOutputUpdate(Output("output-node", "lo"));
+
+        var output = controller.Snapshot.Outputs["answer"];
+        Assert.Equal("Hello", output.Value.AsString());
+        Assert.True(output.IsStreaming);
+
+        session.ProcessOutputUpdate(Output(
+            "output-node",
+            "Replacement",
+            disposition: "replace",
+            done: true));
+
+        output = controller.Snapshot.Outputs["answer"];
+        Assert.Equal("Replacement", output.Value.AsString());
+        Assert.True(output.Done);
+    }
+
+    [Fact]
+    public async Task AccumulatesStandaloneTextChunksIntoPublicOutput()
+    {
+        using var session = new ExecutionSession("job-1", "workflow-1");
+        using var client = new FakeExecutionClient(session);
+        await using var controller = CreateController(client);
+
+        await controller.StartAsync(new WorkflowInvocation("workflow-1"));
+        session.ProcessStreamChunk(StreamChunk("Hel"));
+        session.ProcessStreamChunk(StreamChunk("lo", done: true));
+
+        var output = controller.Snapshot.Outputs["answer"];
+        Assert.Equal("Hello", output.Value.AsString());
+        Assert.True(output.IsStreaming);
+        Assert.True(output.Done);
+    }
+
+    [Fact]
+    public async Task StandaloneNonTextChunksDoNotReplacePublicTextOutput()
+    {
+        using var session = new ExecutionSession("job-1", "workflow-1");
+        using var client = new FakeExecutionClient(session);
+        await using var controller = CreateController(client);
+
+        await controller.StartAsync(new WorkflowInvocation("workflow-1"));
+        session.ProcessStreamChunk(StreamChunk("Hello"));
+        session.ProcessStreamChunk(StreamChunk("audio-data", "audio"));
+
+        Assert.Equal(
+            "Hello",
+            controller.Snapshot.Outputs["answer"].Value.AsString());
+    }
+
+    [Fact]
     public async Task NonTextChunksRemainIndividualBlocks()
     {
         using var session = new ExecutionSession("job-1", "workflow-1");
@@ -629,6 +688,20 @@ public class WorkflowExecutionControllerTests
             ["type"] = "chunk",
             ["content_type"] = "audio",
             ["content"] = content
+        };
+
+    private static ChunkMessage StreamChunk(
+        string content,
+        string contentType = "text",
+        bool? done = null)
+        => new()
+        {
+            job_id = "job-1",
+            workflow_id = "workflow-1",
+            node_id = "output-node",
+            content_type = contentType,
+            content = content,
+            done = done
         };
 
     private static WorkflowInvocation InvocationWithVersion(int version)

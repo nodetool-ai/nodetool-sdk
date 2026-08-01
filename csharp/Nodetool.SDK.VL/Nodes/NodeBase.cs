@@ -391,27 +391,37 @@ namespace Nodetool.SDK.VL.Nodes
                         AppendDebug($"output_update: {update.OutputName} type={update.OutputType}");
                         lock (_lock)
                         {
-                            // Chunk streaming: turn {type:"chunk", content:"..."} into accumulated text.
-                            if (update.Value.Kind == NodeToolValueKind.Map &&
-                                string.Equals(update.Value.TypeDiscriminator, "chunk", StringComparison.OrdinalIgnoreCase))
+                            if (TryGetTextDelta(update.Value, out var content))
                             {
-                                var map = update.Value.AsMapOrEmpty();
-                                var content = map.TryGetValue("content", out var c) ? (c.AsString() ?? "") : "";
-
-                                if (!_chunkBuffers.TryGetValue(update.OutputName, out var sb))
-                                {
-                                    sb = new StringBuilder();
-                                    _chunkBuffers[update.OutputName] = sb;
-                                }
-
-                                if (!string.IsNullOrEmpty(content))
-                                    sb.Append(content);
-
-                                _lastOutputs[update.OutputName] = NodeToolValue.From(sb.ToString());
-                                return;
+                                _lastOutputs[update.OutputName] = AccumulateText(
+                                    update.OutputName,
+                                    content,
+                                    update.Disposition);
                             }
+                            else
+                            {
+                                _lastOutputs[update.OutputName] = update.Value;
+                            }
+                        }
+                        InvalidateOutputs();
+                    };
 
-                            _lastOutputs[update.OutputName] = update.Value;
+                    session.StreamReceived += update =>
+                    {
+                        if (update.Source != ExecutionStreamSource.StandaloneChunk ||
+                            !IsTextContent(update.ContentType, update.Content) ||
+                            _nodeMetadata.Outputs?.Count != 1)
+                        {
+                            return;
+                        }
+
+                        var outputName = _nodeMetadata.Outputs[0].Name;
+                        lock (_lock)
+                        {
+                            _lastOutputs[outputName] = AccumulateText(
+                                outputName,
+                                update.Content.AsString() ?? "",
+                                update.Disposition);
                         }
                         InvalidateOutputs();
                     };
@@ -813,6 +823,73 @@ namespace Nodetool.SDK.VL.Nodes
 
             return $"{value.GetType().FullName}:{value}";
         }
+
+        private NodeToolValue AccumulateText(
+            string outputName,
+            string content,
+            string disposition)
+        {
+            if (!_chunkBuffers.TryGetValue(outputName, out var buffer))
+            {
+                buffer = new StringBuilder();
+                _chunkBuffers[outputName] = buffer;
+            }
+            if (string.Equals(
+                disposition,
+                "replace",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                buffer.Clear();
+            }
+            buffer.Append(content);
+            return NodeToolValue.From(buffer.ToString());
+        }
+
+        private static bool TryGetTextDelta(
+            NodeToolValue value,
+            out string content)
+        {
+            if (value.Kind == NodeToolValueKind.String)
+            {
+                content = value.AsString() ?? "";
+                return true;
+            }
+            if (value.Kind != NodeToolValueKind.Map ||
+                !string.Equals(
+                    value.TypeDiscriminator,
+                    "chunk",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                content = "";
+                return false;
+            }
+
+            var map = value.AsMapOrEmpty();
+            var contentType = map.TryGetValue("content_type", out var type)
+                ? type.AsString()
+                : null;
+            var chunk = map.TryGetValue("content", out var part)
+                ? part
+                : NodeToolValue.From(null);
+            if (!IsTextContent(contentType, chunk))
+            {
+                content = "";
+                return false;
+            }
+
+            content = chunk.AsString() ?? "";
+            return true;
+        }
+
+        private static bool IsTextContent(
+            string? contentType,
+            NodeToolValue content)
+            => (string.IsNullOrWhiteSpace(contentType) ||
+                    string.Equals(
+                        contentType,
+                        "text",
+                        StringComparison.OrdinalIgnoreCase)) &&
+                content.Kind == NodeToolValueKind.String;
 
         /// <summary>
         /// Update output pin values
