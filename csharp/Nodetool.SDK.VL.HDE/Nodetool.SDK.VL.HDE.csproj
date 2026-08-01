@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="VL.Core" Version="2025.7.1" />
+    <PackageReference Include="VL.ImGui" Version="2025.7.1" />
   </ItemGroup>
 
   <ItemGroup>

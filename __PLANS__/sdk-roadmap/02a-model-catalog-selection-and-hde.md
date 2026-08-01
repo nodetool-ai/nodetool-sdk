@@ -215,12 +215,17 @@ new widget toolkit in C#.
 - [x] Keep all HTTP/WebSocket and retry behavior behind the portable services;
       the HDE patch must not implement another protocol client.
 - [x] Show which server and execution target the window is managing.
-- [x] Group the first model inventory into a small set of model-type tabs
-      (language, image, audio, video/3D, and other) while retaining exact
-      compatibility filtering behind each tab.
+- [x] Group the model inventory into all, language, image, audio, video, 3D,
+      and other tabs while retaining exact compatibility filtering behind
+      each tab.
+- [x] Show one searchable row per model with its source/type, download status,
+      progress, and contextual action.
+- [x] Paginate the filtered inventory client-side at 50, 100, or 200 rows so
+      the ImGui view never renders the full catalog unnecessarily.
 - [x] Present ready local, ready remote, recommended/downloadable,
       downloading, failed, and unclassified models clearly.
-- [x] Allow starting, cancelling, and retrying recommended model downloads.
+- [x] Allow starting, cancelling, and retrying downloadable models directly
+      from their row, including independent concurrent operations.
 - [x] Show concise per-model progress, downloaded/total size when known, and
       actionable errors.
 - [x] Restore current server-side download states when the window opens or the

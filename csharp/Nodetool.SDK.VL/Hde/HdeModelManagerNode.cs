@@ -5,60 +5,6 @@ using Nodetool.SDK.VL.Utilities;
 
 namespace Nodetool.SDK.VL.Hde;
 
-internal enum HdeModelFamily
-{
-    Language,
-    Image,
-    Audio,
-    Video3D,
-    Other
-}
-
-internal static class HdeModelFamilyClassifier
-{
-    public static HdeModelFamily Classify(string compatibility)
-    {
-        var value = compatibility.ToLowerInvariant();
-        if (ContainsAny(value, "audio", "speech", "asr", "tts", "music"))
-            return HdeModelFamily.Audio;
-        if (ContainsAny(value, "video", "3d", "mesh", "point_cloud", "pointcloud"))
-            return HdeModelFamily.Video3D;
-        if (ContainsAny(
-                value,
-                "image",
-                "flux",
-                "stable_diffusion",
-                "controlnet",
-                "inpainting",
-                "lora",
-                "ip_adapter",
-                "real_esrgan",
-                "depth",
-                "object_detection",
-                "segmentation"))
-        {
-            return HdeModelFamily.Image;
-        }
-        if (ContainsAny(
-                value,
-                "text",
-                "language",
-                "embedding",
-                "reranker",
-                "sentence",
-                "fill_mask",
-                "question_answering",
-                "t5",
-                "llama"))
-        {
-            return HdeModelFamily.Language;
-        }
-        return HdeModelFamily.Other;
-    }
-
-    private static bool ContainsAny(string value, params string[] parts)
-        => parts.Any(value.Contains);
-}
 
 internal sealed class HdeModelManagerNode : IDisposable
 {
@@ -67,110 +13,107 @@ internal sealed class HdeModelManagerNode : IDisposable
     private readonly CancellationToken _lifetimeToken;
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
     private readonly object _stateLock = new();
+    private readonly HashSet<string> _actingKeys = new(StringComparer.Ordinal);
     private ModelCatalogSnapshot _catalog = ModelCatalogSnapshot.Empty;
     private ModelDownloadService? _downloads;
     private string? _downloadScope;
     private HdeModelFamily _family = HdeModelFamily.Image;
-    private ModelDescriptor? _selected;
-    private ModelDownloadState? _selectedDownload;
+    private string _search = "";
+    private int _pageIndex;
+    private int _pageSize = 100;
+    private string _target = "Target: resolving...";
+    private string _notice = "Loading model catalog...";
+    private HdeModelPageSnapshot _view = HdeModelPageSnapshot.Empty;
     private CancellationTokenSource? _monitorCancellation;
     private bool _initialized;
     private volatile bool _disposed;
-    private int _acting;
-    private bool _lastLanguage;
-    private bool _lastImage;
-    private bool _lastAudio;
-    private bool _lastVideo3D;
-    private bool _lastOther;
-    private bool _lastRefresh;
-    private bool _lastAction;
 
     public HdeModelManagerNode()
     {
         _lifetimeToken = _lifetime.Token;
-        UpdateTarget();
-    }
-
-    public bool Language { get; set; }
-    public bool Image { get; set; }
-    public bool Audio { get; set; }
-    public bool Video3D { get; set; }
-    public bool Other { get; set; }
-    public bool Refresh { get; set; }
-    public bool Action { get; set; }
-    public string Target { get; private set; } = "Target: resolving...";
-    public string Family { get; private set; } = "Image";
-    public string Model { get; private set; } = "Loading models...";
-    public string Status { get; private set; } = "Loading catalog...";
-    public string ActionLabel { get; private set; } = "Download";
-    public float Progress { get; private set; }
-    public string ProgressText { get; private set; } = "";
-    public bool CanAct { get; private set; }
-
-    public void ReadState(
-        out string target,
-        out string family,
-        out string model,
-        out string status,
-        out string actionLabel,
-        out float progress,
-        out string progressText,
-        out bool canAct)
-    {
         lock (_stateLock)
         {
-            target = Target;
-            family = Family;
-            model = Model;
-            status = Status;
-            actionLabel = ActionLabel;
-            progress = Progress;
-            progressText = ProgressText;
-            canAct = CanAct;
-        }
-    }
-
-    public void Update()
-    {
-        if (_disposed) return;
-        if (!_initialized)
-        {
-            _initialized = true;
-            _ = RefreshAsync(force: false);
-        }
-
-        HandleFamilyTrigger(Language, HdeModelFamily.Language, ref _lastLanguage);
-        HandleFamilyTrigger(Image, HdeModelFamily.Image, ref _lastImage);
-        HandleFamilyTrigger(Audio, HdeModelFamily.Audio, ref _lastAudio);
-        HandleFamilyTrigger(Video3D, HdeModelFamily.Video3D, ref _lastVideo3D);
-        HandleFamilyTrigger(Other, HdeModelFamily.Other, ref _lastOther);
-
-        if (RisingEdge(Refresh, ref _lastRefresh))
-            _ = RefreshAsync(force: true);
-        if (RisingEdge(Action, ref _lastAction))
-            _ = ActAsync();
-    }
-
-    private void HandleFamilyTrigger(
-        bool current,
-        HdeModelFamily family,
-        ref bool previous)
-    {
-        if (!RisingEdge(current, ref previous)) return;
-        lock (_stateLock)
-        {
-            _family = family;
-            SelectModelLocked();
+            UpdateTargetLocked();
             UpdateViewLocked();
         }
     }
 
-    private static bool RisingEdge(bool current, ref bool previous)
+    public HdeModelPageSnapshot ReadState()
     {
-        var rising = current && !previous;
-        previous = current;
-        return rising;
+        lock (_stateLock)
+            return _view;
     }
+
+    public void Update()
+    {
+        if (_disposed || _initialized) return;
+        _initialized = true;
+        _ = RefreshAsync(force: false);
+    }
+
+    public void SelectFamily(HdeModelFamily family)
+    {
+        lock (_stateLock)
+        {
+            if (_family == family) return;
+            _family = family;
+            _pageIndex = 0;
+            UpdateViewLocked();
+        }
+    }
+
+    public void SetSearch(string? search)
+    {
+        search = search?.Trim() ?? "";
+        lock (_stateLock)
+        {
+            if (string.Equals(_search, search, StringComparison.Ordinal)) return;
+            _search = search;
+            _pageIndex = 0;
+            UpdateViewLocked();
+        }
+    }
+
+    public void SetPageSize(int pageSize)
+    {
+        pageSize = pageSize switch
+        {
+            <= 50 => 50,
+            <= 100 => 100,
+            _ => 200
+        };
+        lock (_stateLock)
+        {
+            if (_pageSize == pageSize) return;
+            _pageSize = pageSize;
+            _pageIndex = 0;
+            UpdateViewLocked();
+        }
+    }
+
+    public void PreviousPage()
+    {
+        lock (_stateLock)
+        {
+            if (_pageIndex == 0) return;
+            _pageIndex--;
+            UpdateViewLocked();
+        }
+    }
+
+    public void NextPage()
+    {
+        lock (_stateLock)
+        {
+            if (_pageIndex + 1 >= _view.PageCount) return;
+            _pageIndex++;
+            UpdateViewLocked();
+        }
+    }
+
+    public void Refresh() => _ = RefreshAsync(force: true);
+
+    public void Act(string modelKey) => _ = ActAsync(modelKey);
 
     private async Task RefreshAsync(bool force)
     {
@@ -185,8 +128,12 @@ internal sealed class HdeModelManagerNode : IDisposable
 
         try
         {
-            SetStatus(force ? "Refreshing model catalog..." : "Loading model catalog...");
-            UpdateTarget();
+            lock (_stateLock)
+            {
+                _notice = force ? "Refreshing model catalog..." : "Loading model catalog...";
+                UpdateTargetLocked();
+                UpdateViewLocked();
+            }
             var snapshot = await VlModelCatalogService
                 .RefreshAsync(force, _lifetimeToken)
                 .ConfigureAwait(false);
@@ -209,16 +156,15 @@ internal sealed class HdeModelManagerNode : IDisposable
                 downloads = _downloads;
             }
             CancelAndDispose(previousMonitor);
-            var downloadSnapshot = await downloads
-                .RefreshAsync(_lifetimeToken)
-                .ConfigureAwait(false);
+            await downloads.RefreshAsync(_lifetimeToken).ConfigureAwait(false);
 
             if (_disposed) return;
-
             lock (_stateLock)
             {
                 _catalog = snapshot;
-                SelectModelLocked(downloadSnapshot);
+                _notice = snapshot.LastError is { Length: > 0 } error
+                    ? $"Catalog warning: {error}"
+                    : "";
                 UpdateViewLocked();
             }
             StartMonitorIfNeeded();
@@ -228,7 +174,7 @@ internal sealed class HdeModelManagerNode : IDisposable
         }
         catch (Exception exception)
         {
-            SetStatus($"Error: {VlLog.SafeError(exception, NodeToolClientProvider.CurrentAuthToken)}");
+            SetNotice($"Error: {VlLog.SafeError(exception, NodeToolClientProvider.CurrentAuthToken)}");
         }
         finally
         {
@@ -236,266 +182,154 @@ internal sealed class HdeModelManagerNode : IDisposable
         }
     }
 
-    private async Task ActAsync()
+    private async Task ActAsync(string modelKey)
     {
-        if (Interlocked.CompareExchange(ref _acting, 1, 0) != 0) return;
+        ModelDescriptor? model;
+        ModelDownloadService? service;
+        ModelDownloadState? download;
+        lock (_stateLock)
+        {
+            if (!_actingKeys.Add(modelKey)) return;
+            model = _catalog.Models.FirstOrDefault(item =>
+                string.Equals(item.Key, modelKey, StringComparison.Ordinal));
+            service = _downloads;
+            download = model == null || service == null
+                ? null
+                : HdeModelListProjector.FindDownload(model, service.Snapshot);
+            UpdateViewLocked();
+        }
+
         try
         {
-            ModelDescriptor? model;
-            ModelDownloadState? download;
-            ModelDownloadService? service;
-            lock (_stateLock)
-            {
-                model = _selected;
-                download = _selectedDownload;
-                service = _downloads;
-            }
             if (model == null || service == null) return;
-
-            ModelDownloadState next;
             if (download is { IsTerminal: false })
             {
-                next = await service.CancelAsync(
-                    download.OperationId,
-                    _lifetimeToken).ConfigureAwait(false);
+                await service.CancelAsync(download.OperationId, _lifetimeToken)
+                    .ConfigureAwait(false);
             }
             else if (download is
                      { Status: SdkModelDownloadStatuses.Error or SdkModelDownloadStatuses.Cancelled })
             {
-                next = await service.RetryAsync(
-                    download,
-                    _lifetimeToken).ConfigureAwait(false);
+                await service.RetryAsync(download, _lifetimeToken).ConfigureAwait(false);
             }
-            else
+            else if (!model.IsReady &&
+                     model.Availability == SdkModelAvailability.Downloadable &&
+                     !string.IsNullOrWhiteSpace(model.RepositoryId))
             {
-                if (model.IsReady ||
-                    model.Availability != SdkModelAvailability.Downloadable ||
-                    string.IsNullOrWhiteSpace(model.RepositoryId))
-                {
-                    return;
-                }
-                next = await service.StartAsync(
-                    model,
-                    _lifetimeToken).ConfigureAwait(false);
+                await service.StartAsync(model, _lifetimeToken).ConfigureAwait(false);
             }
-
-            if (_disposed) return;
-
-            lock (_stateLock)
-            {
-                _selectedDownload = next;
-                UpdateViewLocked();
-            }
-            StartMonitorIfNeeded();
         }
         catch (OperationCanceledException) when (_lifetimeToken.IsCancellationRequested)
         {
         }
         catch (Exception exception)
         {
-            SetStatus($"Error: {VlLog.SafeError(exception, NodeToolClientProvider.CurrentAuthToken)}");
+            SetNotice($"Error: {VlLog.SafeError(exception, NodeToolClientProvider.CurrentAuthToken)}");
         }
         finally
         {
-            Interlocked.Exchange(ref _acting, 0);
+            lock (_stateLock)
+            {
+                _actingKeys.Remove(modelKey);
+                UpdateViewLocked();
+            }
+            StartMonitorIfNeeded();
         }
     }
 
     private void StartMonitorIfNeeded()
     {
-        ModelDownloadState? download;
         ModelDownloadService? service;
-        CancellationTokenSource? previous;
-        CancellationTokenSource current;
-        CancellationToken currentToken;
+        CancellationTokenSource monitor;
         lock (_stateLock)
         {
-            if (_disposed) return;
-            download = _selectedDownload;
+            if (_disposed || _monitorCancellation != null) return;
             service = _downloads;
-            if (service == null || download == null || download.IsTerminal) return;
-
-            previous = _monitorCancellation;
-            current = CancellationTokenSource.CreateLinkedTokenSource(
-                _lifetimeToken);
-            currentToken = current.Token;
-            _monitorCancellation = current;
+            if (service == null || !HasActiveDownloads(service.Snapshot)) return;
+            monitor = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeToken);
+            _monitorCancellation = monitor;
         }
-        CancelAndDispose(previous);
-        _ = MonitorAsync(service, download.OperationId, currentToken);
+        _ = MonitorDownloadsAsync(service, monitor);
     }
 
-    private async Task MonitorAsync(
+    private async Task MonitorDownloadsAsync(
         ModelDownloadService service,
-        string operationId,
-        CancellationToken cancellationToken)
+        CancellationTokenSource monitor)
     {
+        var token = monitor.Token;
         try
         {
-            await foreach (var update in service.MonitorAsync(
-                               operationId,
-                               PollInterval,
-                               cancellationToken).ConfigureAwait(false))
+            while (true)
             {
+                await Task.Delay(PollInterval, token).ConfigureAwait(false);
+                var downloads = await service.RefreshAsync(token).ConfigureAwait(false);
                 lock (_stateLock)
-                {
-                    if (_selectedDownload?.OperationId == operationId)
-                    {
-                        _selectedDownload = update;
-                        UpdateViewLocked();
-                    }
-                }
+                    UpdateViewLocked();
+                if (!HasActiveDownloads(downloads)) break;
             }
-            await RefreshAsync(force: true).ConfigureAwait(false);
+
+            var catalog = await VlModelCatalogService
+                .RefreshAsync(force: true, token)
+                .ConfigureAwait(false);
+            lock (_stateLock)
+            {
+                _catalog = catalog;
+                _notice = catalog.LastError is { Length: > 0 } error
+                    ? $"Catalog warning: {error}"
+                    : "";
+                UpdateViewLocked();
+            }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
         }
         catch (Exception exception)
         {
-            SetStatus($"Download error: {VlLog.SafeError(exception, NodeToolClientProvider.CurrentAuthToken)}");
+            SetNotice($"Download error: {VlLog.SafeError(exception, NodeToolClientProvider.CurrentAuthToken)}");
+        }
+        finally
+        {
+            lock (_stateLock)
+            {
+                if (ReferenceEquals(_monitorCancellation, monitor))
+                    _monitorCancellation = null;
+            }
+            monitor.Dispose();
         }
     }
 
-    private void SelectModelLocked(ModelDownloadSnapshot? downloads = null)
-    {
-        var candidates = _catalog.Models
-            .Where(model => HdeModelFamilyClassifier.Classify(model.Compatibility) == _family)
-            .ToArray();
-        _selected = candidates
-            .OrderBy(ModelRank)
-            .ThenBy(model => model.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .FirstOrDefault();
-
-        var downloadItems = downloads?.Downloads ?? _downloads?.Snapshot.Downloads ?? [];
-        _selectedDownload = _selected == null
-            ? null
-            : downloadItems
-                .Where(download => DownloadMatches(_selected, download))
-                .OrderByDescending(download => download.UpdatedAt)
-                .FirstOrDefault();
-    }
-
-    private static int ModelRank(ModelDescriptor model)
-        => model switch
-        {
-            { Recommended: true, Availability: SdkModelAvailability.Downloadable } => 0,
-            { Recommended: true, IsReady: true } => 1,
-            { IsReady: true } => 2,
-            { Availability: SdkModelAvailability.Downloadable } => 3,
-            _ => 4
-        };
-
-    private static bool DownloadMatches(
-        ModelDescriptor model,
-        ModelDownloadState download)
-        => !string.IsNullOrWhiteSpace(model.RepositoryId) &&
-           string.Equals(model.RepositoryId, download.RepositoryId, StringComparison.Ordinal) &&
-           string.Equals(model.Compatibility, download.ModelType, StringComparison.Ordinal) &&
-           string.Equals(model.Path ?? "", download.Path ?? "", StringComparison.Ordinal);
+    private static bool HasActiveDownloads(ModelDownloadSnapshot snapshot)
+        => snapshot.Downloads.Any(download => !download.IsTerminal);
 
     private void UpdateViewLocked()
     {
-        var familyModels = _catalog.Models
-            .Where(model => HdeModelFamilyClassifier.Classify(model.Compatibility) == _family)
-            .ToArray();
-        var ready = familyModels.Count(model => model.IsReady);
-        var downloadable = familyModels.Count(model =>
-            model.Availability == SdkModelAvailability.Downloadable);
-        Family = FamilyLabel(_family);
-        Status = _catalog.LastError is { Length: > 0 } error
-            ? $"Catalog warning: {error}"
-            : $"{Family} · {familyModels.Length} models · {ready} ready · {downloadable} downloadable";
-
-        if (_selected == null)
-        {
-            Model = "No models in this category";
-            ActionLabel = "Unavailable";
-            Progress = 0f;
-            ProgressText = "";
-            CanAct = false;
-            return;
-        }
-
-        var recommended = _selected.Recommended ? " · recommended" : "";
-        Model = $"{_selected.DisplayName}{recommended} · {_selected.Compatibility} · {_selected.Availability}";
-
-        if (_selectedDownload is { IsTerminal: false } running)
-        {
-            ActionLabel = "Cancel";
-            CanAct = true;
-            SetProgress(running);
-            return;
-        }
-        if (_selectedDownload is
-            { Status: SdkModelDownloadStatuses.Error or SdkModelDownloadStatuses.Cancelled } failed)
-        {
-            ActionLabel = "Retry";
-            CanAct = true;
-            SetProgress(failed);
-            return;
-        }
-
-        Progress = 0f;
-        ProgressText = "";
-        if (_selected.IsReady)
-        {
-            ActionLabel = "Ready";
-            CanAct = false;
-        }
-        else if (_selected.Availability == SdkModelAvailability.Downloadable &&
-                 !string.IsNullOrWhiteSpace(_selected.RepositoryId))
-        {
-            ActionLabel = "Download";
-            CanAct = true;
-        }
-        else
-        {
-            ActionLabel = "Unavailable";
-            CanAct = false;
-        }
+        _view = HdeModelListProjector.Project(
+            _catalog,
+            _downloads?.Snapshot ?? ModelDownloadSnapshot.Empty(SdkModelScopes.Local),
+            _family,
+            _search,
+            _pageIndex,
+            _pageSize,
+            _actingKeys,
+            _target,
+            _notice);
+        _pageIndex = _view.PageNumber - 1;
     }
 
-    private void SetProgress(ModelDownloadState download)
-    {
-        Progress = (float)(download.Progress ?? 0d);
-        var progress = download.Progress.HasValue
-            ? $"{download.Progress.Value:P0} · {FormatBytes(download.DownloadedBytes)} / {FormatBytes(download.TotalBytes)}"
-            : download.Status;
-        ProgressText = string.IsNullOrWhiteSpace(download.Error)
-            ? progress
-            : $"{progress} · {download.Error}";
-    }
-
-    private void SetStatus(string value)
+    private void SetNotice(string value)
     {
         lock (_stateLock)
-            Status = value;
+        {
+            _notice = value;
+            UpdateViewLocked();
+        }
     }
 
-    private void UpdateTarget()
+    private void UpdateTargetLocked()
     {
         var endpoint = NodeToolClientProvider.CurrentApiBaseUrl?.AbsoluteUri.TrimEnd('/')
                        ?? "http://127.0.0.1:7777";
-        lock (_stateLock)
-            Target = $"Target: {endpoint} · local";
-    }
-
-    private static string FamilyLabel(HdeModelFamily family)
-        => family == HdeModelFamily.Video3D ? "Video / 3D" : family.ToString();
-
-    private static string FormatBytes(long bytes)
-    {
-        if (bytes <= 0) return "0 B";
-        string[] units = ["B", "KB", "MB", "GB", "TB"];
-        var value = (double)bytes;
-        var unit = 0;
-        while (value >= 1024d && unit < units.Length - 1)
-        {
-            value /= 1024d;
-            unit++;
-        }
-        return $"{value:0.#} {units[unit]}";
+        _target = $"Target: {endpoint} · local";
     }
 
     public void Dispose()
