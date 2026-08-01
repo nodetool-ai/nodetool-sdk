@@ -37,6 +37,7 @@ namespace Nodetool.SDK.VL.Factories
             string DiscoveryTransport);
 
         private static NodeBuilding.FactoryImpl? _factoryImpl = null;
+        private static IVLNodeDescriptionFactory? _factoryOwner;
         private static readonly object _lock = new object();
         private static readonly TimeSpan DiscoveryTimeout = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan InitialSnapshotGrace = TimeSpan.FromSeconds(5);
@@ -122,6 +123,7 @@ namespace Nodetool.SDK.VL.Factories
                 _hasSuccessfulSnapshot = false;
                 _factoryWasRequested = false;
                 _factoryImpl = null;
+                _factoryOwner = null;
                 _lastError = "";
                 _apiStatusMessage = retainedWorkflowCount > 0
                     ? $"Connection changed; retaining {retainedWorkflowCount} workflow nodes until discovery refresh completes."
@@ -150,6 +152,7 @@ namespace Nodetool.SDK.VL.Factories
             lock (_lock)
             {
                 _factoryWasRequested = true;
+                EnsureFactoryOwnerLocked(vlSelfFactory);
                 if (_factoryImpl != null)
                     return _factoryImpl;
                 if (!_enabled)
@@ -188,6 +191,7 @@ namespace Nodetool.SDK.VL.Factories
 
             lock (_lock)
             {
+                EnsureFactoryOwnerLocked(vlSelfFactory);
                 if (_factoryImpl != null)
                     return _factoryImpl;
                 _factoryImpl = BuildFactoryLocked(vlSelfFactory);
@@ -338,6 +342,18 @@ namespace Nodetool.SDK.VL.Factories
                     ImmutableArray<IVLNodeDescription>.Empty,
                     FactoryInvalidated);
             }
+        }
+
+        private static void EnsureFactoryOwnerLocked(
+            IVLNodeDescriptionFactory vlSelfFactory)
+        {
+            if (ReferenceEquals(_factoryOwner, vlSelfFactory)) return;
+
+            // Descriptions are scoped to the IVLNodeDescriptionFactory that
+            // created them. Keep discovery data across host reloads, but
+            // rebuild the factory implementation for the current host.
+            _factoryOwner = vlSelfFactory;
+            _factoryImpl = null;
         }
 
         private static void QueueRefreshLocked()

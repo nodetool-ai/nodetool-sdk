@@ -21,6 +21,7 @@ internal static class DynamicModelEnumFactory
         IReadOnlyDictionary<string, object> HistoricalWireValues);
 
     private static readonly ConcurrentDictionary<Type, EnumMapping> ByType = new();
+    private static readonly object DefinitionUpdateLock = new();
     private static readonly MethodInfo ConfigureSlotMethod = typeof(
             DynamicModelEnumFactory)
         .GetMethod(
@@ -204,9 +205,21 @@ internal static class DynamicModelEnumFactory
         if (!IsAppHostAvailable())
             return;
 
-        void Apply() => ConfigureSlotMethod
-            .MakeGenericMethod(markerType)
-            .Invoke(null, [entries]);
+        void Apply()
+        {
+            try
+            {
+                ConfigureSlotMethod
+                    .MakeGenericMethod(markerType)
+                    .Invoke(null, [entries]);
+            }
+            catch (Exception exception)
+            {
+                VlLog.Error(
+                    $"model enum update failed: " +
+                    VlLog.SafeError(exception.GetBaseException()));
+            }
+        }
         var context = _synchronizationContext;
         if (context != null && SynchronizationContext.Current != context)
             context.Post(_ => Apply(), null);
@@ -217,17 +230,23 @@ internal static class DynamicModelEnumFactory
     private static void ConfigureSlot<TMarker>(
         IReadOnlyDictionary<string, object> entries)
     {
-        var definition = ModelDynamicEnumDefinition<TMarker>.Instance;
-        definition.BeginUpdate();
-        try
+        // Catalog refreshes from overlapping AppHosts can be posted onto
+        // different synchronization contexts. The underlying vvvv enum
+        // definition is process-global and its Clear/Add update is not atomic.
+        lock (DefinitionUpdateLock)
         {
-            definition.Clear();
-            foreach (var entry in entries)
-                definition.AddEntry(entry.Key, entry.Value);
-        }
-        finally
-        {
-            definition.EndUpdate();
+            var definition = ModelDynamicEnumDefinition<TMarker>.Instance;
+            definition.BeginUpdate();
+            try
+            {
+                definition.Clear();
+                foreach (var entry in entries)
+                    definition.AddEntry(entry.Key, entry.Value);
+            }
+            finally
+            {
+                definition.EndUpdate();
+            }
         }
     }
 
