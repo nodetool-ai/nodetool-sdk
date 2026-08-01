@@ -150,9 +150,9 @@ new widget toolkit in C#.
 - [x] Show only ready compatible models on execution pins by default.
 - [ ] Preserve an existing selection as an explicit unavailable entry if a
       model disappears; never silently switch a patch to another model.
-- [ ] Retain a documented object fallback and diagnostic when compatibility is
+- [x] Retain a documented object fallback and diagnostic when compatibility is
       unknown or the connected server lacks the model-catalog capability.
-- [ ] Avoid repeatedly invalidating all node/workflow factories for catalog
+- [x] Avoid repeatedly invalidating all node/workflow factories for catalog
       entry-only changes.
 - [x] Add focused tests for provider models, local models, HF subtypes,
       structured serialization, label collisions, missing selections, and live
@@ -260,7 +260,7 @@ new widget toolkit in C#.
       server capability requirements, and HDE installation/use.
 - [x] Build and verify the `VL.Nodetool` package, including its portable SDK
       assemblies, HDE document, and isolated vvvv compile check.
-- [ ] Build and verify the matching standalone `Nodetool.SDK` NuGet package.
+- [x] Build and verify the matching standalone `Nodetool.SDK` NuGet package.
 - [ ] Publish only after the existing SDK execution/media regression suite and
       the new model tests pass.
 

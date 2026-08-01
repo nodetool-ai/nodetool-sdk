@@ -88,6 +88,15 @@ internal static class VlTypeMapping
             : (enumType, DynamicModelEnumFactory.GetDefaultValue(enumType));
     }
 
+    public static bool UsesObjectFallback(NodeTypeDefinition? nodeType)
+    {
+        var type = nodeType?.Type?.Trim().ToLowerInvariant();
+        return nodeType != null &&
+               type is not (null or "any" or "object" or "dict" or "json" or
+                   "record_type") &&
+               MapNodeInputType(nodeType).Item1 == typeof(object);
+    }
+
     private static (Type, object)? TryMapAssetReference(NodeTypeDefinition nodeType)
     {
         var type = nodeType.Type?.Trim().ToLowerInvariant();

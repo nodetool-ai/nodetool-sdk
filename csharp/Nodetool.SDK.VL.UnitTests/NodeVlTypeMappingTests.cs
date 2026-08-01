@@ -12,6 +12,16 @@ namespace Nodetool.SDK.VL.UnitTests;
 public class NodeVlTypeMappingTests
 {
     [Fact]
+    public void UnsupportedDeclaredType_ReportsObjectFallback()
+    {
+        var metadata = new NodeTypeDefinition { Type = "custom_model" };
+
+        Assert.True(VlTypeMapping.UsesObjectFallback(metadata));
+        Assert.False(VlTypeMapping.UsesObjectFallback(
+            new NodeTypeDefinition { Type = "object" }));
+    }
+
+    [Fact]
     public void OptionConstrainedString_UsesDynamicVlEnum()
     {
         var metadata = new NodeTypeDefinition

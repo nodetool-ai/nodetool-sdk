@@ -801,6 +801,9 @@ namespace Nodetool.SDK.VL.Factories
                 
             if (property.Type?.Optional == true)
                 parts.Add("(Optional)");
+
+            if (VlTypeMapping.UsesObjectFallback(property.Type))
+                parts.Add("VL fallback: Object");
                 
             return string.Join(" | ", parts);
         }

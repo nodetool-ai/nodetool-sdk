@@ -124,11 +124,13 @@ Model pins:
   the exact structured NodeTool wire value behind their readable label.
 - Catalog entry changes update enum definitions without changing their CLR pin
   type or requiring a vvvv restart. Unknown compatibility or an unavailable
-  catalog retains the explicit `Object` fallback.
+  catalog retains the explicit `Object` fallback, identified in the pin
+  remarks as `VL fallback: Object`.
 - Model downloads and progress are implemented in the portable C# SDK over
-  the server's `model_download` capability. The planned HDE window will only
-  provide editor UI over that service; it will not own model storage or a
-  separate downloader.
+  the server's `model_download` capability. The optional dockable model-manager
+  HDE provides editor UI over that service; it does not own model storage or a
+  separate downloader. Open it from the editor command registered by
+  `VL.Nodetool.HDE.vl` (default shortcut: `Alt+M`).
 
 Media transport:
 
