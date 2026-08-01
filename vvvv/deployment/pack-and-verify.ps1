@@ -10,12 +10,15 @@ $ErrorActionPreference = "Stop"
 $deploymentDirectory = $PSScriptRoot
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $deploymentDirectory "..\.."))
 $vlProject = Join-Path $repoRoot "csharp\Nodetool.SDK.VL\Nodetool.SDK.VL.csproj"
+$hdeProject = Join-Path $repoRoot "csharp\Nodetool.SDK.VL.HDE\Nodetool.SDK.VL.HDE.csproj"
 $nuspecPath = Join-Path $deploymentDirectory "VL.Nodetool.nuspec"
 $nugetPath = Join-Path $deploymentDirectory "nuget.exe"
 $versionPropsPath = Join-Path $repoRoot "csharp\Directory.Build.props"
 $sourceVlDocument = Join-Path $repoRoot "vvvv\VL.Nodetool.vl"
+$sourceHdeDocument = Join-Path $repoRoot "vvvv\VL.Nodetool.HDE.vl"
 $stagingDirectory = Join-Path $deploymentDirectory ".pack"
 $stagedVlDocument = Join-Path $stagingDirectory "VL.Nodetool.vl"
+$stagedHdeDocument = Join-Path $stagingDirectory "VL.Nodetool.HDE.vl"
 
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $OutputDirectory = Join-Path $deploymentDirectory "out"
@@ -25,19 +28,22 @@ $resolvedOutputDirectory = [System.IO.Path]::GetFullPath($OutputDirectory)
 New-Item -ItemType Directory -Path $resolvedOutputDirectory -Force | Out-Null
 
 if (-not $SkipBuild) {
-    $buildArguments = @("build", $vlProject, "-c", "Release")
-    if ($NoRestore) {
-        $buildArguments += "--no-restore"
-    }
-    dotnet @buildArguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "VL project build failed with exit code $LASTEXITCODE."
+    foreach ($project in @($vlProject, $hdeProject)) {
+        $buildArguments = @("build", $project, "-c", "Release")
+        if ($NoRestore) {
+            $buildArguments += "--no-restore"
+        }
+        dotnet @buildArguments
+        if ($LASTEXITCODE -ne 0) {
+            throw "VL project build failed with exit code $LASTEXITCODE."
+        }
     }
 }
 
 New-Item -ItemType Directory -Path $stagingDirectory -Force | Out-Null
 $vlDocumentText = [System.IO.File]::ReadAllText($sourceVlDocument)
 $developmentAssemblyPrefix = "../csharp/Nodetool.SDK.VL/bin/Release/net8.0/"
+$developmentHdeAssemblyPrefix = "../csharp/Nodetool.SDK.VL.HDE/bin/Release/net8.0/"
 $packageAssemblyPrefix = "lib/net8.0/"
 if (-not $vlDocumentText.Contains($developmentAssemblyPrefix)) {
     throw "The source VL document no longer contains the expected development assembly prefix."
@@ -48,6 +54,17 @@ $packagedVlDocumentText = $vlDocumentText.Replace(
 [System.IO.File]::WriteAllText(
     $stagedVlDocument,
     $packagedVlDocumentText,
+    [System.Text.UTF8Encoding]::new($false))
+$hdeDocumentText = [System.IO.File]::ReadAllText($sourceHdeDocument)
+if (-not $hdeDocumentText.Contains($developmentHdeAssemblyPrefix)) {
+    throw "The source HDE document no longer contains the expected development assembly prefix."
+}
+$packagedHdeDocumentText = $hdeDocumentText.Replace(
+    $developmentHdeAssemblyPrefix,
+    $packageAssemblyPrefix)
+[System.IO.File]::WriteAllText(
+    $stagedHdeDocument,
+    $packagedHdeDocumentText,
     [System.Text.UTF8Encoding]::new($false))
 
 [xml]$versionProps = Get-Content -LiteralPath $versionPropsPath
@@ -72,6 +89,7 @@ $requiredEntries = @(
     "help/help.xml",
     "help/Nodetool_Help.vl",
     "lib/net8.0/Nodetool.SDK.VL.dll",
+    "lib/net8.0/Nodetool.SDK.VL.HDE.dll",
     "lib/net8.0/Nodetool.SDK.dll",
     "lib/net8.0/Nodetool.Types.dll",
     "docs/README.md",

@@ -56,14 +56,21 @@ Once connected, open the node menu (double-click or right-click in a patch):
 
 Each workflow or node execution input is named **Run**. Connect your vvvv logic, set parameter pins, and trigger a run.
 
-### Model manager extension (preview)
+### Model manager extension
 
 The package includes an optional **Nodetool Models** editor extension. Open it
-from the vvvv extension menu (shortcut: `Alt+M`). The current preview is the
-first validation surface for the standard dockable HDE/ImGui window lifecycle;
-live catalog rows and download actions will be connected after the interactive
-spike is accepted. The extension is editor-only and is not required for
-generated nodes, workflow execution, or exported applications.
+from the vvvv extension menu (shortcut: `Alt+M`). The dockable window uses the
+configured NodeTool target and groups recommended models into **Language**,
+**Image**, **Audio**, **Video / 3D**, and **Other** tabs. It shows ready and
+downloadable counts for the selected family. The action button changes between
+**Download**, **Cancel**, and **Retry**; active downloads show byte and percent
+progress when the server supplies a total size. **Refresh** reloads both the
+model catalog and current server-side download state.
+
+The first version intentionally shows one recommended model per family rather
+than duplicating NodeTool's full model browser. The extension is editor-only
+and is not required for generated nodes, workflow execution, or exported
+applications.
 
 ## Workflow inputs and outputs
 

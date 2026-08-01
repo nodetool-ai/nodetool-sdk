@@ -253,15 +253,274 @@
                   <Choice Kind="TypeFlag" Name="String" />
                 </p:TypeAnnotation>
               </Pad>
+              <Node Bounds="760,550,145,190" Id="HDE0000000000000000003">
+                <p:NodeReference LastCategoryFullName="Nodetool.Internal" LastDependency="Nodetool.SDK.VL.HDE.dll">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessAppFlag" Name="ModelManagerState" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000004" Name="Language" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000005" Name="Image" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000006" Name="Audio" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000007" Name="Video3D" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000008" Name="Other" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000009" Name="Refresh" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000010" Name="Action" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000011" Name="Target" Kind="OutputPin" />
+                <Pin Id="HDE0000000000000000012" Name="Family" Kind="OutputPin" />
+                <Pin Id="HDE0000000000000000013" Name="Model" Kind="OutputPin" />
+                <Pin Id="HDE0000000000000000014" Name="Status" Kind="OutputPin" />
+                <Pin Id="HDE0000000000000000015" Name="Action Label" Kind="OutputPin" />
+                <Pin Id="HDE0000000000000000016" Name="Progress" Kind="OutputPin" />
+                <Pin Id="HDE0000000000000000017" Name="Progress Text" Kind="OutputPin" />
+                <Pin Id="HDE0000000000000000018" Name="Can Act" Kind="OutputPin" />
+                <Pin Id="HDE0000000000000000119" Name="Update" Kind="ApplyPin" />
+              </Node>
+              <Node Bounds="415,580,85,19" Id="HDE0000000000000000019">
+                <p:NodeReference LastCategoryFullName="ImGui.Widgets" LastDependency="VL.ImGui.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessNode" Name="Button" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000020" Name="Context" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000021" Name="Channel" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000022" Name="Label" Kind="InputPin" DefaultValue="Language" />
+                <Pin Id="HDE0000000000000000023" Name="Size" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000024" Name="Style" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000025" Name="Context" Kind="OutputPin" />
+                <Pin Id="HDE0000000000000000026" Name="Bang" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="505,580,59,19" Id="HDE0000000000000000027">
+                <p:NodeReference LastCategoryFullName="ImGui.Commands" LastDependency="VL.ImGui.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessNode" Name="SameLine" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000028" Name="Context" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000029" Name="Offset" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000030" Name="Spacing" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000031" Name="Context" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="570,580,70,19" Id="HDE0000000000000000032">
+                <p:NodeReference LastCategoryFullName="ImGui.Widgets" LastDependency="VL.ImGui.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessNode" Name="Button" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000033" Name="Context" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000034" Name="Channel" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000035" Name="Label" Kind="InputPin" DefaultValue="Image" />
+                <Pin Id="HDE0000000000000000036" Name="Size" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000037" Name="Style" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000038" Name="Context" Kind="OutputPin" />
+                <Pin Id="HDE0000000000000000039" Name="Bang" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="645,580,59,19" Id="HDE0000000000000000040">
+                <p:NodeReference LastCategoryFullName="ImGui.Commands" LastDependency="VL.ImGui.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessNode" Name="SameLine" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000041" Name="Context" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000042" Name="Offset" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000043" Name="Spacing" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000044" Name="Context" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="710,580,70,19" Id="HDE0000000000000000045">
+                <p:NodeReference LastCategoryFullName="ImGui.Widgets" LastDependency="VL.ImGui.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessNode" Name="Button" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000046" Name="Context" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000047" Name="Channel" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000048" Name="Label" Kind="InputPin" DefaultValue="Audio" />
+                <Pin Id="HDE0000000000000000049" Name="Size" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000050" Name="Style" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000051" Name="Context" Kind="OutputPin" />
+                <Pin Id="HDE0000000000000000052" Name="Bang" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="785,580,59,19" Id="HDE0000000000000000053">
+                <p:NodeReference LastCategoryFullName="ImGui.Commands" LastDependency="VL.ImGui.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessNode" Name="SameLine" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000054" Name="Context" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000055" Name="Offset" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000056" Name="Spacing" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000057" Name="Context" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="850,580,85,19" Id="HDE0000000000000000058">
+                <p:NodeReference LastCategoryFullName="ImGui.Widgets" LastDependency="VL.ImGui.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessNode" Name="Button" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000059" Name="Context" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000060" Name="Channel" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000061" Name="Label" Kind="InputPin" DefaultValue="Video / 3D" />
+                <Pin Id="HDE0000000000000000062" Name="Size" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000063" Name="Style" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000064" Name="Context" Kind="OutputPin" />
+                <Pin Id="HDE0000000000000000065" Name="Bang" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="940,580,59,19" Id="HDE0000000000000000066">
+                <p:NodeReference LastCategoryFullName="ImGui.Commands" LastDependency="VL.ImGui.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessNode" Name="SameLine" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000067" Name="Context" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000068" Name="Offset" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000069" Name="Spacing" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000070" Name="Context" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="1005,580,70,19" Id="HDE0000000000000000071">
+                <p:NodeReference LastCategoryFullName="ImGui.Widgets" LastDependency="VL.ImGui.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessNode" Name="Button" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000072" Name="Context" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000073" Name="Channel" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000074" Name="Label" Kind="InputPin" DefaultValue="Other" />
+                <Pin Id="HDE0000000000000000075" Name="Size" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000076" Name="Style" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000077" Name="Context" Kind="OutputPin" />
+                <Pin Id="HDE0000000000000000078" Name="Bang" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="415,610,80,19" Id="HDE0000000000000000079">
+                <p:NodeReference LastCategoryFullName="ImGui.Widgets" LastDependency="VL.ImGui.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessAppFlag" Name="Text" />
+                  <CategoryReference Kind="Category" Name="Widgets" NeedsToBeDirectParent="true" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000080" Name="Context" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000081" Name="Text" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000082" Name="Disabled" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000083" Name="Style" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000084" Name="Context" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="510,650,59,19" Id="HDE0000000000000000085">
+                <p:NodeReference LastCategoryFullName="ImGui.Commands" LastDependency="VL.ImGui.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessNode" Name="SameLine" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000086" Name="Context" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000087" Name="Offset" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000088" Name="Spacing" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000089" Name="Context" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="575,650,75,19" Id="HDE0000000000000000090">
+                <p:NodeReference LastCategoryFullName="ImGui.Widgets" LastDependency="VL.ImGui.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessNode" Name="Button" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000091" Name="Context" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000092" Name="Channel" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000093" Name="Label" Kind="InputPin" DefaultValue="Refresh" />
+                <Pin Id="HDE0000000000000000094" Name="Size" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000095" Name="Style" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000096" Name="Context" Kind="OutputPin" />
+                <Pin Id="HDE0000000000000000097" Name="Bang" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="760,760,69,19" Id="HDE0000000000000000120">
+                <p:NodeReference LastCategoryFullName="Control" LastDependency="VL.CoreLib.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessAppFlag" Name="FrameDelay" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000121" Name="Node Context" Kind="InputPin" IsHidden="true" />
+                <Pin Id="HDE0000000000000000122" Name="Initial Value" Kind="InputPin" IsHidden="true" />
+                <Pin Id="HDE0000000000000000123" Name="Value" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000124" Name="Value" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="835,760,69,19" Id="HDE0000000000000000125">
+                <p:NodeReference LastCategoryFullName="Control" LastDependency="VL.CoreLib.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessAppFlag" Name="FrameDelay" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000126" Name="Node Context" Kind="InputPin" IsHidden="true" />
+                <Pin Id="HDE0000000000000000127" Name="Initial Value" Kind="InputPin" IsHidden="true" />
+                <Pin Id="HDE0000000000000000128" Name="Value" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000129" Name="Value" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="910,760,69,19" Id="HDE0000000000000000130">
+                <p:NodeReference LastCategoryFullName="Control" LastDependency="VL.CoreLib.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessAppFlag" Name="FrameDelay" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000131" Name="Node Context" Kind="InputPin" IsHidden="true" />
+                <Pin Id="HDE0000000000000000132" Name="Initial Value" Kind="InputPin" IsHidden="true" />
+                <Pin Id="HDE0000000000000000133" Name="Value" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000134" Name="Value" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="985,760,69,19" Id="HDE0000000000000000135">
+                <p:NodeReference LastCategoryFullName="Control" LastDependency="VL.CoreLib.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessAppFlag" Name="FrameDelay" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000136" Name="Node Context" Kind="InputPin" IsHidden="true" />
+                <Pin Id="HDE0000000000000000137" Name="Initial Value" Kind="InputPin" IsHidden="true" />
+                <Pin Id="HDE0000000000000000138" Name="Value" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000139" Name="Value" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="1060,760,69,19" Id="HDE0000000000000000140">
+                <p:NodeReference LastCategoryFullName="Control" LastDependency="VL.CoreLib.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessAppFlag" Name="FrameDelay" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000141" Name="Node Context" Kind="InputPin" IsHidden="true" />
+                <Pin Id="HDE0000000000000000142" Name="Initial Value" Kind="InputPin" IsHidden="true" />
+                <Pin Id="HDE0000000000000000143" Name="Value" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000144" Name="Value" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="1135,760,69,19" Id="HDE0000000000000000145">
+                <p:NodeReference LastCategoryFullName="Control" LastDependency="VL.CoreLib.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessAppFlag" Name="FrameDelay" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000146" Name="Node Context" Kind="InputPin" IsHidden="true" />
+                <Pin Id="HDE0000000000000000147" Name="Initial Value" Kind="InputPin" IsHidden="true" />
+                <Pin Id="HDE0000000000000000148" Name="Value" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000149" Name="Value" Kind="OutputPin" />
+              </Node>
+              <Node Bounds="1210,760,69,19" Id="HDE0000000000000000150">
+                <p:NodeReference LastCategoryFullName="Control" LastDependency="VL.CoreLib.vl">
+                  <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                  <Choice Kind="ProcessAppFlag" Name="FrameDelay" />
+                </p:NodeReference>
+                <Pin Id="HDE0000000000000000151" Name="Node Context" Kind="InputPin" IsHidden="true" />
+                <Pin Id="HDE0000000000000000152" Name="Initial Value" Kind="InputPin" IsHidden="true" />
+                <Pin Id="HDE0000000000000000153" Name="Value" Kind="InputPin" />
+                <Pin Id="HDE0000000000000000154" Name="Value" Kind="OutputPin" />
+              </Node>
               <Patch Id="P0d3LMaNag3rUiSp1kE00Z" Name="Dispose" />
-              <Link Id="P0d3LMaNag3rUiSp1kE010" Ids="P0d3LMaNag3rUiSp1kE009,P0d3LMaNag3rUiSp1kE005" />
-              <Link Id="P0d3LMaNag3rUiSp1kE011" Ids="P0d3LMaNag3rUiSp1kE008,P0d3LMaNag3rUiSp1kE00B" />
-              <Link Id="P0d3LMaNag3rUiSp1kE012" Ids="P0d3LMaNag3rUiSp1kE00G,P0d3LMaNag3rUiSp1kE00C" />
+              <Link Id="P0d3LMaNag3rUiSp1kE010" Ids="HDE0000000000000000011,P0d3LMaNag3rUiSp1kE005" />
+              <Link Id="P0d3LMaNag3rUiSp1kE011" Ids="P0d3LMaNag3rUiSp1kE008,HDE0000000000000000020" />
+              <Link Id="P0d3LMaNag3rUiSp1kE012" Ids="HDE0000000000000000013,P0d3LMaNag3rUiSp1kE00C" />
               <Link Id="P0d3LMaNag3rUiSp1kE013" Ids="P0d3LMaNag3rUiSp1kE00F,P0d3LMaNag3rUiSp1kE00I" />
-              <Link Id="P0d3LMaNag3rUiSp1kE014" Ids="P0d3LMaNag3rUiSp1kE00P,P0d3LMaNag3rUiSp1kE00K" />
-              <Link Id="P0d3LMaNag3rUiSp1kE015" Ids="P0d3LMaNag3rUiSp1kE00N,P0d3LMaNag3rUiSp1kE00R" />
-              <Link Id="P0d3LMaNag3rUiSp1kE016" Ids="P0d3LMaNag3rUiSp1kE00X,P0d3LMaNag3rUiSp1kE00S" />
-              <Link Id="P0d3LMaNag3rUiSp1kE017" Ids="P0d3LMaNag3rUiSp1kE00Y,P0d3LMaNag3rUiSp1kE00T" />
+              <Link Id="P0d3LMaNag3rUiSp1kE014" Ids="HDE0000000000000000015,P0d3LMaNag3rUiSp1kE00K" />
+              <Link Id="P0d3LMaNag3rUiSp1kE015" Ids="HDE0000000000000000096,P0d3LMaNag3rUiSp1kE00R" />
+              <Link Id="P0d3LMaNag3rUiSp1kE016" Ids="HDE0000000000000000016,P0d3LMaNag3rUiSp1kE00S" />
+              <Link Id="P0d3LMaNag3rUiSp1kE017" Ids="HDE0000000000000000017,P0d3LMaNag3rUiSp1kE00T" />
+              <Link Id="HDE0000000000000000098" Ids="HDE0000000000000000025,HDE0000000000000000028" />
+              <Link Id="HDE0000000000000000099" Ids="HDE0000000000000000031,HDE0000000000000000033" />
+              <Link Id="HDE0000000000000000100" Ids="HDE0000000000000000038,HDE0000000000000000041" />
+              <Link Id="HDE0000000000000000101" Ids="HDE0000000000000000044,HDE0000000000000000046" />
+              <Link Id="HDE0000000000000000102" Ids="HDE0000000000000000051,HDE0000000000000000054" />
+              <Link Id="HDE0000000000000000103" Ids="HDE0000000000000000057,HDE0000000000000000059" />
+              <Link Id="HDE0000000000000000104" Ids="HDE0000000000000000064,HDE0000000000000000067" />
+              <Link Id="HDE0000000000000000105" Ids="HDE0000000000000000070,HDE0000000000000000072" />
+              <Link Id="HDE0000000000000000106" Ids="HDE0000000000000000077,HDE0000000000000000080" />
+              <Link Id="HDE0000000000000000107" Ids="HDE0000000000000000014,HDE0000000000000000081" />
+              <Link Id="HDE0000000000000000108" Ids="HDE0000000000000000084,P0d3LMaNag3rUiSp1kE00B" />
+              <Link Id="HDE0000000000000000109" Ids="P0d3LMaNag3rUiSp1kE00N,HDE0000000000000000086" />
+              <Link Id="HDE0000000000000000110" Ids="HDE0000000000000000089,HDE0000000000000000091" />
+              <Link Id="HDE0000000000000000111" Ids="HDE0000000000000000026,HDE0000000000000000123" />
+              <Link Id="HDE0000000000000000112" Ids="HDE0000000000000000039,HDE0000000000000000128" />
+              <Link Id="HDE0000000000000000113" Ids="HDE0000000000000000052,HDE0000000000000000133" />
+              <Link Id="HDE0000000000000000114" Ids="HDE0000000000000000065,HDE0000000000000000138" />
+              <Link Id="HDE0000000000000000115" Ids="HDE0000000000000000078,HDE0000000000000000143" />
+              <Link Id="HDE0000000000000000116" Ids="HDE0000000000000000097,HDE0000000000000000148" />
+              <Link Id="HDE0000000000000000117" Ids="P0d3LMaNag3rUiSp1kE00O,HDE0000000000000000153" />
+              <Link Id="HDE0000000000000000155" Ids="HDE0000000000000000124,HDE0000000000000000004" />
+              <Link Id="HDE0000000000000000156" Ids="HDE0000000000000000129,HDE0000000000000000005" />
+              <Link Id="HDE0000000000000000157" Ids="HDE0000000000000000134,HDE0000000000000000006" />
+              <Link Id="HDE0000000000000000158" Ids="HDE0000000000000000139,HDE0000000000000000007" />
+              <Link Id="HDE0000000000000000159" Ids="HDE0000000000000000144,HDE0000000000000000008" />
+              <Link Id="HDE0000000000000000160" Ids="HDE0000000000000000149,HDE0000000000000000009" />
+              <Link Id="HDE0000000000000000161" Ids="HDE0000000000000000154,HDE0000000000000000010" />
             </Patch>
             <Pin Id="P0d3LMaNag3rUiSp1kE018" Name="Node Context" Kind="InputPin" IsHidden="true" />
             <Pin Id="P0d3LMaNag3rUiSp1kE019" Name="Docking Enabled" Kind="InputPin" />
@@ -305,5 +564,6 @@
   <NugetDependency Id="IdDPloCqQavPJlhM5jY3Lb" Location="VL.Skia" Version="2021.4.0-0540-gc6b1fcd814" />
   <NugetDependency Id="P0d3LMaNag3rUiSp1kE01E" Location="VL.ImGui.Skia" Version="0.0.0.0" />
   <NugetDependency Id="U4rnJ58Je0dMe7sTAiWUhv" Location="VL.CoreLib.Windows" Version="2021.4.0-0540-gc6b1fcd814" />
+  <DocumentDependency Id="HDE0000000000000000001" Location="./VL.Nodetool.vl" />
+  <PlatformDependency Id="HDE0000000000000000118" Location="../csharp/Nodetool.SDK.VL.HDE/bin/Release/net8.0/Nodetool.SDK.VL.HDE.dll" />
 </Document>
-

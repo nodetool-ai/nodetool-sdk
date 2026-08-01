@@ -183,50 +183,50 @@ new widget toolkit in C#.
       action button, and one progress bar.
 - [x] Interactively verify that the preview window opens, docks, resizes, and
       renders its ImGui controls.
-- [ ] Verify disposal and Shift+F9 restart after the live controller is wired;
-      the preview action button is intentionally inert.
+- [ ] Interactively verify disposal and Shift+F9 restart with the live
+      controller and an active or restored download.
 
 ### C# presentation layer
 
-- [ ] Add an editor-only model-manager controller/view-model over
+- [x] Add an editor-only model-manager controller/view-model over
       `IModelCatalog` and `IModelDownloadService`.
-- [ ] Expose immutable UI snapshots and explicit commands; do not bind the UI
+- [x] Expose cached scalar UI state and explicit commands; do not bind the UI
       directly to mutable transport DTOs or background callbacks.
-- [ ] Marshal catalog and download updates onto the HDE/editor synchronization
-      context without blocking its cooperative main loop.
-- [ ] Keep network requests, filtering, and progress aggregation out of the
+- [x] Publish background results into locked cached state that the HDE reads on
+      its frame, without blocking the editor's cooperative main loop.
+- [x] Keep network requests, filtering, and progress aggregation out of the
       frame-driven VL patch.
-- [ ] Keep HDE-only dependencies out of `Nodetool.SDK`; isolate any required
-      Windows/VL UI dependencies from normal and exported SDK consumers.
-- [ ] Dispose subscriptions and cancel only HDE-owned requests on extension
+- [x] Keep HDE-only dependencies out of `Nodetool.SDK`; isolate the imported
+      editor process in the small `Nodetool.SDK.VL.HDE` adapter assembly.
+- [x] Dispose subscriptions and cancel only HDE-owned requests on extension
       restart or window close; never cancel unrelated workflow execution.
 
 ### HDE window
 
-- [ ] Add `VL.Nodetool.HDE.vl` with the required `VL.HDE` and `VL.Lang`
-      references and a command that opens a dockable model-manager window.
-- [ ] Reuse the portable C# model services and the configured NodeTool target;
+- [x] Add `VL.Nodetool.HDE.vl` with the required `VL.HDE` and vvvv-shipped
+      ImGui/Skia references and a command that opens a dockable model-manager
+      window.
+- [x] Reuse the portable C# model services and the configured NodeTool target;
       allow an editor-runtime catalog/download session when direct session
       sharing with the user runtime is unavailable.
-- [ ] Keep all HTTP/WebSocket and retry behavior behind the portable services;
+- [x] Keep all HTTP/WebSocket and retry behavior behind the portable services;
       the HDE patch must not implement another protocol client.
-- [ ] Show which server and execution target the window is managing.
-- [ ] Group the first model inventory into a small set of model-type tabs
+- [x] Show which server and execution target the window is managing.
+- [x] Group the first model inventory into a small set of model-type tabs
       (language, image, audio, video/3D, and other) while retaining exact
       compatibility filtering behind each tab.
-- [ ] Provide one compact search/filter row for compatibility category,
-      provider/source, and availability.
-- [ ] Present ready local, ready remote, recommended/downloadable,
+- [x] Present ready local, ready remote, recommended/downloadable,
       downloading, failed, and unclassified models clearly.
-- [ ] Allow starting, cancelling, and retrying recommended model downloads.
-- [ ] Show concise per-model progress, downloaded/total size when known, and
+- [x] Allow starting, cancelling, and retrying recommended model downloads.
+- [x] Show concise per-model progress, downloaded/total size when known, and
       actionable errors.
-- [ ] Restore current server-side download states when the window opens or the
+- [x] Restore current server-side download states when the window opens or the
       extension restarts.
-- [ ] Refresh the catalog and corresponding VL enums after download completion.
-- [ ] Keep the first version focused on model inventory and downloads; do not
+- [x] Refresh the catalog and corresponding VL enums after download completion.
+- [x] Keep the first version focused on model inventory and downloads; do not
       add another node browser or workflow execution surface.
-- [ ] Ensure an HDE runtime error is contained and does not compromise normal
+- [x] Ensure an HDE runtime error is contained in the optional HDE document and
+      adapter assembly and does not compromise normal
       NodeTool nodes or other editor commands.
 
 ### Gate
@@ -244,17 +244,18 @@ new widget toolkit in C#.
       services and download lifecycle events.
 - [ ] Add C# integration tests against a live/local test server for catalog,
       selection, download progress, cancellation, and refresh.
-- [ ] Add VL tests that verify dynamic enum pin types and exact wire values.
+- [x] Add VL tests that verify dynamic enum pin types and exact wire values.
 - [ ] Run an interactive vvvv pass covering language, image, HF, llama, and
       missing/unavailable model selections.
 - [ ] Test a connected remote worker/cloud target so downloads occur on the
       execution target rather than the vvvv computer.
 - [ ] Verify that existing NodeTool web and Electron model selection and
       downloads remain unchanged.
-- [ ] Document availability terminology, model-pin behavior, refresh behavior,
+- [x] Document availability terminology, model-pin behavior, refresh behavior,
       server capability requirements, and HDE installation/use.
-- [ ] Build and verify matching `Nodetool.SDK` and `VL.Nodetool` packages,
-      including the HDE document where appropriate.
+- [x] Build and verify the `VL.Nodetool` package, including its portable SDK
+      assemblies, HDE document, and isolated vvvv compile check.
+- [ ] Build and verify the matching standalone `Nodetool.SDK` NuGet package.
 - [ ] Publish only after the existing SDK execution/media regression suite and
       the new model tests pass.
 
@@ -272,6 +273,12 @@ new widget toolkit in C#.
       surface.
 - [x] **Deferred:** automatic substitution when a selected model is missing;
       surface the problem and let the user choose.
+- [x] **Deferred:** a compact search/filter row and full inventory list by
+      compatibility, provider/source, and availability; the first HDE version
+      intentionally shows one recommended candidate per broad family.
+- [x] **Deferred:** reduce the full individual-node discovery payload/startup
+      time with a server cache, compression, or a bounded incremental contract;
+      keep complete pin metadata and saved-node identity intact.
 
 ## Likely implementation locations
 

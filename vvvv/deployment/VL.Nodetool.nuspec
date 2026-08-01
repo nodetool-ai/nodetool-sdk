@@ -30,10 +30,11 @@
 
     <!-- VL document -->
     <file src=".pack\VL.Nodetool.vl" target="" />
-    <file src="..\VL.Nodetool.HDE.vl" target="" />
+    <file src=".pack\VL.Nodetool.HDE.vl" target="" />
 
     <!-- Managed DLLs -->
     <file src="..\..\csharp\Nodetool.SDK.VL\bin\Release\net8.0\Nodetool.SDK.VL.dll" target="lib\net8.0\" />
+    <file src="..\..\csharp\Nodetool.SDK.VL.HDE\bin\Release\net8.0\Nodetool.SDK.VL.HDE.dll" target="lib\net8.0\" />
     <file src="..\..\csharp\Nodetool.SDK.VL\bin\Release\net8.0\Nodetool.SDK.dll" target="lib\net8.0\" />
     <file src="..\..\csharp\Nodetool.SDK.VL\bin\Release\net8.0\Nodetool.Types.dll" target="lib\net8.0\" />
 
