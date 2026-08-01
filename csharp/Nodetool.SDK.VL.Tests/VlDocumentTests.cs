@@ -48,6 +48,33 @@ public sealed class VlDocumentTests
         => CompileDocumentAsync("vvvv/VL.Nodetool.HDE.vl");
 
     [Test]
+    public void HdeModelManagerUsesTriggeredContextOperation()
+    {
+        var document = XDocument.Load(Path.Combine(_repoRoot, "vvvv", "VL.Nodetool.HDE.vl"));
+        var modelManagerNode = document
+            .Descendants()
+            .Single(element =>
+                element.Name.LocalName == "Node" &&
+                element.Elements().Any(reference =>
+                    reference.Name.LocalName == "NodeReference" &&
+                    reference.Descendants().Any(child =>
+                        child.Name.LocalName == "Choice" &&
+                        (string?)child.Attribute("Kind") == "ProcessAppFlag" &&
+                        (string?)child.Attribute("Name") == "ModelManagerView")));
+        var pins = modelManagerNode
+            .Elements()
+            .Where(element => element.Name.LocalName == "Pin")
+            .Select(element => (
+                Name: (string?)element.Attribute("Name"),
+                Kind: (string?)element.Attribute("Kind")))
+            .ToArray();
+
+        Assert.That(pins, Does.Contain(("Context", "InputPin")));
+        Assert.That(pins, Does.Contain(("Update", "ApplyPin")));
+        Assert.That(pins.Any(pin => pin.Kind == "OutputPin"), Is.False);
+    }
+
+    [Test]
     public Task HelpDocumentCompilesWithoutErrors()
         => CompileDocumentAsync("vvvv/help/Nodetool_Help.vl");
 

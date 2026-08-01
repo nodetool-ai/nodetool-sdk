@@ -32,11 +32,8 @@ public sealed class ModelManagerView : IDisposable
     /// <summary>
     /// Renders the manager within the active VL.ImGui region.
     /// </summary>
-    public void Update(
-        ImGuiContext? context,
-        out ImGuiContext? output)
+    public void Update(ImGuiContext? context)
     {
-        output = context;
         _state.Update();
         if (context == null) return;
 
