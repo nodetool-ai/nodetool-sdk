@@ -4,6 +4,7 @@ using Nodetool.SDK.Api;
 using Nodetool.SDK.Configuration;
 using Nodetool.SDK.Diagnostics;
 using Nodetool.SDK.Execution;
+using Nodetool.SDK.Models;
 using Nodetool.SDK.Values;
 using Nodetool.SDK.Workflows;
 
@@ -34,9 +35,73 @@ class Program
             return;
         }
 
+        if (args.Contains("models", StringComparer.OrdinalIgnoreCase))
+        {
+            await RunModeSafelyAsync(() => ModelsMode(args, loggerFactory, logger), logger);
+            return;
+        }
+
         logger.LogInformation("NodeTool SDK smoke-test console");
         logger.LogInformation(
-            "Use 'fetch --ws <url>' or 'run-workflow --ws <url> --workflow <name-or-id>'.");
+            "Use 'fetch --ws <url>', 'models --api <url>', or " +
+            "'run-workflow --ws <url> --workflow <name-or-id>'.");
+    }
+
+    private static async Task ModelsMode(
+        string[] args,
+        ILoggerFactory loggerFactory,
+        ILogger logger)
+    {
+        var apiUrl = GetArgValue(args, "--api") ??
+            Environment.GetEnvironmentVariable("NODETOOL_API_URL") ??
+            NodetoolConstants.Defaults.BaseUrl;
+        var apiKey = Environment.GetEnvironmentVariable("NODETOOL_API_KEY");
+        var compatibility = GetArgValue(args, "--compatibility");
+        var readyOnly = !args.Contains(
+            "--include-unavailable",
+            StringComparer.OrdinalIgnoreCase);
+        var limit = int.TryParse(GetArgValue(args, "--limit"), out var parsedLimit)
+            ? Math.Clamp(parsedLimit, 1, 500)
+            : 25;
+
+        var apiUri = new Uri(apiUrl, UriKind.Absolute);
+        using var api = new NodetoolClient(
+            apiUri,
+            apiKey,
+            logger: loggerFactory.CreateLogger<NodetoolClient>());
+        using var catalog = new ModelCatalog(
+            api,
+            NodeToolDiagnosticRedactor.RedactUri(apiUri).AbsoluteUri,
+            logger: loggerFactory.CreateLogger<ModelCatalog>());
+        var snapshot = await catalog.RefreshAsync(force: true);
+        if (!snapshot.LastSuccessfulRefreshUtc.HasValue)
+            throw new InvalidOperationException(
+                snapshot.LastError ?? "The model catalog was unavailable.");
+
+        IReadOnlyList<ModelDescriptor> models =
+            string.IsNullOrWhiteSpace(compatibility)
+                ? snapshot.Models
+                : catalog.FindCompatible(compatibility, readyOnly);
+        if (readyOnly && string.IsNullOrWhiteSpace(compatibility))
+            models = models.Where(model => model.IsReady).ToArray();
+
+        logger.LogInformation(
+            "Model catalog {Revision}: {Count} matching {Availability} models " +
+            "for {Scope}; showing up to {Limit}",
+            snapshot.Revision,
+            models.Count,
+            readyOnly ? "ready" : "available and unavailable",
+            snapshot.Scope,
+            limit);
+        foreach (var model in models.Take(limit))
+        {
+            logger.LogInformation(
+                "  {Name} | {Compatibility} | {Availability} | {Source}",
+                model.DisplayName,
+                model.Compatibility,
+                model.Availability,
+                model.Provider ?? model.RepositoryId ?? model.Id);
+        }
     }
 
     private static async Task RunModeSafelyAsync(Func<Task> run, ILogger logger)

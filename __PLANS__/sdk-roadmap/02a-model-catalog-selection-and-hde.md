@@ -148,8 +148,9 @@ new widget toolkit in C#.
 - [x] Map each enum value to the exact structured model wire object expected by
       NodeTool.
 - [x] Show only ready compatible models on execution pins by default.
-- [ ] Preserve an existing selection as an explicit unavailable entry if a
-      model disappears; never silently switch a patch to another model.
+- [x] Preserve an existing selection as an invalid/unavailable dynamic-enum
+      value if a model disappears; never silently switch a patch to another
+      model.
 - [x] Retain a documented object fallback and diagnostic when compatibility is
       unknown or the connected server lacks the model-catalog capability.
 - [x] Avoid repeatedly invalidating all node/workflow factories for catalog

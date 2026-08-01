@@ -126,6 +126,9 @@ Model pins:
   type or requiring a vvvv restart. Unknown compatibility or an unavailable
   catalog retains the explicit `Object` fallback, identified in the pin
   remarks as `VL fallback: Object`.
+- If a selected model disappears from the catalog, its label and structured
+  wire value remain intact as an invalid dynamic-enum value. vvvv therefore
+  reports the missing selection instead of silently choosing another model.
 - Model downloads and progress are implemented in the portable C# SDK over
   the server's `model_download` capability. The optional dockable model-manager
   HDE provides editor UI over that service; it does not own model storage or a

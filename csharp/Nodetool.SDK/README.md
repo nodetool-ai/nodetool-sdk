@@ -516,6 +516,20 @@ submission; default options are omitted from the wire.
 
 ## Test console
 
+List the ready models reported by a live server without changing server state:
+
+```bash
+cd /m/P/NODETOOL/____REPOS____/nodetool-sdk/csharp/Nodetool.SDK
+dotnet run -c Release --project ./TestConsole/Nodetool.SDK.TestConsole.csproj -- \
+  models --api http://127.0.0.1:7777
+```
+
+Add `--compatibility language_model` to inspect one pin family, or
+`--include-unavailable` to include recommended/downloadable entries. Output is
+limited to 25 entries by default; use `--limit 100` when needed. Remote servers
+can use the `NODETOOL_API_KEY` environment variable; credentials are never
+placed in command-line arguments or printed.
+
 ```bash
 cd /m/P/NODETOOL/____REPOS____/nodetool-sdk/csharp/Nodetool.SDK
 dotnet run -c Release --project ./TestConsole/Nodetool.SDK.TestConsole.csproj -- \
