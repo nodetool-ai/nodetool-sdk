@@ -95,7 +95,7 @@
               <p:stringtype p:Assembly="VL.Core" p:Type="VL.Core.StringType">Comment</p:stringtype>
             </p:ValueBoxSettings>
           </Pad>
-          <Pad Id="MqFRHLnUtHwPBobF8TwU8o" Bounds="555,545,248,100" ShowValueBox="true" isIOBox="true" Value="&lt; Model manager UI spike: target, model row, action, and progress. ">
+          <Pad Id="MqFRHLnUtHwPBobF8TwU8o" Bounds="555,545,248,100" ShowValueBox="true" isIOBox="true" Value="&lt; Dockable model manager: model families, download actions, and progress. ">
             <p:TypeAnnotation LastCategoryFullName="Primitive" LastDependency="VL.CoreLib.vl">
               <Choice Kind="TypeFlag" Name="String" />
             </p:TypeAnnotation>

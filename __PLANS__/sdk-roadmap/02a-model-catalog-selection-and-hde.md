@@ -88,6 +88,8 @@ new widget toolkit in C#.
       relay, with explicit unavailable errors for absent or older workers.
 - [x] Support start, progress, completion, failure, cancellation, and retry
       without tying the public SDK contract to the current web UI transport.
+- [x] Include scope, repository, path, and compatibility type in download
+      operation identity so multi-purpose repositories cannot alias.
 - [x] Provide a current download-state snapshot so a newly opened or restarted
       HDE can recover in-progress downloads before subscribing to new events.
 - [x] Advertise model-catalog and model-download capabilities through existing
@@ -238,13 +240,16 @@ new widget toolkit in C#.
 - [ ] Opening or restarting the HDE during a download reconstructs accurate
       progress without starting a duplicate download.
 
-## Phase 5 - Validation, documentation, and release
+## Phase 5 - Validation, cleanup, documentation, and release
 
-- [ ] Add backend contract tests for catalog parity with existing model
+- [x] Add backend contract tests for catalog parity with existing model
       services and download lifecycle events.
 - [ ] Add C# integration tests against a live/local test server for catalog,
       selection, download progress, cancellation, and refresh.
 - [x] Add VL tests that verify dynamic enum pin types and exact wire values.
+- [x] Review HDE/catalog concurrency: publish coherent frame snapshots, retain
+      explicit refreshes, isolate authenticated cache scopes, and contain
+      reset/disposal races without adding UI or transport abstractions.
 - [ ] Run an interactive vvvv pass covering language, image, HF, llama, and
       missing/unavailable model selections.
 - [ ] Test a connected remote worker/cloud target so downloads occur on the

@@ -64,6 +64,8 @@ internal sealed class HdeModelManagerNode : IDisposable
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(500);
     private readonly CancellationTokenSource _lifetime = new();
+    private readonly CancellationToken _lifetimeToken;
+    private readonly SemaphoreSlim _refreshLock = new(1, 1);
     private readonly object _stateLock = new();
     private ModelCatalogSnapshot _catalog = ModelCatalogSnapshot.Empty;
     private ModelDownloadService? _downloads;
@@ -74,7 +76,6 @@ internal sealed class HdeModelManagerNode : IDisposable
     private CancellationTokenSource? _monitorCancellation;
     private bool _initialized;
     private volatile bool _disposed;
-    private int _refreshing;
     private int _acting;
     private bool _lastLanguage;
     private bool _lastImage;
@@ -84,7 +85,11 @@ internal sealed class HdeModelManagerNode : IDisposable
     private bool _lastRefresh;
     private bool _lastAction;
 
-    public HdeModelManagerNode() => UpdateTarget();
+    public HdeModelManagerNode()
+    {
+        _lifetimeToken = _lifetime.Token;
+        UpdateTarget();
+    }
 
     public bool Language { get; set; }
     public bool Image { get; set; }
@@ -101,6 +106,29 @@ internal sealed class HdeModelManagerNode : IDisposable
     public float Progress { get; private set; }
     public string ProgressText { get; private set; } = "";
     public bool CanAct { get; private set; }
+
+    public void ReadState(
+        out string target,
+        out string family,
+        out string model,
+        out string status,
+        out string actionLabel,
+        out float progress,
+        out string progressText,
+        out bool canAct)
+    {
+        lock (_stateLock)
+        {
+            target = Target;
+            family = Family;
+            model = Model;
+            status = Status;
+            actionLabel = ActionLabel;
+            progress = Progress;
+            progressText = ProgressText;
+            canAct = CanAct;
+        }
+    }
 
     public void Update()
     {
@@ -146,29 +174,43 @@ internal sealed class HdeModelManagerNode : IDisposable
 
     private async Task RefreshAsync(bool force)
     {
-        if (Interlocked.CompareExchange(ref _refreshing, 1, 0) != 0) return;
+        try
+        {
+            await _refreshLock.WaitAsync(_lifetimeToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (_lifetimeToken.IsCancellationRequested)
+        {
+            return;
+        }
+
         try
         {
             SetStatus(force ? "Refreshing model catalog..." : "Loading model catalog...");
             UpdateTarget();
             var snapshot = await VlModelCatalogService
-                .RefreshAsync(force, _lifetime.Token)
+                .RefreshAsync(force, _lifetimeToken)
                 .ConfigureAwait(false);
             var client = await NodeToolClientProvider
-                .GetApiClientAsync(_lifetime.Token)
+                .GetApiClientAsync(_lifetimeToken)
                 .ConfigureAwait(false);
-            var scope = CurrentDownloadScope();
-            if (_downloads == null ||
-                !string.Equals(_downloadScope, scope, StringComparison.Ordinal))
+            var scope = VlModelCatalogService.CreateCurrentCacheScope();
+            ModelDownloadService downloads;
+            CancellationTokenSource? previousMonitor = null;
+            lock (_stateLock)
             {
-                _monitorCancellation?.Cancel();
-                _monitorCancellation?.Dispose();
-                _monitorCancellation = null;
-                _downloads = new ModelDownloadService(client);
-                _downloadScope = scope;
+                if (_downloads == null ||
+                    !string.Equals(_downloadScope, scope, StringComparison.Ordinal))
+                {
+                    previousMonitor = _monitorCancellation;
+                    _monitorCancellation = null;
+                    _downloads = new ModelDownloadService(client);
+                    _downloadScope = scope;
+                }
+                downloads = _downloads;
             }
-            var downloadSnapshot = await _downloads
-                .RefreshAsync(_lifetime.Token)
+            CancelAndDispose(previousMonitor);
+            var downloadSnapshot = await downloads
+                .RefreshAsync(_lifetimeToken)
                 .ConfigureAwait(false);
 
             if (_disposed) return;
@@ -181,7 +223,7 @@ internal sealed class HdeModelManagerNode : IDisposable
             }
             StartMonitorIfNeeded();
         }
-        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        catch (OperationCanceledException) when (_lifetimeToken.IsCancellationRequested)
         {
         }
         catch (Exception exception)
@@ -190,7 +232,7 @@ internal sealed class HdeModelManagerNode : IDisposable
         }
         finally
         {
-            Interlocked.Exchange(ref _refreshing, 0);
+            _refreshLock.Release();
         }
     }
 
@@ -215,14 +257,14 @@ internal sealed class HdeModelManagerNode : IDisposable
             {
                 next = await service.CancelAsync(
                     download.OperationId,
-                    _lifetime.Token).ConfigureAwait(false);
+                    _lifetimeToken).ConfigureAwait(false);
             }
             else if (download is
                      { Status: SdkModelDownloadStatuses.Error or SdkModelDownloadStatuses.Cancelled })
             {
                 next = await service.RetryAsync(
                     download,
-                    _lifetime.Token).ConfigureAwait(false);
+                    _lifetimeToken).ConfigureAwait(false);
             }
             else
             {
@@ -234,7 +276,7 @@ internal sealed class HdeModelManagerNode : IDisposable
                 }
                 next = await service.StartAsync(
                     model,
-                    _lifetime.Token).ConfigureAwait(false);
+                    _lifetimeToken).ConfigureAwait(false);
             }
 
             if (_disposed) return;
@@ -246,7 +288,7 @@ internal sealed class HdeModelManagerNode : IDisposable
             }
             StartMonitorIfNeeded();
         }
-        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        catch (OperationCanceledException) when (_lifetimeToken.IsCancellationRequested)
         {
         }
         catch (Exception exception)
@@ -261,22 +303,26 @@ internal sealed class HdeModelManagerNode : IDisposable
 
     private void StartMonitorIfNeeded()
     {
-        if (_disposed) return;
-
         ModelDownloadState? download;
         ModelDownloadService? service;
+        CancellationTokenSource? previous;
+        CancellationTokenSource current;
+        CancellationToken currentToken;
         lock (_stateLock)
         {
+            if (_disposed) return;
             download = _selectedDownload;
             service = _downloads;
-        }
-        if (service == null || download == null || download.IsTerminal) return;
+            if (service == null || download == null || download.IsTerminal) return;
 
-        _monitorCancellation?.Cancel();
-        _monitorCancellation?.Dispose();
-        _monitorCancellation = CancellationTokenSource.CreateLinkedTokenSource(
-            _lifetime.Token);
-        _ = MonitorAsync(service, download.OperationId, _monitorCancellation.Token);
+            previous = _monitorCancellation;
+            current = CancellationTokenSource.CreateLinkedTokenSource(
+                _lifetimeToken);
+            currentToken = current.Token;
+            _monitorCancellation = current;
+        }
+        CancelAndDispose(previous);
+        _ = MonitorAsync(service, download.OperationId, currentToken);
     }
 
     private async Task MonitorAsync(
@@ -435,15 +481,6 @@ internal sealed class HdeModelManagerNode : IDisposable
             Target = $"Target: {endpoint} · local";
     }
 
-    private static string CurrentDownloadScope()
-    {
-        var endpoint = NodeToolClientProvider.CurrentApiBaseUrl?.AbsoluteUri ?? "";
-        var principal = string.IsNullOrWhiteSpace(NodeToolClientProvider.CurrentAuthToken)
-            ? "trusted-local"
-            : "authenticated";
-        return $"{endpoint}|{principal}|local";
-    }
-
     private static string FamilyLabel(HdeModelFamily family)
         => family == HdeModelFamily.Video3D ? "Video / 3D" : family.ToString();
 
@@ -463,11 +500,29 @@ internal sealed class HdeModelManagerNode : IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
+        CancellationTokenSource? monitor;
+        lock (_stateLock)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            monitor = _monitorCancellation;
+            _monitorCancellation = null;
+        }
         _lifetime.Cancel();
-        _monitorCancellation?.Cancel();
-        _monitorCancellation?.Dispose();
+        CancelAndDispose(monitor);
         _lifetime.Dispose();
+    }
+
+    private static void CancelAndDispose(CancellationTokenSource? cancellation)
+    {
+        if (cancellation == null) return;
+        try
+        {
+            cancellation.Cancel();
+        }
+        finally
+        {
+            cancellation.Dispose();
+        }
     }
 }

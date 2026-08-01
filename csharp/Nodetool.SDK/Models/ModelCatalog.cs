@@ -19,8 +19,8 @@ public sealed class ModelCatalog : IModelCatalog, IDisposable
     private readonly ILogger<ModelCatalog> _logger;
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
     private ModelCatalogSnapshot _snapshot = ModelCatalogSnapshot.Empty;
-    private DateTimeOffset _expiresUtc = DateTimeOffset.MinValue;
-    private bool _disposed;
+    private long _expiresUtcTicks;
+    private volatile bool _disposed;
 
     public ModelCatalogSnapshot Snapshot => Volatile.Read(ref _snapshot);
 
@@ -88,12 +88,12 @@ public sealed class ModelCatalog : IModelCatalog, IDisposable
         Volatile.Write(
             ref _snapshot,
             ModelCatalogSnapshot.Empty with { Scope = _modelScope });
-        _expiresUtc = DateTimeOffset.MinValue;
+        Volatile.Write(ref _expiresUtcTicks, 0);
     }
 
     private bool HasFreshSnapshot()
         => Snapshot.LastSuccessfulRefreshUtc.HasValue &&
-           DateTimeOffset.UtcNow < _expiresUtc;
+           DateTimeOffset.UtcNow.UtcTicks < Volatile.Read(ref _expiresUtcTicks);
 
     private async Task<ModelCatalogSnapshot> RefreshCoreAsync(
         CancellationToken cancellationToken)
@@ -132,7 +132,9 @@ public sealed class ModelCatalog : IModelCatalog, IDisposable
                 false,
                 null);
             Volatile.Write(ref _snapshot, refreshed);
-            _expiresUtc = now + _cacheDuration;
+            Volatile.Write(
+                ref _expiresUtcTicks,
+                (now + _cacheDuration).UtcTicks);
             return refreshed;
         }
         catch (OperationCanceledException)
@@ -195,6 +197,7 @@ public sealed class ModelCatalog : IModelCatalog, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        _refreshLock.Dispose();
+        // An already-running refresh still owns and releases the semaphore.
+        // SemaphoreSlim holds no native resource unless its wait handle is used.
     }
 }

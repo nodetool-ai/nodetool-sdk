@@ -21,6 +21,7 @@ internal static class DynamicModelEnumFactory
         IReadOnlyDictionary<string, object> HistoricalWireValues);
 
     private static readonly ConcurrentDictionary<Type, EnumMapping> ByType = new();
+    private static readonly object CatalogUpdateLock = new();
     private static readonly object DefinitionUpdateLock = new();
     private static readonly MethodInfo ConfigureSlotMethod = typeof(
             DynamicModelEnumFactory)
@@ -66,25 +67,28 @@ internal static class DynamicModelEnumFactory
     public static void UpdateCatalog(ModelCatalogSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
-        _hasCatalog = snapshot.LastSuccessfulRefreshUtc.HasValue;
-        if (!_hasCatalog)
-            return;
-
-        foreach (var group in snapshot.Models
-                     .Where(model => model.IsReady && IsModelType(model.Compatibility))
-                     .GroupBy(model => model.Compatibility, StringComparer.OrdinalIgnoreCase))
+        lock (CatalogUpdateLock)
         {
-            UpdateCompatibility(group.Key, group.ToArray());
-        }
+            _hasCatalog = snapshot.LastSuccessfulRefreshUtc.HasValue;
+            if (!_hasCatalog)
+                return;
 
-        var active = snapshot.Models
-            .Where(model => model.IsReady)
-            .Select(model => model.Compatibility)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var pair in ByType)
-        {
-            if (!active.Contains(pair.Value.Compatibility))
-                UpdateCompatibility(pair.Value.Compatibility, []);
+            foreach (var group in snapshot.Models
+                         .Where(model => model.IsReady && IsModelType(model.Compatibility))
+                         .GroupBy(model => model.Compatibility, StringComparer.OrdinalIgnoreCase))
+            {
+                UpdateCompatibility(group.Key, group.ToArray());
+            }
+
+            var active = snapshot.Models
+                .Where(model => model.IsReady)
+                .Select(model => model.Compatibility)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var pair in ByType)
+            {
+                if (!active.Contains(pair.Value.Compatibility))
+                    UpdateCompatibility(pair.Value.Compatibility, []);
+            }
         }
     }
 
@@ -150,9 +154,12 @@ internal static class DynamicModelEnumFactory
 
     internal static void ResetCatalog()
     {
-        _hasCatalog = false;
-        foreach (var pair in ByType)
-            UpdateCompatibility(pair.Value.Compatibility, []);
+        lock (CatalogUpdateLock)
+        {
+            _hasCatalog = false;
+            foreach (var pair in ByType)
+                UpdateCompatibility(pair.Value.Compatibility, []);
+        }
     }
 
     private static void UpdateCompatibility(
@@ -209,6 +216,12 @@ internal static class DynamicModelEnumFactory
         {
             try
             {
+                var enumType = typeof(ModelDynamicEnum<>).MakeGenericType(markerType);
+                if (!ByType.TryGetValue(enumType, out var current) ||
+                    !ReferenceEquals(current.VisibleWireValues, entries))
+                {
+                    return;
+                }
                 ConfigureSlotMethod
                     .MakeGenericMethod(markerType)
                     .Invoke(null, [entries]);

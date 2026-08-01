@@ -39,15 +39,15 @@ public sealed class ModelManagerState : IDisposable
         _state.Refresh = refresh;
         _state.Action = action;
         _state.Update();
-
-        target = _state.Target;
-        family = _state.Family;
-        model = _state.Model;
-        status = _state.Status;
-        actionLabel = _state.ActionLabel;
-        progress = _state.Progress;
-        progressText = _state.ProgressText;
-        canAct = _state.CanAct;
+        _state.ReadState(
+            out target,
+            out family,
+            out model,
+            out status,
+            out actionLabel,
+            out progress,
+            out progressText,
+            out canAct);
     }
 
     void IDisposable.Dispose() => _state.Dispose();

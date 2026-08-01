@@ -94,6 +94,32 @@ public class ModelCatalogTests
     }
 
     [Fact]
+    public async Task Dispose_DoesNotBreakAnInFlightRefresh()
+    {
+        var response = Response(
+            "revision-1",
+            Entry("openai", "ready_remote"));
+        var completion = new TaskCompletionSource<SdkModelCatalogResponse>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new BlockingModelCatalogClient(completion.Task);
+        var catalog = new ModelCatalog(
+            client,
+            "https://server|alice|local",
+            cacheDuration: TimeSpan.Zero);
+
+        var refresh = catalog.RefreshAsync();
+        await client.Started;
+        catalog.Dispose();
+        completion.SetResult(response);
+
+        var snapshot = await refresh;
+
+        Assert.Equal("revision-1", snapshot.Revision);
+        await Assert.ThrowsAsync<ObjectDisposedException>(
+            () => catalog.RefreshAsync(force: true));
+    }
+
+    [Fact]
     public void Selection_PreservesCompleteStructuredWireValue()
     {
         var descriptor = Map(Entry("openai", "ready_remote")) with
@@ -190,6 +216,23 @@ public class ModelCatalogTests
             return Error == null
                 ? Task.FromResult(_responses.Dequeue())
                 : Task.FromException<SdkModelCatalogResponse>(Error);
+        }
+    }
+
+    private sealed class BlockingModelCatalogClient(
+        Task<SdkModelCatalogResponse> response) : IModelCatalogClient
+    {
+        private readonly TaskCompletionSource _started = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task Started => _started.Task;
+
+        public Task<SdkModelCatalogResponse> GetModelCatalogAsync(
+            SdkModelCatalogQuery? query = null,
+            CancellationToken cancellationToken = default)
+        {
+            _started.TrySetResult();
+            return response.WaitAsync(cancellationToken);
         }
     }
 }
