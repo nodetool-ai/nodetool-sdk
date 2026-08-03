@@ -25,7 +25,9 @@ namespace Nodetool.SDK.VL.Factories
         private static NodeBuilding.FactoryImpl? _factoryImpl = null;
         private static IVLNodeDescriptionFactory? _factoryOwner;
         private static readonly object _lock = new object();
-        private static readonly TimeSpan DiscoveryTimeout = TimeSpan.FromSeconds(10);
+        // Matches the HTTP client's own timeout; a cold server (first metadata
+        // build, Python bridge spawn) legitimately needs more than 10 seconds.
+        private static readonly TimeSpan DiscoveryTimeout = TimeSpan.FromSeconds(30);
         private static readonly TimeSpan InitialSnapshotGrace = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan RefreshDebounce = TimeSpan.FromMilliseconds(250);
@@ -608,9 +610,19 @@ namespace Nodetool.SDK.VL.Factories
             var modelCatalogTask = VlModelCatalogService.RefreshAsync(
                 force: false,
                 modelTimeout.Token);
-            var nodesTask = client.GetNodeTypesAsync(timeout.Token);
-            await Task.WhenAll(nodesTask, modelCatalogTask).ConfigureAwait(false);
-            var nodes = await nodesTask.ConfigureAwait(false);
+            var nodes = await client.GetNodeTypesAsync(timeout.Token).ConfigureAwait(false);
+            // Best-effort: the catalog endpoint enumerates provider models on the
+            // server and can be slow. Nodes don't need it — model enums fill in
+            // on the next catalog refresh, which invalidates the factory anyway.
+            try
+            {
+                await modelCatalogTask.ConfigureAwait(false);
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                VlLog.Debug(
+                    $"NodesFactory: model catalog refresh skipped: {VlLog.SafeError(ex)}");
+            }
             return nodes?.ToImmutableList() ?? ImmutableList<NodeMetadataResponse>.Empty;
         }
 

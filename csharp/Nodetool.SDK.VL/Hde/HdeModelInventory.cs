@@ -75,12 +75,99 @@ internal sealed record HdeModelRow(
     string ProgressText,
     bool CanAct,
     bool IsDownloading,
-    bool Recommended);
+    bool Recommended,
+    string CopyValue,
+    string UseWith);
+
+internal enum HdeModelSource
+{
+    All,
+    Local,
+    Provider
+}
+
+internal static class HdeModelSourceClassifier
+{
+    public static HdeModelSource Classify(ModelDescriptor model)
+    {
+        var compatibility = model.Compatibility.Trim().ToLowerInvariant();
+        var isLocal =
+            compatibility.StartsWith("hf.", StringComparison.Ordinal) ||
+            compatibility.StartsWith("tjs.", StringComparison.Ordinal) ||
+            compatibility is "llama_model" or "llama_cpp_model";
+        return isLocal ? HdeModelSource.Local : HdeModelSource.Provider;
+    }
+
+    public static string Label(HdeModelSource source)
+        => source switch
+        {
+            HdeModelSource.Local => "Local (repo ids)",
+            HdeModelSource.Provider => "Provider (enum pins)",
+            _ => "All sources"
+        };
+}
+
+internal static class HdeModelUsage
+{
+    /// <summary>
+    /// One-line answer to "where do I paste this?" derived from the model's
+    /// compatibility. Keeps the copy feature useful until model pins are
+    /// typed everywhere.
+    /// </summary>
+    public static string Describe(ModelDescriptor model)
+    {
+        var compatibility = model.Compatibility.Trim().ToLowerInvariant();
+        if (compatibility.StartsWith("hf.", StringComparison.Ordinal))
+        {
+            var task = Humanize(compatibility[3..]);
+            return $"HF repo id · Hugging Face {task} nodes (local, model pin)";
+        }
+        if (compatibility.StartsWith("tjs.", StringComparison.Ordinal))
+        {
+            var task = Humanize(compatibility[4..]);
+            return $"HF repo id · Transformers.js {task} nodes (local)";
+        }
+        var provider = string.IsNullOrWhiteSpace(model.Provider)
+            ? "provider"
+            : model.Provider;
+        return compatibility switch
+        {
+            "language_model" =>
+                $"Model enum on LLM/Agent nodes ({provider})",
+            "image_model" =>
+                $"Model enum on Text To Image / Image To Image ({provider})",
+            "video_model" =>
+                $"Model enum on video generation nodes ({provider})",
+            "tts_model" =>
+                $"Model enum on Text To Speech nodes ({provider})",
+            "asr_model" =>
+                $"Model enum on Transcribe nodes ({provider})",
+            "music_model" =>
+                $"Model enum on music generation nodes ({provider})",
+            "embedding_model" =>
+                $"Model enum on Embedding nodes ({provider})",
+            "llama_model" or "llama_cpp_model" =>
+                "Model enum on local Llama nodes",
+            _ => $"Compatibility: {model.Compatibility}"
+        };
+    }
+
+    private static string Humanize(string task)
+    {
+        var words = task.Split(
+            ['_', '-'],
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return string.Join(
+            " ",
+            words.Select(word => char.ToUpperInvariant(word[0]) + word[1..]));
+    }
+}
 
 internal sealed record HdeModelPageSnapshot(
     string Target,
     string Notice,
     string Family,
+    string Source,
     string Search,
     string Summary,
     IReadOnlyList<HdeModelRow> Rows,
@@ -95,6 +182,7 @@ internal sealed record HdeModelPageSnapshot(
         "Target: resolving...",
         "Loading model catalog...",
         "Image",
+        "All sources",
         "",
         "Image · 0 models",
         Array.Empty<HdeModelRow>(),
@@ -117,7 +205,8 @@ internal static class HdeModelListProjector
         int pageSize,
         IReadOnlySet<string>? actingKeys = null,
         string target = "Target: resolving...",
-        string notice = "")
+        string notice = "",
+        HdeModelSource source = HdeModelSource.All)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(downloads);
@@ -127,6 +216,8 @@ internal static class HdeModelListProjector
         var filtered = catalog.Models
             .Where(model => family == HdeModelFamily.All ||
                             HdeModelFamilyClassifier.Classify(model.Compatibility) == family)
+            .Where(model => source == HdeModelSource.All ||
+                            HdeModelSourceClassifier.Classify(model) == source)
             .Where(model => MatchesSearch(model, search))
             .OrderBy(ModelRank)
             .ThenBy(model => model.DisplayName, StringComparer.OrdinalIgnoreCase)
@@ -145,6 +236,7 @@ internal static class HdeModelListProjector
         var downloadable = filtered.Count(model =>
             model.Availability == SdkModelAvailability.Downloadable);
         var familyLabel = HdeModelFamilyClassifier.Label(family);
+        var sourceLabel = HdeModelSourceClassifier.Label(source);
         var summary = $"{familyLabel} · {filtered.Length} models · {ready} ready · {downloadable} downloadable";
         var rangeStart = filtered.Length == 0 ? 0 : pageIndex * pageSize + 1;
         var rangeEnd = filtered.Length == 0
@@ -155,6 +247,7 @@ internal static class HdeModelListProjector
             target,
             notice,
             familyLabel,
+            sourceLabel,
             search,
             summary,
             rows,
@@ -184,43 +277,49 @@ internal static class HdeModelListProjector
         var details = string.IsNullOrWhiteSpace(source)
             ? model.Compatibility
             : $"{source} · {model.Compatibility}";
+        // The string a node pin wants: repo id for repository models, provider id otherwise.
+        var copyValue = string.IsNullOrWhiteSpace(model.RepositoryId)
+            ? model.Id
+            : model.RepositoryId;
+        var useWith = HdeModelUsage.Describe(model);
+
+        HdeModelRow Row(
+            string status,
+            string actionLabel,
+            float progress,
+            string progressText,
+            bool canAct,
+            bool isDownloading) =>
+            new(
+                model.Key,
+                model.DisplayName,
+                details,
+                status,
+                actionLabel,
+                progress,
+                progressText,
+                canAct,
+                isDownloading,
+                model.Recommended,
+                copyValue,
+                useWith);
 
         if (acting)
-        {
-            return new HdeModelRow(
-                model.Key,
-                model.DisplayName,
-                details,
-                "Working...",
-                "Working...",
-                0f,
-                "",
-                false,
-                false,
-                model.Recommended);
-        }
+            return Row("Working...", "Working...", 0f, "", false, false);
         if (download is { IsTerminal: false })
         {
-            var progress = (float)(download.Progress ?? 0d);
-            return new HdeModelRow(
-                model.Key,
-                model.DisplayName,
-                details,
+            return Row(
                 download.Status,
                 "Cancel",
-                progress,
+                (float)(download.Progress ?? 0d),
                 FormatProgress(download),
                 true,
-                true,
-                model.Recommended);
+                true);
         }
         if (download is
             { Status: SdkModelDownloadStatuses.Error or SdkModelDownloadStatuses.Cancelled })
         {
-            return new HdeModelRow(
-                model.Key,
-                model.DisplayName,
-                details,
+            return Row(
                 download.Status,
                 "Retry",
                 (float)(download.Progress ?? 0d),
@@ -228,63 +327,18 @@ internal static class HdeModelListProjector
                     ? ""
                     : download.Error,
                 true,
-                false,
-                model.Recommended);
+                false);
         }
         if (download is { Status: SdkModelDownloadStatuses.Completed } && !model.IsReady)
-        {
-            return new HdeModelRow(
-                model.Key,
-                model.DisplayName,
-                details,
-                "Finalizing",
-                "Finalizing",
-                1f,
-                "Refreshing catalog...",
-                false,
-                false,
-                model.Recommended);
-        }
+            return Row("Finalizing", "Finalizing", 1f, "Refreshing catalog...", false, false);
         if (model.IsReady)
-        {
-            return new HdeModelRow(
-                model.Key,
-                model.DisplayName,
-                details,
-                "Ready",
-                "Ready",
-                1f,
-                "",
-                false,
-                false,
-                model.Recommended);
-        }
+            return Row("Ready", "Ready", 1f, "", false, false);
         if (model.Availability == SdkModelAvailability.Downloadable &&
             !string.IsNullOrWhiteSpace(model.RepositoryId))
         {
-            return new HdeModelRow(
-                model.Key,
-                model.DisplayName,
-                details,
-                "Downloadable",
-                "Download",
-                0f,
-                "",
-                true,
-                false,
-                model.Recommended);
+            return Row("Downloadable", "Download", 0f, "", true, false);
         }
-        return new HdeModelRow(
-            model.Key,
-            model.DisplayName,
-            details,
-            model.Availability,
-            "Unavailable",
-            0f,
-            "",
-            false,
-            false,
-            model.Recommended);
+        return Row(model.Availability, "Unavailable", 0f, "", false, false);
     }
 
     private static bool MatchesSearch(ModelDescriptor model, string search)

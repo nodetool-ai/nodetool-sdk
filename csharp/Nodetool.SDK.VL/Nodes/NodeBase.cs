@@ -1200,16 +1200,25 @@ namespace Nodetool.SDK.VL.Nodes
         /// </summary>
         private class InternalPin : IVLPin
         {
+            private object? _value;
+
             public InternalPin(string name, Type type, object? defaultValue)
             {
                 Name = name;
                 Type = type;
-                Value = defaultValue;
+                _value = defaultValue;
             }
 
             public string Name { get; }
             public Type Type { get; }
-            public object? Value { get; set; }
+
+            // VL's generated code unboxes value-typed pins ((TimeSpan)pin.Value);
+            // a null there kills the whole app update. Never expose one.
+            public object? Value
+            {
+                get => _value ??= Type.IsValueType ? Activator.CreateInstance(Type) : null;
+                set => _value = value;
+            }
         }
 
         /// <summary>

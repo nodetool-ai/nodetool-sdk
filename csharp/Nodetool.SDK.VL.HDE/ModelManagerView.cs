@@ -25,9 +25,17 @@ public sealed class ModelManagerView : IDisposable
         HdeModelFamily.Other
     ];
 
+    private static readonly HdeModelSource[] Sources =
+    [
+        HdeModelSource.All,
+        HdeModelSource.Local,
+        HdeModelSource.Provider
+    ];
+
     private static readonly int[] PageSizes = [50, 100, 200];
     private readonly HdeModelManagerNode _state = new();
     private string _search = "";
+    private string? _copiedKey;
 
     /// <summary>
     /// Renders the manager within the active VL.ImGui region.
@@ -35,6 +43,9 @@ public sealed class ModelManagerView : IDisposable
     public void Update(ImGuiContext? context)
     {
         _state.Update();
+        // Unconnected Context pin: fall back to the ambient context, the same
+        // way VL.ImGui's own widgets do (Validate returns Context.Current).
+        context = global::VL.ImGui.ContextHelpers.Validate(context);
         if (context == null) return;
 
         using var frame = context.MakeCurrent();
@@ -45,6 +56,7 @@ public sealed class ModelManagerView : IDisposable
     {
         ImGui.TextUnformatted(view.Target);
         RenderFamilyTabs(view.Family);
+        RenderSourceTabs(view.Source);
         RenderToolbar();
 
         if (!string.IsNullOrWhiteSpace(view.Notice))
@@ -58,7 +70,7 @@ public sealed class ModelManagerView : IDisposable
                     ImGuiTableFlags.Resizable |
                     ImGuiTableFlags.ScrollY |
                     ImGuiTableFlags.SizingStretchProp;
-        if (ImGui.BeginTable("##nodetool-models", 4, flags, new Vector2(0f, tableHeight)))
+        if (ImGui.BeginTable("##nodetool-models", 5, flags, new Vector2(0f, tableHeight)))
         {
             try
             {
@@ -67,6 +79,7 @@ public sealed class ModelManagerView : IDisposable
                 ImGui.TableSetupColumn("Source / Type", ImGuiTableColumnFlags.WidthStretch, 1.8f);
                 ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthStretch, 1.7f);
                 ImGui.TableSetupColumn("Action", ImGuiTableColumnFlags.WidthFixed, 92f);
+                ImGui.TableSetupColumn("Id", ImGuiTableColumnFlags.WidthFixed, 56f);
                 ImGui.TableHeadersRow();
 
                 foreach (var row in view.Rows)
@@ -104,6 +117,42 @@ public sealed class ModelManagerView : IDisposable
         }
     }
 
+    private void RenderSourceTabs(string selectedSource)
+    {
+        foreach (var source in Sources)
+        {
+            var label = HdeModelSourceClassifier.Label(source);
+            var selected = string.Equals(label, selectedSource, StringComparison.Ordinal);
+            if (selected)
+                ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetStyle().Colors[(int)ImGuiCol.ButtonActive]);
+            try
+            {
+                if (ImGui.SmallButton($"{label}##source-{source}"))
+                    _state.SelectSource(source);
+            }
+            finally
+            {
+                if (selected)
+                    ImGui.PopStyleColor();
+            }
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(source switch
+                {
+                    HdeModelSource.Local =>
+                        "Repo-id models that run locally — paste the id into " +
+                        "Hugging Face / Transformers.js / Llama nodes' model pins.",
+                    HdeModelSource.Provider =>
+                        "API-provider models — these appear in typed model " +
+                        "enum pins; copying the id is rarely needed.",
+                    _ => "Show every model in the catalog."
+                });
+            }
+            if (source != Sources[^1])
+                ImGui.SameLine();
+        }
+    }
+
     private void RenderToolbar()
     {
         ImGui.SetNextItemWidth(Math.Max(120f, ImGui.GetContentRegionAvail().X - 92f));
@@ -122,6 +171,8 @@ public sealed class ModelManagerView : IDisposable
             ImGui.TableNextRow();
             ImGui.TableSetColumnIndex(0);
             ImGui.TextUnformatted(row.DisplayName);
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(row.UseWith);
             if (row.Recommended)
             {
                 ImGui.SameLine();
@@ -159,6 +210,16 @@ public sealed class ModelManagerView : IDisposable
                 if (!row.CanAct)
                     ImGui.EndDisabled();
             }
+
+            ImGui.TableSetColumnIndex(4);
+            var copied = string.Equals(_copiedKey, row.Key, StringComparison.Ordinal);
+            if (ImGui.Button(copied ? "Copied##copy" : "Copy##copy", new Vector2(-1f, 0f)))
+            {
+                ImGui.SetClipboardText(row.CopyValue);
+                _copiedKey = row.Key;
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip($"Copy: {row.CopyValue}\n{row.UseWith}");
         }
         finally
         {

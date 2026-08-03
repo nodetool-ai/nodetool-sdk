@@ -39,7 +39,9 @@ namespace Nodetool.SDK.VL.Factories
         private static NodeBuilding.FactoryImpl? _factoryImpl = null;
         private static IVLNodeDescriptionFactory? _factoryOwner;
         private static readonly object _lock = new object();
-        private static readonly TimeSpan DiscoveryTimeout = TimeSpan.FromSeconds(5);
+        // Matches the HTTP client's own timeout; a cold server legitimately
+        // needs more than a few seconds on the first fetch.
+        private static readonly TimeSpan DiscoveryTimeout = TimeSpan.FromSeconds(30);
         private static readonly TimeSpan InitialSnapshotGrace = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan RefreshDebounce = TimeSpan.FromMilliseconds(250);
@@ -650,7 +652,18 @@ namespace Nodetool.SDK.VL.Factories
                             forceRefresh)
                         .ConfigureAwait(false);
                 }
-                await modelCatalogTask.ConfigureAwait(false);
+                // Best-effort: never fail workflow discovery over the model
+                // catalog — it can be slow (server-side provider enumeration)
+                // and workflows fetched above are already good.
+                try
+                {
+                    await modelCatalogTask.ConfigureAwait(false);
+                }
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    VlLog.Debug(
+                        $"WorkflowNodeFactory: model catalog refresh skipped: {VlLog.SafeError(ex)}");
+                }
                 return new WorkflowFetchResult(
                     workflows?.ToImmutableList() ??
                     ImmutableList<WorkflowDetail>.Empty,

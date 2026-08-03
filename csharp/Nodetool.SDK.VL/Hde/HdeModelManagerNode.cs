@@ -17,6 +17,7 @@ internal sealed class HdeModelManagerNode : IDisposable
     private ModelDownloadService? _downloads;
     private string? _downloadScope;
     private HdeModelFamily _family = HdeModelFamily.Image;
+    private HdeModelSource _source = HdeModelSource.All;
     private string _search = "";
     private int _pageIndex;
     private int _pageSize = 100;
@@ -56,6 +57,17 @@ internal sealed class HdeModelManagerNode : IDisposable
         {
             if (_family == family) return;
             _family = family;
+            _pageIndex = 0;
+            UpdateViewLocked();
+        }
+    }
+
+    public void SelectSource(HdeModelSource source)
+    {
+        lock (_stateLock)
+        {
+            if (_source == source) return;
+            _source = source;
             _pageIndex = 0;
             UpdateViewLocked();
         }
@@ -318,7 +330,8 @@ internal sealed class HdeModelManagerNode : IDisposable
             _pageSize,
             _actingKeys,
             _target,
-            _notice);
+            _notice,
+            _source);
         _pageIndex = _view.PageNumber - 1;
     }
 
